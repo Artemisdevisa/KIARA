@@ -80,7 +80,9 @@ CREATE TABLE IF NOT EXISTS users_user (
     -- Campos propios
     telefono     TEXT    NOT NULL DEFAULT '',   -- max_length=20
     rol          TEXT    NOT NULL DEFAULT 'productor'
-                         CHECK (rol IN ('productor','consumidor','admin'))
+                         CHECK (rol IN ('productor','consumidor','admin')),
+    latitud      NUMERIC(9,6),                  -- nullable, coordenada GPS
+    longitud     NUMERIC(9,6)                   -- nullable, coordenada GPS
 );
 
 -- Relación M2M User <-> Group
@@ -113,6 +115,8 @@ CREATE TABLE IF NOT EXISTS biohuertos_biohuerto (
     nombre       TEXT    NOT NULL,              -- max_length=200
     codigo       TEXT    NOT NULL DEFAULT '',   -- max_length=50, blank=True
     ubicacion    TEXT    NOT NULL,              -- TextField
+    latitud      NUMERIC(9,6),                  -- nullable, coordenada GPS
+    longitud     NUMERIC(9,6),                  -- nullable, coordenada GPS
     area         NUMERIC(10,2) NOT NULL,        -- DecimalField
     descripcion  TEXT    NOT NULL DEFAULT '',   -- TextField, blank=True
     activo       INTEGER NOT NULL DEFAULT 1,    -- BooleanField
