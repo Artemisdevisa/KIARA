@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'apps.cosechas',
     'apps.trazabilidad',
     'apps.dashboard',
+    'apps.pedidos',
 ]
 
 MIDDLEWARE = [
@@ -126,3 +127,13 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+# MercadoPago — reemplaza con tus credenciales en .env
+# Sandbox (test): ACCESS_TOKEN que empieza con TEST-
+# Producción:     ACCESS_TOKEN que empieza con APP_USR-
+MERCADOPAGO_ACCESS_TOKEN = config('MERCADOPAGO_ACCESS_TOKEN', default='TEST-0000000000000000-000000-00000000000000000000000000000000-000000000')
+MERCADOPAGO_SANDBOX      = config('MERCADOPAGO_SANDBOX', default=True, cast=bool)
+
+# URLs base usadas en los back_urls de MercadoPago
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+BACKEND_URL  = config('BACKEND_URL',  default='http://localhost:8000')

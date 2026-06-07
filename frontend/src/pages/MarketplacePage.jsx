@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import PlantIcon from '../components/icons/PlantIcon'
 import HarvestIcon from '../components/icons/HarvestIcon'
+import { useCart } from '../context/CartContext'
+import toast from 'react-hot-toast'
 
 /* Patrón de hojas reutilizable */
 function LeafPattern() {
@@ -65,6 +67,14 @@ export default function MarketplacePage() {
   const [busqueda, setBusqueda] = useState('')
   const [orden, setOrden] = useState('reciente')
   const [filtroMostrado, setFiltroMostrado] = useState(false)
+  const { addItem, items } = useCart()
+
+  const enCarrito = (id) => items.some(i => i.id === id)
+
+  const handleAgregar = (c) => {
+    addItem(c)
+    toast.success(`${c.nombre_producto} agregado al carrito`)
+  }
 
   /* Carga inicial — datos reales del backend */
   useEffect(() => {
@@ -278,14 +288,27 @@ export default function MarketplacePage() {
                       </p>
 
                       {c.estado === 'disponible' ? (
-                        <a
-                          href={`https://wa.me/51${c.contacto.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block w-full bg-bio-main text-white font-black text-sm py-3 rounded-xl text-center hover:bg-bio-dark transition-all duration-200"
-                        >
-                          Contactar por WhatsApp
-                        </a>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => handleAgregar(c)}
+                            disabled={enCarrito(c.id)}
+                            className="block w-full font-black text-sm py-3 rounded-xl text-center transition-all duration-200"
+                            style={enCarrito(c.id)
+                              ? { backgroundColor: '#f0fdf4', color: '#16a34a', border: '2px solid #bbf7d0', cursor: 'default' }
+                              : { background: 'linear-gradient(135deg,#2D6A4F,#1B4332)', color: '#fff' }
+                            }
+                          >
+                            {enCarrito(c.id) ? '✓ En el carrito' : 'Agregar al carrito'}
+                          </button>
+                          <a
+                            href={`https://wa.me/51${c.contacto.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-full text-bio-main font-black text-sm py-2.5 rounded-xl text-center border border-bio-main/30 hover:bg-bio-pale transition-all duration-200"
+                          >
+                            Contactar por WhatsApp
+                          </a>
+                        </div>
                       ) : (
                         <div className="w-full bg-gray-100 text-gray-400 font-black text-sm py-3 rounded-xl text-center cursor-not-allowed">
                           Producto agotado

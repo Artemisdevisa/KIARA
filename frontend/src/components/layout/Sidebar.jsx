@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import {
@@ -69,15 +69,26 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className="px-5 py-5" style={{ borderBottom: `1px solid ${p.border}` }}>
-        <div className="flex items-center gap-3">
-          <div className="bg-primary-500 rounded-xl p-2 shrink-0">
-            <Leaf size={20} className="text-white" />
+        <Link to="/" className="flex items-center gap-3 group">
+          <div className="transition-transform duration-300 group-hover:rotate-6 shrink-0">
+            <svg width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="18" cy="18" r="18" fill="rgba(255,255,255,0.13)"/>
+              <path d="M18 28 C18 28 8 22 9 14 C12 12 16 15 18 28Z" fill="white" opacity="0.85"/>
+              <path d="M18 24 C18 24 28 18 27 10 C24 8 20 11 18 24Z" fill="white"/>
+              <path d="M18 28 L18 30" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+            </svg>
           </div>
-          <div>
-            <h1 className="font-extrabold text-base leading-tight tracking-tight text-white">BioHuerto</h1>
-            <p className="text-xs font-medium" style={{ color: p.label }}>USAT · KIARA</p>
-          </div>
-        </div>
+          <span
+            className="font-black tracking-[0.12em] text-[1.35rem] leading-none"
+            style={{
+              background: 'linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.72) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            KIARA
+          </span>
+        </Link>
       </div>
 
       {/* Dashboard */}
@@ -108,7 +119,7 @@ export default function Sidebar() {
             <NavLink key={to} to={to} onClick={() => setOpen(false)}>
               {({ isActive }) => (
                 <div
-                  className="flex flex-col gap-2.5 p-4 rounded-xl transition-all duration-200 cursor-pointer min-h-[88px]"
+                  className="flex flex-col gap-3 p-[18px] rounded-xl transition-all duration-200 cursor-pointer min-h-[104px]"
                   style={{
                     backgroundColor: isActive ? 'rgba(22,163,74,0.20)' : p.cardIdle,
                     border: `1px solid ${isActive ? 'rgba(22,163,74,0.50)' : p.cardBorder}`,
@@ -117,14 +128,14 @@ export default function Sidebar() {
                   onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = p.cardIdle }}
                 >
                   <Icon
-                    size={17}
+                    size={19}
                     style={{ color: isActive ? '#4ade80' : p.nameText }}
                   />
                   <div>
-                    <p className="text-xs font-bold leading-tight" style={{ color: isActive ? '#fff' : p.nameText }}>
+                    <p className="text-[13px] font-bold leading-tight" style={{ color: isActive ? '#fff' : p.nameText }}>
                       {label}
                     </p>
-                    <p className="text-[10px] leading-tight mt-0.5 line-clamp-1" style={{ color: p.descText }}>
+                    <p className="text-[11px] leading-tight mt-0.5 line-clamp-1" style={{ color: p.descText }}>
                       {desc}
                     </p>
                   </div>

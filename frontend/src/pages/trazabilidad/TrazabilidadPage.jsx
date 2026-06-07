@@ -1,97 +1,264 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../../api/axios'
-import Loading from '../../components/ui/Loading'
+import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
-import { LineChart, Plus, DollarSign, Leaf } from 'lucide-react'
+import {
+  LineChart, Plus, Search, Leaf, DollarSign, X,
+  Recycle, Droplets, ShieldCheck, Sprout, Layers, Bug, Bookmark,
+  Package, Users, Wrench, CalendarDays, TrendingDown, TrendingUp, BadgeDollarSign
+} from 'lucide-react'
 
-const PRACTICAS_TIPOS = [
-  { value: 'compost', label: '🌱 Uso de compost' },
-  { value: 'biol', label: '💧 Uso de biol' },
-  { value: 'sin_agroquimicos', label: '🚫 Sin agroquímicos' },
-  { value: 'riego_eficiente', label: '💧 Riego eficiente' },
-  { value: 'mulching', label: '🌿 Mulching' },
-  { value: 'control_biologico', label: '🐞 Control biológico' },
-  { value: 'otro', label: '📌 Otro' },
-]
+const D = {
+  cardBg:      'rgba(255,255,255,0.05)',
+  cardBorder:  'rgba(255,255,255,0.09)',
+  inputBg:     'rgba(255,255,255,0.07)',
+  inputBorder: 'rgba(255,255,255,0.12)',
+  divider:     'rgba(255,255,255,0.07)',
+  btnIdle:     'rgba(255,255,255,0.07)',
+  btnBorder:   'rgba(255,255,255,0.10)',
+  text:        'rgba(255,255,255,0.90)',
+  sub:         'rgba(255,255,255,0.45)',
+}
 
-const COSTOS_CONCEPTOS = [
-  { value: 'insumos', label: 'Insumos' },
-  { value: 'agua', label: 'Agua' },
-  { value: 'semillas', label: 'Semillas' },
-  { value: 'mano_obra', label: 'Mano de obra' },
-  { value: 'herramientas', label: 'Herramientas' },
-  { value: 'otro', label: 'Otro' },
-]
+const PRACTICAS_CONFIG = {
+  compost:          { Icon: Recycle,     color: '#16a34a', darkColor: '#4ade80', bg: '#f0fdf4',  darkBg: 'rgba(22,163,74,0.15)'    },
+  biol:             { Icon: Droplets,    color: '#0284c7', darkColor: '#38bdf8', bg: '#f0f9ff',  darkBg: 'rgba(2,132,199,0.15)'    },
+  sin_agroquimicos: { Icon: ShieldCheck, color: '#7c3aed', darkColor: '#a78bfa', bg: '#f5f3ff',  darkBg: 'rgba(124,58,237,0.15)'   },
+  riego_eficiente:  { Icon: Droplets,    color: '#0891b2', darkColor: '#22d3ee', bg: '#ecfeff',  darkBg: 'rgba(8,145,178,0.15)'    },
+  mulching:         { Icon: Layers,      color: '#78716c', darkColor: '#a8a29e', bg: '#f5f5f4',  darkBg: 'rgba(120,113,108,0.15)'  },
+  control_biologico:{ Icon: Bug,         color: '#ca8a04', darkColor: '#fbbf24', bg: '#fffbeb',  darkBg: 'rgba(202,138,4,0.15)'    },
+  otro:             { Icon: Bookmark,    color: '#6b7280', darkColor: '#9ca3af', bg: '#f9fafb',  darkBg: 'rgba(107,114,128,0.15)'  },
+}
+
+const COSTOS_CONFIG = {
+  insumos:     { Icon: Package,   color: '#0284c7', darkColor: '#38bdf8' },
+  agua:        { Icon: Droplets,  color: '#0891b2', darkColor: '#22d3ee' },
+  semillas:    { Icon: Sprout,    color: '#16a34a', darkColor: '#4ade80' },
+  mano_obra:   { Icon: Users,     color: '#7c3aed', darkColor: '#a78bfa' },
+  herramientas:{ Icon: Wrench,    color: '#d97706', darkColor: '#fbbf24' },
+  otro:        { Icon: Bookmark,  color: '#6b7280', darkColor: '#9ca3af' },
+}
+
+const PRACTICAS_LABELS = {
+  compost: 'Uso de compost', biol: 'Uso de biol', sin_agroquimicos: 'Sin agroquímicos',
+  riego_eficiente: 'Riego eficiente', mulching: 'Mulching', control_biologico: 'Control biológico', otro: 'Otro',
+}
+
+const COSTOS_LABELS = {
+  insumos: 'Insumos', agua: 'Agua', semillas: 'Semillas',
+  mano_obra: 'Mano de obra', herramientas: 'Herramientas', otro: 'Otro',
+}
+
+function PracticaModal({ dark, cultivos, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    cultivo: '', tipo: 'compost', fecha: new Date().toISOString().split('T')[0], descripcion: ''
+  })
+  const [loading, setLoading] = useState(false)
+  const handle = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+  const submit = async e => {
+    e.preventDefault(); setLoading(true)
+    try {
+      await api.post('/trazabilidad/practicas/', form)
+      toast.success('Práctica registrada.'); onSaved()
+    } catch { toast.error('Error al guardar.') }
+    finally { setLoading(false) }
+  }
+  return <FormModalBase dark={dark} title="Registrar práctica sostenible" onClose={onClose}>
+    <form onSubmit={submit} className="space-y-4">
+      <ModalField dark={dark} label="Cultivo">
+        <select name="cultivo" value={form.cultivo} onChange={handle} style={getInputStyle(dark)} required>
+          <option value="">Seleccionar...</option>
+          {cultivos.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+        </select>
+      </ModalField>
+      <div className="grid grid-cols-2 gap-3">
+        <ModalField dark={dark} label="Tipo">
+          <select name="tipo" value={form.tipo} onChange={handle} style={getInputStyle(dark)}>
+            {Object.entries(PRACTICAS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </ModalField>
+        <ModalField dark={dark} label="Fecha">
+          <input name="fecha" type="date" value={form.fecha} onChange={handle} style={getInputStyle(dark)} required />
+        </ModalField>
+      </div>
+      <ModalField dark={dark} label="Descripción">
+        <textarea name="descripcion" value={form.descripcion} onChange={handle} rows={2}
+          style={{ ...getInputStyle(dark), resize: 'none' }} />
+      </ModalField>
+      <div className="flex gap-3 pt-1">
+        <button type="button" onClick={onClose} className="flex-1 btn-secondary text-sm">Cancelar</button>
+        <button type="submit" disabled={loading} className="flex-1 btn-primary text-sm">
+          {loading ? 'Guardando...' : 'Guardar'}
+        </button>
+      </div>
+    </form>
+  </FormModalBase>
+}
+
+function CostoModal({ dark, cultivos, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    cultivo: '', concepto: 'insumos', monto: '', fecha: new Date().toISOString().split('T')[0], descripcion: ''
+  })
+  const [loading, setLoading] = useState(false)
+  const handle = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+  const submit = async e => {
+    e.preventDefault(); setLoading(true)
+    try {
+      await api.post('/trazabilidad/costos/', form)
+      toast.success('Costo registrado.'); onSaved()
+    } catch { toast.error('Error al guardar.') }
+    finally { setLoading(false) }
+  }
+  return <FormModalBase dark={dark} title="Registrar costo de producción" onClose={onClose}>
+    <form onSubmit={submit} className="space-y-4">
+      <ModalField dark={dark} label="Cultivo">
+        <select name="cultivo" value={form.cultivo} onChange={handle} style={getInputStyle(dark)} required>
+          <option value="">Seleccionar...</option>
+          {cultivos.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+        </select>
+      </ModalField>
+      <div className="grid grid-cols-2 gap-3">
+        <ModalField dark={dark} label="Concepto">
+          <select name="concepto" value={form.concepto} onChange={handle} style={getInputStyle(dark)}>
+            {Object.entries(COSTOS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </ModalField>
+        <ModalField dark={dark} label="Monto (S/)">
+          <input name="monto" type="number" step="0.01" min="0" value={form.monto} onChange={handle}
+            style={getInputStyle(dark)} placeholder="25.00" required />
+        </ModalField>
+      </div>
+      <ModalField dark={dark} label="Fecha">
+        <input name="fecha" type="date" value={form.fecha} onChange={handle} style={getInputStyle(dark)} required />
+      </ModalField>
+      <div className="flex gap-3 pt-1">
+        <button type="button" onClick={onClose} className="flex-1 btn-secondary text-sm">Cancelar</button>
+        <button type="submit" disabled={loading} className="flex-1 btn-primary text-sm">
+          {loading ? 'Guardando...' : 'Guardar'}
+        </button>
+      </div>
+    </form>
+  </FormModalBase>
+}
+
+function FormModalBase({ dark, title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl shadow-2xl z-10"
+        style={{
+          backgroundColor: dark ? '#1e2a3a' : '#ffffff',
+          border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb',
+        }}>
+        <div className="flex items-center justify-between px-6 pt-5 pb-4">
+          <h2 className="text-base font-extrabold" style={{ color: dark ? D.text : '#111827' }}>{title}</h2>
+          <button onClick={onClose} style={{ color: D.sub, padding: '4px', borderRadius: '8px' }}><X size={18} /></button>
+        </div>
+        <div className="px-6 pb-6">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function ModalField({ dark, label, children }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, marginBottom: '4px', color: dark ? D.sub : '#6b7280' }}>
+        {label}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+function getInputStyle(dark) {
+  return {
+    backgroundColor: dark ? D.inputBg : '#f9fafb',
+    border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
+    color: dark ? D.text : '#111827',
+    width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '13px', outline: 'none',
+  }
+}
 
 export default function TrazabilidadPage() {
-  const [cultivos, setCultivos] = useState([])
-  const [cultivoSel, setCultivoSel] = useState('')
-  const [practicas, setPracticas] = useState([])
-  const [costos, setCostos] = useState([])
-  const [resumen, setResumen] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [showFormPractica, setShowFormPractica] = useState(false)
-  const [showFormCosto, setShowFormCosto] = useState(false)
-  const [formP, setFormP] = useState({ cultivo: '', tipo: 'compost', fecha: new Date().toISOString().split('T')[0], descripcion: '' })
-  const [formC, setFormC] = useState({ cultivo: '', concepto: 'insumos', monto: '', fecha: new Date().toISOString().split('T')[0], descripcion: '' })
+  const { dark } = useTheme()
+  const [cultivos, setCultivos]           = useState([])
+  const [cultivoSel, setCultivoSel]       = useState('')
+  const [practicas, setPracticas]         = useState([])
+  const [costos, setCostos]               = useState([])
+  const [resumen, setResumen]             = useState(null)
+  const [loading, setLoading]             = useState(true)
+  const [showFormP, setShowFormP]         = useState(false)
+  const [showFormC, setShowFormC]         = useState(false)
+
+  const cargarDatos = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = cultivoSel ? `?cultivo=${cultivoSel}` : ''
+      const [p, c] = await Promise.all([
+        api.get(`/trazabilidad/practicas/${params}`),
+        api.get(`/trazabilidad/costos/${params}`),
+      ])
+      setPracticas(p.data)
+      setCostos(c.data)
+    } catch { toast.error('Error al cargar.') }
+    finally { setLoading(false) }
+  }, [cultivoSel])
 
   useEffect(() => {
     api.get('/cultivos/').then(res => setCultivos(res.data))
-    cargarDatos()
   }, [])
 
   useEffect(() => {
     cargarDatos()
-    if (cultivoSel) cargarResumen()
-    else setResumen(null)
-  }, [cultivoSel])
+    if (cultivoSel) {
+      api.get(`/trazabilidad/resumen/${cultivoSel}/`).then(res => setResumen(res.data))
+    } else {
+      setResumen(null)
+    }
+  }, [cargarDatos, cultivoSel])
 
-  const cargarDatos = () => {
-    const params = cultivoSel ? `?cultivo=${cultivoSel}` : ''
-    setLoading(true)
-    Promise.all([
-      api.get(`/trazabilidad/practicas/${params}`),
-      api.get(`/trazabilidad/costos/${params}`),
-    ]).then(([p, c]) => {
-      setPracticas(p.data)
-      setCostos(c.data)
-    }).catch(() => toast.error('Error al cargar.')).finally(() => setLoading(false))
+  const cardStyle = {
+    backgroundColor: dark ? D.cardBg : '#ffffff',
+    border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`,
+    borderRadius: '16px',
   }
-
-  const cargarResumen = () => {
-    api.get(`/trazabilidad/resumen/${cultivoSel}/`).then(res => setResumen(res.data))
+  const inputSelectStyle = {
+    backgroundColor: dark ? D.inputBg : '#f9fafb',
+    border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
+    color: dark ? D.text : '#374151',
+    borderRadius: '10px', padding: '7px 12px', fontSize: '13px', outline: 'none',
+    height: '36px', cursor: 'pointer', minWidth: '200px',
   }
-
-  const guardarPractica = async e => {
-    e.preventDefault()
-    await api.post('/trazabilidad/practicas/', { ...formP, cultivo: formP.cultivo || cultivoSel })
-    toast.success('Práctica registrada.')
-    setShowFormPractica(false)
-    cargarDatos()
-  }
-
-  const guardarCosto = async e => {
-    e.preventDefault()
-    await api.post('/trazabilidad/costos/', { ...formC, cultivo: formC.cultivo || cultivoSel })
-    toast.success('Costo registrado.')
-    setShowFormCosto(false)
-    cargarDatos()
-    if (cultivoSel) cargarResumen()
-  }
-
-  if (loading) return <Loading />
 
   return (
     <div className="space-y-5">
+
+      {/* Encabezado */}
       <div className="flex items-center gap-3">
-        <LineChart size={24} className="text-primary-600" />
-        <h1 className="text-2xl font-bold text-gray-800">Trazabilidad y Costos</h1>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f0fdf4' }}>
+          <LineChart size={19} style={{ color: dark ? 'rgba(255,255,255,0.75)' : '#16a34a' }} />
+        </div>
+        <div>
+          <h1 className="text-xl font-extrabold" style={{ color: dark ? D.text : '#111827' }}>
+            Trazabilidad y Costos
+          </h1>
+          <p className="text-xs mt-0.5" style={{ color: dark ? D.sub : '#9ca3af' }}>
+            Prácticas sostenibles y costos de producción
+          </p>
+        </div>
       </div>
 
       {/* Filtro por cultivo */}
-      <div className="flex items-center gap-3">
-        <label className="text-sm text-gray-600 shrink-0">Filtrar por cultivo:</label>
-        <select className="input-field max-w-xs text-sm" value={cultivoSel} onChange={e => setCultivoSel(e.target.value)}>
+      <div className="flex items-center gap-3"
+        style={{ ...cardStyle, padding: '14px 16px' }}>
+        <Search size={13} style={{ color: dark ? D.sub : '#9ca3af' }} />
+        <select
+          value={cultivoSel}
+          onChange={e => setCultivoSel(e.target.value)}
+          style={inputSelectStyle}
+        >
           <option value="">Todos mis cultivos</option>
           {cultivos.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
         </select>
@@ -99,143 +266,197 @@ export default function TrazabilidadPage() {
 
       {/* Resumen financiero */}
       {resumen && (
-        <div className="card border-l-4 border-primary-500">
-          <h2 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <DollarSign size={16} className="text-primary-600" /> Resumen — {resumen.cultivo_nombre}
-          </h2>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-xl font-bold text-red-600">S/ {resumen.total_costos.toFixed(2)}</p>
-              <p className="text-xs text-gray-400">Costos totales</p>
-            </div>
-            <div>
-              <p className="text-xl font-bold text-blue-600">S/ {resumen.total_ingresos.toFixed(2)}</p>
-              <p className="text-xs text-gray-400">Ingresos estimados</p>
-            </div>
-            <div>
-              <p className={`text-xl font-bold ${resumen.ganancia_estimada >= 0 ? 'text-primary-600' : 'text-red-600'}`}>
-                S/ {resumen.ganancia_estimada.toFixed(2)}
+        <div style={cardStyle} className="p-5">
+          <p className="text-xs font-bold uppercase tracking-wide mb-4"
+            style={{ color: dark ? D.sub : '#9ca3af' }}>
+            Resumen financiero — {resumen.cultivo_nombre}
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl"
+              style={{ backgroundColor: dark ? 'rgba(239,68,68,0.10)' : '#fef2f2' }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: dark ? 'rgba(239,68,68,0.20)' : '#fecaca' }}>
+                <TrendingDown size={20} style={{ color: dark ? '#f87171' : '#dc2626' }} />
+              </div>
+              <p className="text-xl font-extrabold" style={{ color: dark ? '#f87171' : '#dc2626' }}>
+                S/ {resumen.total_costos?.toFixed(2)}
               </p>
-              <p className="text-xs text-gray-400">Ganancia estimada</p>
+              <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>Costos totales</p>
+            </div>
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl"
+              style={{ backgroundColor: dark ? 'rgba(37,99,235,0.10)' : '#eff6ff' }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: dark ? 'rgba(37,99,235,0.20)' : '#dbeafe' }}>
+                <TrendingUp size={20} style={{ color: dark ? '#60a5fa' : '#2563eb' }} />
+              </div>
+              <p className="text-xl font-extrabold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>
+                S/ {resumen.total_ingresos?.toFixed(2)}
+              </p>
+              <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>Ingresos estimados</p>
+            </div>
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl"
+              style={{
+                backgroundColor: resumen.ganancia_estimada >= 0
+                  ? (dark ? 'rgba(22,163,74,0.10)' : '#f0fdf4')
+                  : (dark ? 'rgba(239,68,68,0.10)' : '#fef2f2')
+              }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{
+                  backgroundColor: resumen.ganancia_estimada >= 0
+                    ? (dark ? 'rgba(22,163,74,0.20)' : '#dcfce7')
+                    : (dark ? 'rgba(239,68,68,0.20)' : '#fecaca')
+                }}>
+                <BadgeDollarSign size={20} style={{
+                  color: resumen.ganancia_estimada >= 0 ? (dark ? '#4ade80' : '#16a34a') : (dark ? '#f87171' : '#dc2626')
+                }} />
+              </div>
+              <p className="text-xl font-extrabold"
+                style={{ color: resumen.ganancia_estimada >= 0 ? (dark ? '#4ade80' : '#16a34a') : (dark ? '#f87171' : '#dc2626') }}>
+                S/ {resumen.ganancia_estimada?.toFixed(2)}
+              </p>
+              <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>Ganancia estimada</p>
             </div>
           </div>
         </div>
       )}
 
+      {/* Dos columnas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
         {/* Prácticas sostenibles */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-700 flex items-center gap-2"><Leaf size={16} className="text-primary-600" /> Prácticas sostenibles</h2>
-            <button onClick={() => setShowFormPractica(!showFormPractica)} className="btn-primary text-xs flex items-center gap-1">
-              <Plus size={13} /> Registrar
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#f0fdf4' }}>
+                <Leaf size={14} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
+              </div>
+              <h2 className="font-extrabold text-sm" style={{ color: dark ? D.text : '#111827' }}>
+                Prácticas sostenibles
+              </h2>
+            </div>
+            <button onClick={() => setShowFormP(true)} className="btn-primary text-xs flex items-center gap-1.5">
+              <Plus size={12} /> Registrar
             </button>
           </div>
 
-          {showFormPractica && (
-            <form onSubmit={guardarPractica} className="card border border-primary-200 space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Cultivo *</label>
-                <select className="input-field text-sm" value={formP.cultivo} onChange={e => setFormP({ ...formP, cultivo: e.target.value })} required>
-                  <option value="">Seleccionar...</option>
-                  {cultivos.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
+          <div style={{ ...cardStyle, overflow: 'hidden' }}>
+            {loading ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Tipo *</label>
-                  <select className="input-field text-sm" value={formP.tipo} onChange={e => setFormP({ ...formP, tipo: e.target.value })}>
-                    {PRACTICAS_TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Fecha *</label>
-                  <input type="date" className="input-field text-sm" value={formP.fecha} onChange={e => setFormP({ ...formP, fecha: e.target.value })} required />
-                </div>
+            ) : practicas.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <Leaf size={28} style={{ color: dark ? D.sub : '#d1d5db' }} />
+                <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin prácticas registradas</p>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Descripción</label>
-                <textarea className="input-field text-sm resize-none" rows={2} value={formP.descripcion} onChange={e => setFormP({ ...formP, descripcion: e.target.value })} />
+            ) : (
+              <div className="max-h-80 overflow-y-auto">
+                {practicas.map((p, idx) => {
+                  const cfg = PRACTICAS_CONFIG[p.tipo] || PRACTICAS_CONFIG.otro
+                  const PIcon = cfg.Icon
+                  return (
+                    <div key={p.id} className="flex items-start gap-3 px-4 py-3"
+                      style={{ borderBottom: idx < practicas.length - 1 ? `1px solid ${dark ? D.divider : '#f9fafb'}` : 'none' }}>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: dark ? cfg.darkBg : cfg.bg }}>
+                        <PIcon size={14} style={{ color: dark ? cfg.darkColor : cfg.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold leading-tight" style={{ color: dark ? D.text : '#111827' }}>
+                          {p.tipo_display}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: dark ? D.sub : '#9ca3af' }}>
+                          {p.cultivo_nombre} · {p.fecha}
+                        </p>
+                        {p.descripcion && (
+                          <p className="text-xs mt-0.5" style={{ color: dark ? D.sub : '#6b7280' }}>{p.descripcion}</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-              <div className="flex gap-2">
-                <button type="submit" className="btn-primary text-xs">Guardar</button>
-                <button type="button" onClick={() => setShowFormPractica(false)} className="btn-secondary text-xs">Cancelar</button>
-              </div>
-            </form>
-          )}
-
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {practicas.length === 0 ? <p className="text-sm text-gray-400 text-center py-4">Sin prácticas registradas.</p> :
-              practicas.map(p => (
-                <div key={p.id} className="card py-3 px-4 flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-primary-500 mt-1.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">{p.tipo_display}</p>
-                    <p className="text-xs text-gray-400">{p.cultivo_nombre} · {p.fecha}</p>
-                    {p.descripcion && <p className="text-xs text-gray-500 mt-0.5">{p.descripcion}</p>}
-                  </div>
-                </div>
-              ))
-            }
+            )}
           </div>
         </div>
 
         {/* Costos de producción */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-700 flex items-center gap-2"><DollarSign size={16} className="text-primary-600" /> Costos de producción</h2>
-            <button onClick={() => setShowFormCosto(!showFormCosto)} className="btn-primary text-xs flex items-center gap-1">
-              <Plus size={13} /> Registrar
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: dark ? 'rgba(37,99,235,0.15)' : '#eff6ff' }}>
+                <DollarSign size={14} style={{ color: dark ? '#60a5fa' : '#2563eb' }} />
+              </div>
+              <h2 className="font-extrabold text-sm" style={{ color: dark ? D.text : '#111827' }}>
+                Costos de producción
+              </h2>
+            </div>
+            <button onClick={() => setShowFormC(true)} className="btn-primary text-xs flex items-center gap-1.5">
+              <Plus size={12} /> Registrar
             </button>
           </div>
 
-          {showFormCosto && (
-            <form onSubmit={guardarCosto} className="card border border-primary-200 space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Cultivo *</label>
-                <select className="input-field text-sm" value={formC.cultivo} onChange={e => setFormC({ ...formC, cultivo: e.target.value })} required>
-                  <option value="">Seleccionar...</option>
-                  {cultivos.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
+          <div style={{ ...cardStyle, overflow: 'hidden' }}>
+            {loading ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Concepto *</label>
-                  <select className="input-field text-sm" value={formC.concepto} onChange={e => setFormC({ ...formC, concepto: e.target.value })}>
-                    {COSTOS_CONCEPTOS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Monto (S/) *</label>
-                  <input type="number" step="0.01" min="0" className="input-field text-sm" placeholder="25.00" value={formC.monto} onChange={e => setFormC({ ...formC, monto: e.target.value })} required />
-                </div>
+            ) : costos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <DollarSign size={28} style={{ color: dark ? D.sub : '#d1d5db' }} />
+                <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin costos registrados</p>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Fecha *</label>
-                <input type="date" className="input-field text-sm" value={formC.fecha} onChange={e => setFormC({ ...formC, fecha: e.target.value })} required />
+            ) : (
+              <div className="max-h-80 overflow-y-auto">
+                {costos.map((c, idx) => {
+                  const cfg = COSTOS_CONFIG[c.concepto] || COSTOS_CONFIG.otro
+                  const CIcon = cfg.Icon
+                  return (
+                    <div key={c.id} className="flex items-center gap-3 px-4 py-3"
+                      style={{ borderBottom: idx < costos.length - 1 ? `1px solid ${dark ? D.divider : '#f9fafb'}` : 'none' }}>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6' }}>
+                        <CIcon size={14} style={{ color: dark ? cfg.darkColor : cfg.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold leading-tight" style={{ color: dark ? D.text : '#111827' }}>
+                          {c.concepto_display}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: dark ? D.sub : '#9ca3af' }}>
+                          {c.cultivo_nombre} · {c.fecha}
+                        </p>
+                      </div>
+                      <span className="font-extrabold text-sm shrink-0"
+                        style={{ color: dark ? '#f87171' : '#dc2626' }}>
+                        S/ {c.monto}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
-              <div className="flex gap-2">
-                <button type="submit" className="btn-primary text-xs">Guardar</button>
-                <button type="button" onClick={() => setShowFormCosto(false)} className="btn-secondary text-xs">Cancelar</button>
-              </div>
-            </form>
-          )}
-
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {costos.length === 0 ? <p className="text-sm text-gray-400 text-center py-4">Sin costos registrados.</p> :
-              costos.map(c => (
-                <div key={c.id} className="card py-3 px-4 flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">{c.concepto_display}</p>
-                    <p className="text-xs text-gray-400">{c.cultivo_nombre} · {c.fecha}</p>
-                  </div>
-                  <span className="font-semibold text-gray-800 text-sm">S/ {c.monto}</span>
-                </div>
-              ))
-            }
+            )}
           </div>
         </div>
       </div>
+
+      {showFormP && (
+        <PracticaModal
+          dark={dark}
+          cultivos={cultivos}
+          onClose={() => setShowFormP(false)}
+          onSaved={() => { setShowFormP(false); cargarDatos(); if (cultivoSel) api.get(`/trazabilidad/resumen/${cultivoSel}/`).then(r => setResumen(r.data)) }}
+        />
+      )}
+      {showFormC && (
+        <CostoModal
+          dark={dark}
+          cultivos={cultivos}
+          onClose={() => setShowFormC(false)}
+          onSaved={() => { setShowFormC(false); cargarDatos(); if (cultivoSel) api.get(`/trazabilidad/resumen/${cultivoSel}/`).then(r => setResumen(r.data)) }}
+        />
+      )}
     </div>
   )
 }
