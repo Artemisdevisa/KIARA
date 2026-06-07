@@ -2,8 +2,8 @@ import { NavLink, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import {
-  LayoutDashboard, Wheat, Thermometer, BellRing,
-  Microscope, PackageCheck, BarChart3, ShoppingCart, LogOut, Menu, X, ShieldCheck
+  LayoutDashboard, Leaf, Wheat, Thermometer, BellRing,
+  Microscope, PackageCheck, BarChart3, ShoppingCart, LogOut, Menu, X, ShieldCheck, BookOpen
 } from 'lucide-react'
 import { useState } from 'react'
 
