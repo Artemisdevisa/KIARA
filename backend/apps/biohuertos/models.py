@@ -12,6 +12,8 @@ class Biohuerto(models.Model):
     nombre = models.CharField(max_length=200, verbose_name='Nombre')
     codigo = models.CharField(max_length=50, blank=True, verbose_name='Código')
     ubicacion = models.TextField(verbose_name='Ubicación de referencia')
+    latitud   = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='Latitud')
+    longitud  = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='Longitud')
     area = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Área (m²)')
     descripcion = models.TextField(blank=True, verbose_name='Descripción general')
     activo = models.BooleanField(default=True)
