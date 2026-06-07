@@ -32,6 +32,24 @@ class PerfilSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'username', 'date_joined']
 
 
+class UsuarioAdminSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=6, required=False)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'telefono', 'rol', 'is_active', 'date_joined', 'password']
+        read_only_fields = ['id', 'date_joined']
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
+
+
 class CustomTokenSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)

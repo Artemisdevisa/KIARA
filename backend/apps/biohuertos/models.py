@@ -16,7 +16,12 @@ class Biohuerto(models.Model):
     longitud  = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='Longitud')
     area = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Área (m²)')
     descripcion = models.TextField(blank=True, verbose_name='Descripción general')
-    activo = models.BooleanField(default=True)
+    activo       = models.BooleanField(default=True)
+    departamento = models.CharField(max_length=100, blank=True, verbose_name='Departamento')
+    provincia    = models.CharField(max_length=100, blank=True, verbose_name='Provincia')
+    distrito     = models.CharField(max_length=100, blank=True, verbose_name='Distrito')
+    latitud      = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='Latitud')
+    longitud     = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='Longitud')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

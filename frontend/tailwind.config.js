@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
+  darkMode: 'class',
   safelist: [
     { pattern: /^bg-bio-/ },
     { pattern: /^text-bio-/ },
@@ -13,6 +14,7 @@ export default {
     { pattern: /^hover:border-bio-/ },
     { pattern: /^fill-bio-/ },
     { pattern: /^stroke-bio-/ },
+    { pattern: /^dark:/, variants: ['dark'] },
   ],
   theme: {
     extend: {
