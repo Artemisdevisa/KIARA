@@ -1,6 +1,36 @@
 from django.db import models
 
 
+class CategoriaCosecha(models.Model):
+    nombre = models.CharField(max_length=100, verbose_name='Nombre')
+    emoji  = models.CharField(max_length=10, default='🌱', verbose_name='Emoji')
+    slug   = models.SlugField(unique=True, verbose_name='Slug')
+    orden  = models.PositiveSmallIntegerField(default=0, verbose_name='Orden')
+
+    class Meta:
+        verbose_name = 'Categoría'
+        verbose_name_plural = 'Categorías'
+        ordering = ['orden', 'nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
+class TipoCosecha(models.Model):
+    categoria = models.ForeignKey(CategoriaCosecha, on_delete=models.CASCADE, related_name='tipos')
+    nombre    = models.CharField(max_length=100, verbose_name='Nombre')
+    slug      = models.SlugField(verbose_name='Slug')
+
+    class Meta:
+        verbose_name = 'Tipo de cosecha'
+        verbose_name_plural = 'Tipos de cosecha'
+        unique_together = [('categoria', 'slug')]
+        ordering = ['nombre']
+
+    def __str__(self):
+        return f'{self.categoria.nombre} › {self.nombre}'
+
+
 class Cosecha(models.Model):
     UNIDAD_CHOICES = [
         ('kg', 'Kilogramos'),
@@ -12,6 +42,14 @@ class Cosecha(models.Model):
         ('disponible', 'Disponible'),
         ('agotado', 'Agotado'),
     ]
+
+    categoria = models.ForeignKey(
+        'CategoriaCosecha',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='cosechas',
+        verbose_name='Categoría'
+    )
 
     biohuerto = models.ForeignKey(
         'biohuertos.Biohuerto',

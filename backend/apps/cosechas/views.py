@@ -2,8 +2,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from .models import Cosecha
-from .serializers import CosechaSerializer
+from .models import Cosecha, CategoriaCosecha
+from .serializers import CosechaSerializer, CategoriaCosechaSerializer
 
 
 class CosechasListCreate(generics.ListCreateAPIView):
@@ -30,6 +30,13 @@ class CosechaDetail(generics.RetrieveUpdateDestroyAPIView):
         return {'request': self.request}
 
 
+class CategoriasPublicasView(generics.ListAPIView):
+    """Devuelve todas las categorías con sus tipos. Sin autenticación."""
+    permission_classes = [permissions.AllowAny]
+    serializer_class   = CategoriaCosechaSerializer
+    queryset           = CategoriaCosecha.objects.prefetch_related('tipos').all()
+
+
 class CosechaAgotarView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -50,9 +57,12 @@ class CosechasPublicasView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = Cosecha.objects.filter(estado='disponible')
-        producto = self.request.query_params.get('producto')
-        if producto:
-            qs = qs.filter(nombre_producto__icontains=producto)
+        q = self.request.query_params.get('search') or self.request.query_params.get('producto') or self.request.query_params.get('q')
+        if q:
+            qs = qs.filter(nombre_producto__icontains=q)
+        limit = self.request.query_params.get('limit')
+        if limit and str(limit).isdigit():
+            qs = qs[:int(limit)]
         return qs
 
     def get_serializer_context(self):

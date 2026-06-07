@@ -1,5 +1,19 @@
 from rest_framework import serializers
-from .models import Cosecha
+from .models import Cosecha, CategoriaCosecha, TipoCosecha
+
+
+class TipoCosechaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TipoCosecha
+        fields = ['id', 'nombre', 'slug']
+
+
+class CategoriaCosechaSerializer(serializers.ModelSerializer):
+    tipos = TipoCosechaSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CategoriaCosecha
+        fields = ['id', 'nombre', 'emoji', 'slug', 'tipos']
 
 
 class CosechaSerializer(serializers.ModelSerializer):

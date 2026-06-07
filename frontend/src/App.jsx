@@ -11,6 +11,11 @@ import MarketplacePage from './pages/MarketplacePage'
 import QuienesSomosPage from './pages/QuienesSomosPage'
 import ComoFuncionaPage from './pages/ComoFuncionaPage'
 import ContactoPage from './pages/ContactoPage'
+import CartPage from './pages/cart/CartPage'
+import CheckoutPage from './pages/checkout/CheckoutPage'
+import PagoExitosoPage from './pages/checkout/PagoExitosoPage'
+import PagoPendientePage from './pages/checkout/PagoPendientePage'
+import PagoFallidoPage from './pages/checkout/PagoFallidoPage'
 
 /* Auth */
 import Login from './pages/Login'
@@ -48,6 +53,11 @@ export default function App() {
         <Route path="quienes-somos" element={<QuienesSomosPage />} />
         <Route path="como-funciona" element={<ComoFuncionaPage />} />
         <Route path="contacto" element={<ContactoPage />} />
+        <Route path="carrito" element={<CartPage />} />
+        <Route path="checkout" element={<CheckoutPage />} />
+        <Route path="pago-exitoso" element={<PagoExitosoPage />} />
+        <Route path="pago-pendiente" element={<PagoPendientePage />} />
+        <Route path="pago-fallido" element={<PagoFallidoPage />} />
       </Route>
 
       {/* ── Auth (sin layout) ── */}

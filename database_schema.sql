@@ -195,14 +195,31 @@ CREATE TABLE IF NOT EXISTS diagnosticos_diagnostico (
 );
 
 -- -------------------------------------------------------------
--- APP: cosechas  →  modelo Cosecha
--- Tabla: cosechas_cosecha
+-- APP: cosechas  →  modelos CategoriaCosecha, TipoCosecha, Cosecha
+-- Tablas: cosechas_categoriacosecha, cosechas_tipocosecha, cosechas_cosecha
 -- -------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS cosechas_categoriacosecha (
+    id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT    NOT NULL,           -- max_length=100
+    emoji  TEXT    NOT NULL DEFAULT '🌱', -- max_length=10
+    slug   TEXT    NOT NULL UNIQUE,    -- SlugField
+    orden  INTEGER NOT NULL DEFAULT 0  -- PositiveSmallIntegerField
+);
+
+CREATE TABLE IF NOT EXISTS cosechas_tipocosecha (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    categoria_id INTEGER NOT NULL REFERENCES cosechas_categoriacosecha (id),
+    nombre       TEXT    NOT NULL,     -- max_length=100
+    slug         TEXT    NOT NULL,     -- SlugField
+    UNIQUE (categoria_id, slug)
+);
 
 CREATE TABLE IF NOT EXISTS cosechas_cosecha (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    biohuerto_id   INTEGER NOT NULL REFERENCES biohuertos_biohuerto (id),
-    cultivo_id     INTEGER          REFERENCES cultivos_cultivo (id), -- SET_NULL, nullable
+    categoria_id   INTEGER          REFERENCES cosechas_categoriacosecha (id), -- SET_NULL, nullable
+    biohuerto_id   INTEGER NOT NULL  REFERENCES biohuertos_biohuerto (id),
+    cultivo_id     INTEGER          REFERENCES cultivos_cultivo (id),           -- SET_NULL, nullable
     nombre_producto TEXT   NOT NULL,            -- max_length=200
     foto           TEXT,                        -- ImageField → ruta relativa, nullable
     cantidad       NUMERIC(10,2) NOT NULL,
@@ -249,6 +266,31 @@ CREATE TABLE IF NOT EXISTS trazabilidad_costo (
 );
 
 -- -------------------------------------------------------------
+-- APP: pedidos  →  modelos Pedido e ItemPedido
+-- Tablas: pedidos_pedido, pedidos_itempedido
+-- -------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS pedidos_pedido (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    comprador_id INTEGER NOT NULL REFERENCES users_user (id),
+    estado      TEXT    NOT NULL DEFAULT 'pendiente'
+                        CHECK (estado IN ('pendiente','confirmado','entregado','cancelado')),
+    total       NUMERIC(10,2) NOT NULL DEFAULT 0,   -- Total calculado al crear el pedido
+    notas       TEXT    NOT NULL DEFAULT '',         -- Notas del comprador al productor
+    created_at  TEXT    NOT NULL,                    -- DateTimeField auto_now_add
+    updated_at  TEXT    NOT NULL                     -- DateTimeField auto_now
+);
+
+CREATE TABLE IF NOT EXISTS pedidos_itempedido (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    pedido_id        INTEGER NOT NULL REFERENCES pedidos_pedido (id),
+    cosecha_id       INTEGER NOT NULL REFERENCES cosechas_cosecha (id),
+    cantidad         NUMERIC(10,2) NOT NULL,         -- Cantidad solicitada
+    precio_unitario  NUMERIC(10,2) NOT NULL,         -- Precio al momento del pedido (snapshot)
+    subtotal         NUMERIC(10,2) NOT NULL          -- cantidad × precio_unitario
+);
+
+-- -------------------------------------------------------------
 -- ÍNDICES para mejorar rendimiento en consultas frecuentes
 -- -------------------------------------------------------------
 
@@ -259,7 +301,14 @@ CREATE INDEX IF NOT EXISTS idx_monitoreo_fecha      ON monitoreo_monitoreoregist
 CREATE INDEX IF NOT EXISTS idx_alerta_cultivo       ON alertas_alerta (cultivo_id);
 CREATE INDEX IF NOT EXISTS idx_alerta_fecha         ON alertas_alerta (fecha_programada);
 CREATE INDEX IF NOT EXISTS idx_diagnostico_cultivo  ON diagnosticos_diagnostico (cultivo_id);
+CREATE INDEX IF NOT EXISTS idx_categoria_slug       ON cosechas_categoriacosecha (slug);
+CREATE INDEX IF NOT EXISTS idx_tipo_categoria       ON cosechas_tipocosecha (categoria_id);
+CREATE INDEX IF NOT EXISTS idx_cosecha_categoria    ON cosechas_cosecha (categoria_id);
 CREATE INDEX IF NOT EXISTS idx_cosecha_biohuerto    ON cosechas_cosecha (biohuerto_id);
 CREATE INDEX IF NOT EXISTS idx_cosecha_cultivo      ON cosechas_cosecha (cultivo_id);
 CREATE INDEX IF NOT EXISTS idx_practica_cultivo     ON trazabilidad_practicasostenible (cultivo_id);
 CREATE INDEX IF NOT EXISTS idx_costo_cultivo        ON trazabilidad_costo (cultivo_id);
+CREATE INDEX IF NOT EXISTS idx_pedido_comprador     ON pedidos_pedido (comprador_id);
+CREATE INDEX IF NOT EXISTS idx_pedido_estado        ON pedidos_pedido (estado);
+CREATE INDEX IF NOT EXISTS idx_itempedido_pedido    ON pedidos_itempedido (pedido_id);
+CREATE INDEX IF NOT EXISTS idx_itempedido_cosecha   ON pedidos_itempedido (cosecha_id);

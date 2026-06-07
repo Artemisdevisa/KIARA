@@ -1,298 +1,308 @@
-import { useState, useEffect } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Menu, Search, Heart, ShoppingCart, X, ChevronRight, Leaf } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useCart } from '../../context/CartContext'
+import api from '../../api/axios'
 
-/* ── Botón primario: shimmer diagonal en hover ── */
-function BtnPrimary({ to, children }) {
-  const [hov, setHov] = useState(false)
+/* ────────────────────────────────────────────
+   LOGO
+──────────────────────────────────────────── */
+function KiaraLogomark({ size = 34 }) {
   return (
-    <Link
-      to={to}
-      className="relative overflow-hidden font-black text-sm px-5 py-2.5 rounded-full text-white flex items-center select-none"
-      style={{ background: 'linear-gradient(135deg,#2D6A4F,#1B4332)', boxShadow:'0 2px 12px rgba(45,106,79,0.22)' }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-    >
-      {/* Shimmer */}
-      <span
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'linear-gradient(108deg, transparent 35%, rgba(255,255,255,0.22) 50%, transparent 65%)',
-          transform: hov ? 'translateX(200%)' : 'translateX(-200%)',
-          transition: hov ? 'transform 0.55s ease' : 'none',
-        }}
-      />
-      <span className="relative z-10">{children}</span>
-    </Link>
-  )
-}
-
-/* ── Botón secundario: fondo que crece desde la izquierda ── */
-function BtnSecondary({ to, children }) {
-  const [hov, setHov] = useState(false)
-  return (
-    <Link
-      to={to}
-      className="relative overflow-hidden font-bold text-sm px-5 py-2.5 rounded-full select-none"
-      style={{ color: hov ? '#1B4332' : '#2D6A4F', border: '1.5px solid #2D6A4F', transition:'color 0.25s' }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-    >
-      <span
-        className="absolute inset-0 pointer-events-none rounded-full"
-        style={{
-          background: '#D8F3DC',
-          transformOrigin: 'left center',
-          transform: hov ? 'scaleX(1)' : 'scaleX(0)',
-          transition: 'transform 0.32s cubic-bezier(0.4,0,0.2,1)',
-        }}
-      />
-      <span className="relative z-10">{children}</span>
-    </Link>
-  )
-}
-
-const NAV = [
-  { to: '/',              label: 'Inicio',        end: true },
-  { to: '/marketplace',   label: 'Marketplace',   end: false },
-  { to: '/quienes-somos', label: 'Quiénes Somos', end: false },
-  { to: '/como-funciona', label: 'Cómo Funciona', end: false },
-  { to: '/contacto',      label: 'Contacto',      end: false },
-]
-
-/* ── Logomark SVG único para KIARA ── */
-function KiaraLogomark({ size = 36 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Fondo circular con gradiente */}
-      <circle cx="18" cy="18" r="18" fill="url(#kiara-grad)"/>
-      {/* Hoja izquierda */}
-      <path d="M18 28 C18 28 8 22 9 14 C12 12 16 15 18 28Z" fill="white" opacity="0.9"/>
-      {/* Hoja derecha */}
-      <path d="M18 24 C18 24 28 18 27 10 C24 8 20 11 18 24Z" fill="white"/>
-      {/* Tallo */}
-      <path d="M18 28 L18 30" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <circle cx="18" cy="18" r="18" fill="url(#hg)" />
+      <path d="M18 28 C18 28 8 22 9 14 C12 12 16 15 18 28Z" fill="white" opacity="0.9" />
+      <path d="M18 24 C18 24 28 18 27 10 C24 8 20 11 18 24Z" fill="white" />
+      <path d="M18 28 L18 30" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
       <defs>
-        <linearGradient id="kiara-grad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#2D6A4F"/>
-          <stop offset="100%" stopColor="#1B4332"/>
+        <linearGradient id="hg" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#2D6A4F" /><stop offset="100%" stopColor="#1B4332" />
         </linearGradient>
       </defs>
     </svg>
   )
 }
 
-/* ── Logomark blanco para footer ── */
-function KiaraLogomarkWhite({ size = 40 }) {
+function KiaraWordmark() {
   return (
-    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="18" cy="18" r="18" fill="rgba(255,255,255,0.12)"/>
-      <path d="M18 28 C18 28 8 22 9 14 C12 12 16 15 18 28Z" fill="white" opacity="0.85"/>
-      <path d="M18 24 C18 24 28 18 27 10 C24 8 20 11 18 24Z" fill="white"/>
-      <path d="M18 28 L18 30" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
-    </svg>
+    <span className="font-black tracking-[0.10em] text-[1.22rem] leading-none select-none"
+      style={{ background: 'linear-gradient(135deg,#1B4332 30%,#2D6A4F 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+      KIARA
+    </span>
   )
 }
 
-/* ── Nombre de marca KIARA ── */
-function KiaraWordmark({ dark = true }) {
+/* ────────────────────────────────────────────
+   BOTONES AUTH
+──────────────────────────────────────────── */
+function BtnPrimary({ to, children, onClick }) {
   return (
-    <div className="leading-none">
-      <div className="flex items-baseline gap-0">
-        <span
-          className="font-black tracking-[0.08em] text-[1.35rem]"
-          style={{
-            background: dark
-              ? 'linear-gradient(135deg, #1B4332 30%, #2D6A4F 100%)'
-              : 'linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.75) 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
-          KIARA
+    <Link to={to} onClick={onClick}
+      className="font-black text-sm px-5 py-2 rounded-full text-white whitespace-nowrap hover:opacity-90 transition-opacity"
+      style={{ background: 'linear-gradient(135deg,#2D6A4F,#1B4332)', boxShadow: '0 2px 12px rgba(45,106,79,0.22)' }}>
+      {children}
+    </Link>
+  )
+}
+function BtnSecondary({ to, children, onClick }) {
+  return (
+    <Link to={to} onClick={onClick}
+      className="font-bold text-sm px-5 py-2 rounded-full whitespace-nowrap hover:bg-[#f0fdf4] transition-colors"
+      style={{ color: '#2D6A4F', border: '1.5px solid #2D6A4F' }}>
+      {children}
+    </Link>
+  )
+}
+
+/* ────────────────────────────────────────────
+   NAV LINKS
+──────────────────────────────────────────── */
+const NAV = [
+  { to: '/',              label: 'Inicio',        end: true,  emoji: '🏠' },
+  { to: '/marketplace',   label: 'Marketplace',   end: false, emoji: '🛍️' },
+  { to: '/quienes-somos', label: 'Quiénes Somos', end: false, emoji: '🌿' },
+  { to: '/como-funciona', label: 'Cómo Funciona', end: false, emoji: '📖' },
+  { to: '/contacto',      label: 'Contacto',      end: false, emoji: '✉️' },
+]
+
+/* ────────────────────────────────────────────
+   SEARCH SUGGESTIONS DROPDOWN
+──────────────────────────────────────────── */
+function SearchDropdown({ results, query, onSelect, onViewAll, loading }) {
+  if (!query || query.length < 2) return null
+
+  return (
+    <div className="absolute top-[calc(100%-1px)] left-0 right-0 z-50 rounded-b-2xl overflow-hidden"
+      style={{ background: '#fff', boxShadow: '0 16px 40px rgba(0,0,0,0.12)', border: '1.5px solid #2D6A4F', borderTop: 'none' }}>
+
+      <div className="px-5 pt-4 pb-2">
+        <span className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: '#9CA3AF' }}>
+          {loading ? 'Buscando...' : results.length > 0 ? 'PRODUCTOS' : 'Sin resultados'}
         </span>
       </div>
+
+      {results.map(item => (
+        <button key={item.id} onClick={() => onSelect(item)}
+          className="w-full flex items-center gap-3 px-5 py-3 hover:bg-[#f9fafb] transition-colors text-left group">
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm leading-tight line-clamp-1 group-hover:text-[#2D6A4F] transition-colors"
+              style={{ color: '#1B4332' }}>
+              {item.nombre_producto}
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
+              {item.biohuerto?.nombre || item.biohuerto_nombre || 'Biohuerto KIARA'}
+              {item.precio && <span className="ml-2 font-bold" style={{ color: '#2D6A4F' }}>S/ {item.precio}</span>}
+            </p>
+          </div>
+          <div className="shrink-0 w-12 h-12 rounded-xl overflow-hidden" style={{ border: '1px solid #f0fdf4' }}>
+            {item.foto_url ? (
+              <img src={item.foto_url} alt={item.nombre_producto} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center" style={{ background: '#f0fdf4' }}>
+                <Leaf size={18} style={{ color: '#86efac' }} />
+              </div>
+            )}
+          </div>
+        </button>
+      ))}
+
+      {loading && (
+        <div className="px-5 pb-3 space-y-3">
+          {[1, 2, 3].map(n => (
+            <div key={n} className="flex items-center gap-3 animate-pulse">
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 rounded bg-gray-100 w-3/4" />
+                <div className="h-2.5 rounded bg-gray-100 w-1/2" />
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-gray-100 shrink-0" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && (
+        <button onClick={onViewAll}
+          className="w-full flex items-center justify-between px-5 py-3.5 font-bold text-sm transition-colors hover:bg-[#f0fdf4]"
+          style={{ color: '#2D6A4F', borderTop: '1px solid #f3f4f6' }}>
+          <span>Ver todos los resultados de <strong>"{query}"</strong></span>
+          <ChevronRight size={15} />
+        </button>
+      )}
     </div>
   )
 }
 
-/* ── Iconos inline (sin librería) ── */
-function IconMenu() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-      <path d="M3 5.5H19M3 11H14M3 16.5H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  )
-}
-function IconClose() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  )
-}
+/* ────────────────────────────────────────────
+   MENU DRAWER — dos columnas: nav + categorías
+──────────────────────────────────────────── */
+function MenuDrawer({ open, onClose, token, categorias }) {
+  const navigate     = useNavigate()
+  const [hovCat, setHovCat] = useState(null)
 
-export default function Header() {
-  const { token }   = useAuth()
-  const [scrolled, setScrolled] = useState(false)
-  const [open, setOpen]         = useState(false)
-
-  /* Shadow al scroll */
+  // Set first category as default hovered when categories load
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 12)
-    window.addEventListener('scroll', fn, { passive: true })
-    return () => window.removeEventListener('scroll', fn)
-  }, [])
+    if (categorias.length > 0 && hovCat === null) setHovCat(categorias[0].id)
+  }, [categorias])
 
-  /* Bloquear body cuando drawer abierto */
-  useEffect(() => {
-    document.body.style.overflow = open ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
-  }, [open])
+  const activeCat = categorias.find(c => c.id === hovCat)
 
-  const close = () => setOpen(false)
+  const goTo = path => { navigate(path); onClose() }
 
   return (
     <>
-      {/* ════ HEADER ════ */}
-      <header
-        className="fixed top-0 inset-x-0 z-50 transition-all duration-500"
-        style={{
-          background: scrolled ? 'rgba(255,255,255,0.97)' : '#fff',
-          backdropFilter: scrolled ? 'blur(20px)' : 'none',
-          boxShadow: scrolled ? '0 4px 32px rgba(27,67,50,0.09)' : 'none',
-          borderBottom: scrolled ? 'none' : '1px solid rgba(0,0,0,0.06)',
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2.5 group" onClick={close}>
-              <div className="transition-transform duration-300 group-hover:rotate-6">
-                <KiaraLogomark size={36} />
-              </div>
-              <KiaraWordmark dark />
-            </Link>
-
-            {/* Nav desktop */}
-            <nav className="hidden lg:flex items-center gap-1">
-              {NAV.map(({ to, label, end }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={end}
-                  className={({ isActive }) =>
-                    `text-sm font-bold px-3.5 py-1.5 rounded-full transition-all duration-200 ${
-                      isActive
-                        ? 'text-bio-dark'
-                        : 'text-bio-muted hover:text-bio-dark'
-                    }`
-                  }
-                  style={({ isActive }) => isActive ? { backgroundColor: '#D8F3DC' } : {}}
-                >
-                  {label}
-                </NavLink>
-              ))}
-            </nav>
-
-            {/* Botones desktop */}
-            <div className="hidden lg:flex items-center gap-3">
-              {token ? (
-                <BtnPrimary to="/dashboard">Mi Dashboard</BtnPrimary>
-              ) : (
-                <>
-                  <BtnSecondary to="/login">Ingresar</BtnSecondary>
-                  <BtnPrimary to="/register">Registrarme</BtnPrimary>
-                </>
-              )}
-            </div>
-
-            {/* Hamburguesa móvil */}
-            <button
-              className="lg:hidden p-2.5 rounded-xl transition-colors hover:bg-bio-pale"
-              style={{ color: '#1B4332' }}
-              onClick={() => setOpen(v => !v)}
-            >
-              {open ? <IconClose /> : <IconMenu />}
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* ════ OVERLAY ════ */}
-      <div
-        onClick={close}
-        className="fixed inset-0 z-40 lg:hidden transition-all duration-300"
+      {/* Overlay */}
+      <div onClick={onClose}
+        className="fixed inset-0 z-40 transition-all duration-300"
         style={{
           background: 'rgba(27,67,50,0.45)',
           backdropFilter: 'blur(6px)',
           opacity: open ? 1 : 0,
           pointerEvents: open ? 'auto' : 'none',
-        }}
-      />
+        }} />
 
-      {/* ════ DRAWER ════ */}
+      {/* Drawer — desde la IZQUIERDA, dos columnas */}
       <div
-        className="fixed top-0 right-0 h-full w-72 z-50 lg:hidden flex flex-col"
+        className="fixed top-0 left-0 h-full z-50 flex flex-col"
         style={{
+          width: 'min(560px, 94vw)',
           background: '#fff',
-          boxShadow: '-8px 0 40px rgba(0,0,0,0.12)',
-          transform: open ? 'translateX(0)' : 'translateX(100%)',
+          boxShadow: '8px 0 48px rgba(0,0,0,0.14)',
+          transform: open ? 'translateX(0)' : 'translateX(-100%)',
           transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
-        }}
-      >
-        {/* Cabecera */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <Link to="/" onClick={close} className="flex items-center gap-2.5">
-            <KiaraLogomark size={32} />
-            <KiaraWordmark dark />
+        }}>
+
+        {/* ── Cabecera ── */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <Link to="/" onClick={onClose} className="flex items-center gap-2.5">
+            <KiaraLogomark size={30} />
+            <KiaraWordmark />
           </Link>
-          <button
-            onClick={close}
-            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-            style={{ color: '#6B7280' }}
-          >
-            <IconClose />
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400">
+            <X size={18} />
           </button>
         </div>
 
-        {/* Links */}
-        <nav className="flex-1 py-4 px-4 space-y-1 overflow-y-auto">
-          {NAV.map(({ to, label, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={close}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 ${
-                  isActive ? 'text-bio-dark' : 'text-bio-muted hover:text-bio-dark hover:bg-gray-50'
-                }`
-              }
-              style={({ isActive }) => isActive ? { backgroundColor: '#D8F3DC' } : {}}
-            >
-              <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: '#52B788' }} />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
+        {/* ── Cuerpo: dos columnas ── */}
+        <div className="flex flex-1 min-h-0">
 
-        {/* Botones drawer — versión bloque ancho */}
-        <div className="px-5 py-5 space-y-3 border-t border-gray-100">
-          {token ? (
-            <div onClick={close} className="flex justify-center">
-              <BtnPrimary to="/dashboard">Mi Dashboard</BtnPrimary>
+          {/* Columna izquierda — NAV + categorías */}
+          <div className="w-[200px] shrink-0 flex flex-col border-r border-gray-100 overflow-y-auto">
+
+            {/* Nav links */}
+            <nav className="py-3 px-3 space-y-0.5">
+              {NAV.map(({ to, label, end, emoji }) => (
+                <NavLink key={to} to={to} end={end} onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${isActive ? 'text-bio-dark' : 'text-bio-muted hover:text-bio-dark hover:bg-gray-50'}`}
+                  style={({ isActive }) => isActive ? { backgroundColor: '#D8F3DC' } : {}}>
+                  <span className="text-base">{emoji}</span>
+                  <span className="flex-1 text-[13px]">{label}</span>
+                </NavLink>
+              ))}
+            </nav>
+
+            {/* Separador categorías */}
+            <div className="px-4 pt-3 pb-2 border-t border-gray-100">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: '#9CA3AF' }}>
+                Categorías
+              </p>
             </div>
+
+            {/* Lista de categorías */}
+            <div className="flex-1 overflow-y-auto pb-3 px-1.5">
+              {categorias.length === 0 ? (
+                <div className="px-3 py-2 space-y-1.5 animate-pulse">
+                  {[1,2,3,4,5,6].map(n => <div key={n} className="h-9 rounded-xl bg-gray-100" />)}
+                </div>
+              ) : (
+                categorias.map(cat => (
+                  <button
+                    key={cat.id}
+                    onMouseEnter={() => setHovCat(cat.id)}
+                    onFocus={() => setHovCat(cat.id)}
+                    onClick={() => goTo(`/marketplace?categoria=${cat.slug}`)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all"
+                    style={{
+                      background: hovCat === cat.id ? '#f0fdf4' : 'transparent',
+                      color: hovCat === cat.id ? '#1B4332' : '#4B5563',
+                    }}>
+                    <span className="text-base leading-none">{cat.emoji}</span>
+                    <span className="flex-1 text-[13px] font-bold leading-tight">{cat.nombre}</span>
+                    <ChevronRight size={13}
+                      style={{ color: hovCat === cat.id ? '#2D6A4F' : '#D1D5DB' }} />
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Columna derecha — tipos de la categoría hovereada */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+
+            {activeCat ? (
+              <>
+                {/* Header categoría activa */}
+                <div className="px-5 pt-5 pb-3 shrink-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xl">{activeCat.emoji}</span>
+                    <h3 className="font-black text-base" style={{ color: '#1B4332' }}>
+                      {activeCat.nombre}
+                    </h3>
+                  </div>
+                  <p className="text-[11px] font-semibold" style={{ color: '#9CA3AF' }}>
+                    Selecciona un tipo para filtrar
+                  </p>
+                </div>
+
+                {/* Grid de tipos */}
+                <div className="flex-1 overflow-y-auto px-4 pb-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* "Ver todos" de la categoría */}
+                    <button
+                      onClick={() => goTo(`/marketplace?categoria=${activeCat.slug}`)}
+                      className="col-span-2 flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-black transition-all hover:scale-[1.01]"
+                      style={{ background: 'linear-gradient(135deg,#1B4332,#2D6A4F)', color: '#fff' }}>
+                      <span>Ver todo en {activeCat.nombre}</span>
+                      <ChevronRight size={15} />
+                    </button>
+
+                    {activeCat.tipos.map(tipo => (
+                      <button
+                        key={tipo.id}
+                        onClick={() => goTo(`/marketplace?tipo=${tipo.slug}`)}
+                        className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-[13px] font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm"
+                        style={{
+                          background: '#F5EFE4',
+                          color: '#374151',
+                          border: '1px solid rgba(0,0,0,0.05)',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#D8F3DC'; e.currentTarget.style.color = '#1B4332' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#F5EFE4'; e.currentTarget.style.color = '#374151' }}>
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: '#2D6A4F' }} />
+                        {tipo.nombre}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-sm text-gray-400">Pasa el mouse sobre una categoría</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Auth footer ── */}
+        <div className="px-5 py-4 border-t border-gray-100 shrink-0">
+          {token ? (
+            <BtnPrimary to="/dashboard" onClick={onClose}>Mi Dashboard</BtnPrimary>
           ) : (
-            <>
-              <div onClick={close} className="flex justify-center">
-                <BtnSecondary to="/login">Ingresar</BtnSecondary>
-              </div>
-              <div onClick={close} className="flex justify-center">
-                <BtnPrimary to="/register">Registrarme gratis</BtnPrimary>
-              </div>
-            </>
+            <div className="flex gap-2">
+              <BtnSecondary to="/login" onClick={onClose}>Ingresar</BtnSecondary>
+              <BtnPrimary to="/register" onClick={onClose}>Registrarme gratis</BtnPrimary>
+            </div>
           )}
         </div>
       </div>
@@ -300,3 +310,225 @@ export default function Header() {
   )
 }
 
+/* ────────────────────────────────────────────
+   HEADER PRINCIPAL
+──────────────────────────────────────────── */
+export default function Header() {
+  const { token } = useAuth()
+  const { count } = useCart()
+  const navigate  = useNavigate()
+
+  const [scrolled,    setScrolled]    = useState(false)
+  const [drawerOpen,  setDrawerOpen]  = useState(false)
+  const [query,       setQuery]       = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [dropOpen,    setDropOpen]    = useState(false)
+  const [loading,     setLoading]     = useState(false)
+  const [categorias,  setCategorias]  = useState([])
+
+  const searchWrapRef = useRef(null)
+  const inputRef      = useRef(null)
+
+  /* Fetch categorías una sola vez */
+  useEffect(() => {
+    api.get('/cosechas/categorias/')
+      .then(r => setCategorias(r.data?.results ?? r.data ?? []))
+      .catch(() => {})
+  }, [])
+
+  /* Shadow on scroll */
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 12)
+    window.addEventListener('scroll', fn, { passive: true })
+    return () => window.removeEventListener('scroll', fn)
+  }, [])
+
+  /* Block body scroll when drawer open */
+  useEffect(() => {
+    document.body.style.overflow = drawerOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [drawerOpen])
+
+  /* Close dropdown on outside click */
+  useEffect(() => {
+    const fn = e => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) setDropOpen(false)
+    }
+    document.addEventListener('mousedown', fn)
+    return () => document.removeEventListener('mousedown', fn)
+  }, [])
+
+  /* Escape closes dropdown */
+  useEffect(() => {
+    const fn = e => { if (e.key === 'Escape') { setDropOpen(false); inputRef.current?.blur() } }
+    document.addEventListener('keydown', fn)
+    return () => document.removeEventListener('keydown', fn)
+  }, [])
+
+  /* Debounced search */
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 2) { setSuggestions([]); setDropOpen(false); return }
+    setLoading(true)
+    setDropOpen(true)
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get(`/cosechas/publicas/?search=${encodeURIComponent(q)}&limit=6`)
+        const data = res.data?.results ?? res.data ?? []
+        setSuggestions(Array.isArray(data) ? data.slice(0, 6) : [])
+      } catch {
+        setSuggestions([])
+      } finally {
+        setLoading(false)
+      }
+    }, 320)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  const closeDrawer = () => setDrawerOpen(false)
+
+  const handleSearch = e => {
+    e?.preventDefault()
+    const q = query.trim()
+    setDropOpen(false)
+    navigate(q ? `/marketplace?q=${encodeURIComponent(q)}` : '/marketplace')
+    setQuery('')
+  }
+
+  const handleSelect = () => { setDropOpen(false); setQuery(''); navigate('/marketplace') }
+  const handleViewAll = () => {
+    setDropOpen(false)
+    navigate(query.trim() ? `/marketplace?q=${encodeURIComponent(query.trim())}` : '/marketplace')
+    setQuery('')
+  }
+
+  return (
+    <>
+      {/* ══════════════════════ HEADER BAR ══════════════════════ */}
+      <header className="fixed top-0 inset-x-0 z-50 transition-all duration-400"
+        style={{
+          background: 'rgba(255,255,255,0.98)',
+          backdropFilter: 'blur(20px)',
+          boxShadow: scrolled ? '0 4px 32px rgba(27,67,50,0.09)' : 'none',
+          borderBottom: '1px solid rgba(0,0,0,0.06)',
+        }}>
+
+        <div className="max-w-[1480px] mx-auto px-4 sm:px-6 xl:px-10">
+          <div className="flex items-center h-16 gap-2">
+
+            {/* 1 · Logo */}
+            <Link to="/" onClick={closeDrawer} className="flex items-center gap-2.5 group shrink-0">
+              <div className="transition-transform duration-300 group-hover:rotate-6">
+                <KiaraLogomark size={34} />
+              </div>
+              <KiaraWordmark />
+            </Link>
+
+            {/* 2 · Botón Menú */}
+            <button onClick={() => setDrawerOpen(v => !v)}
+              className="p-2.5 rounded-xl hover:bg-[#f0fdf4] transition-colors shrink-0"
+              style={{ color: '#2D6A4F' }}>
+              {drawerOpen ? <X size={21} /> : <Menu size={21} />}
+            </button>
+
+            {/* 3 · Barra de búsqueda */}
+            <div ref={searchWrapRef} className="flex-1 relative hidden md:block mx-2">
+              <form onSubmit={handleSearch}>
+                <div className="flex items-center transition-all duration-200"
+                  style={{
+                    border: '1.5px solid #2D6A4F',
+                    borderRadius: dropOpen ? '12px 12px 0 0' : '12px',
+                    background: '#fff',
+                    boxShadow: dropOpen ? '0 0 0 3px rgba(45,106,79,0.08)' : 'none',
+                  }}>
+                  <div className="pl-4 shrink-0" style={{ color: '#9CA3AF' }}>
+                    <Search size={16} />
+                  </div>
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    onFocus={() => { if (query.trim().length >= 2) setDropOpen(true) }}
+                    placeholder="Buscar cosechas, productores, cultivos..."
+                    className="flex-1 px-3 py-2.5 text-sm outline-none bg-transparent"
+                    style={{ color: '#1B4332' }}
+                  />
+                  {query && (
+                    <button type="button"
+                      onClick={() => { setQuery(''); setSuggestions([]); setDropOpen(false); inputRef.current?.focus() }}
+                      className="p-2 mr-1 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: '#9CA3AF' }}>
+                      <X size={14} />
+                    </button>
+                  )}
+                  <button type="submit"
+                    className="flex items-center justify-center px-4 py-2.5 rounded-r-[10px] shrink-0 hover:opacity-90 transition-opacity"
+                    style={{ background: 'linear-gradient(135deg,#2D6A4F,#1B4332)', color: '#fff' }}>
+                    <Search size={17} />
+                  </button>
+                </div>
+              </form>
+
+              {dropOpen && (
+                <SearchDropdown
+                  results={suggestions}
+                  query={query}
+                  onSelect={handleSelect}
+                  onViewAll={handleViewAll}
+                  loading={loading}
+                />
+              )}
+            </div>
+
+            {/* 4 · Favoritos */}
+            <Link to="/marketplace" title="Favoritos"
+              className="p-2.5 rounded-xl hover:bg-[#f0fdf4] transition-colors shrink-0"
+              style={{ color: '#2D6A4F' }}>
+              <Heart size={20} />
+            </Link>
+
+            {/* 5 · Carrito */}
+            <Link to="/carrito" title="Carrito"
+              className="relative p-2.5 rounded-xl hover:bg-[#f0fdf4] transition-colors shrink-0"
+              style={{ color: '#2D6A4F' }}>
+              <ShoppingCart size={20} />
+              {count > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] rounded-full text-white text-[9px] font-black flex items-center justify-center"
+                  style={{ backgroundColor: '#2D6A4F' }}>
+                  {count > 9 ? '9+' : count}
+                </span>
+              )}
+            </Link>
+
+            {/* 6 · Auth */}
+            {token ? (
+              <div className="hidden sm:block ml-1">
+                <BtnPrimary to="/dashboard">Mi Dashboard</BtnPrimary>
+              </div>
+            ) : (
+              <div className="hidden sm:flex items-center gap-2 ml-1">
+                <BtnSecondary to="/login">Ingresar</BtnSecondary>
+                <BtnPrimary to="/register">Registrarme</BtnPrimary>
+              </div>
+            )}
+
+            {/* Búsqueda móvil */}
+            <button onClick={() => navigate('/marketplace')}
+              className="md:hidden p-2.5 rounded-xl hover:bg-[#f0fdf4] transition-colors"
+              style={{ color: '#2D6A4F' }}>
+              <Search size={20} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ══════════════════════ DRAWER ══════════════════════ */}
+      <MenuDrawer
+        open={drawerOpen}
+        onClose={closeDrawer}
+        token={token}
+        categorias={categorias}
+      />
+    </>
+  )
+}
