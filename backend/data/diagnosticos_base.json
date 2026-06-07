@@ -1,0 +1,138 @@
+[
+  {
+    "id": 1,
+    "nombre": "Infestación de pulgones (áfidos)",
+    "partes": ["hoja", "tallo", "fruto"],
+    "sintomas_clave": ["presencia_insectos", "hojas_enrolladas", "manchas_amarillas"],
+    "causa": "Colonias de insectos chupadores (Aphididae) que se alimentan de la savia. Proliferan en condiciones de calor y falta de ventilación.",
+    "recomendacion": "Aplicar solución de jabón potásico (1 cucharada por litro de agua). Liberar mariquitas o lacewings como control biológico. Aplicar extracto de ajo o ají. Eliminar hormigas que los protegen."
+  },
+  {
+    "id": 2,
+    "nombre": "Mosca blanca (Bemisia tabaci)",
+    "partes": ["hoja", "fruto"],
+    "sintomas_clave": ["presencia_insectos", "manchas_amarillas", "hojas_enrolladas"],
+    "causa": "Insecto chupador que debilita la planta y transmite virus. Se concentra en el envés de las hojas.",
+    "recomendacion": "Usar trampas amarillas adhesivas. Aplicar extracto de ajo o jabón potásico. Evitar el exceso de nitrógeno. Introducir parásitos naturales (Encarsia formosa)."
+  },
+  {
+    "id": 3,
+    "nombre": "Araña roja (Tetranychus urticae)",
+    "partes": ["hoja"],
+    "sintomas_clave": ["manchas_amarillas", "presencia_insectos"],
+    "causa": "Ácaro que coloniza el envés de las hojas en condiciones de calor y sequedad. Succiona clorófila.",
+    "recomendacion": "Aumentar la humedad ambiental (riego foliar temprano). Aplicar extracto de cola de caballo o jabón potásico. Usar ácaros predadores (Phytoseiidae). Evitar el estrés hídrico."
+  },
+  {
+    "id": 4,
+    "nombre": "Mildiu polvoroso (Oidium spp.)",
+    "partes": ["hoja", "tallo"],
+    "sintomas_clave": ["manchas_blancas_polvo", "hojas_enrolladas"],
+    "causa": "Hongo que prolifera en condiciones de alta humedad relativa con temperaturas templadas y poca ventilación.",
+    "recomendacion": "Aplicar bicarbonato de sodio diluido (1 cucharadita por litro) con unas gotas de jabón. Mejorar la ventilación del biohuerto. Evitar mojar el follaje. Aplicar caldo sulfocálcico preventivo."
+  },
+  {
+    "id": 5,
+    "nombre": "Tizón tardío (Phytophthora infestans)",
+    "partes": ["hoja", "tallo", "fruto"],
+    "sintomas_clave": ["manchas_marrones", "manchas_amarillas"],
+    "causa": "Oomiceto que se activa con alta humedad y temperaturas frescas (15-20°C). Destruye el tejido vegetal rápidamente.",
+    "recomendacion": "Eliminar y quemar partes afectadas. Aplicar caldo bordelés (sulfato de cobre + cal). Mejorar drenaje. No mojar el follaje. Rotar cultivos por al menos 2 temporadas."
+  },
+  {
+    "id": 6,
+    "nombre": "Damping-off (Pythium / Rhizoctonia)",
+    "partes": ["tallo", "raiz"],
+    "sintomas_clave": ["tallos_blandos", "raices_podridas"],
+    "causa": "Hongos del suelo que atacan plántulas jóvenes en condiciones de exceso de humedad y suelo mal drenado.",
+    "recomendacion": "Usar sustrato desinfectado o pasteurizado para almácigos. Reducir riego. Aplicar Trichoderma como biocontrolador. Mejorar drenaje del suelo. No regar en exceso."
+  },
+  {
+    "id": 7,
+    "nombre": "Podredumbre de raíz (Fusarium / Phytophthora)",
+    "partes": ["raiz"],
+    "sintomas_clave": ["raices_podridas", "manchas_marrones"],
+    "causa": "Hongos de suelo que atacan el sistema radicular por encharcamiento prolongado o suelo compactado sin drenaje.",
+    "recomendacion": "Mejorar el drenaje urgentemente. Reducir riegos. Aplicar Trichoderma harzianum al suelo. En casos severos, trasplantar a sustrato nuevo. Evitar el monocultivo."
+  },
+  {
+    "id": 8,
+    "nombre": "Deficiencia de nitrógeno",
+    "partes": ["hoja"],
+    "sintomas_clave": ["manchas_amarillas"],
+    "causa": "Falta de nitrógeno en el suelo, ya sea por suelo pobre, pH inadecuado o lavado por exceso de riego.",
+    "recomendacion": "Aplicar biol (abono foliar orgánico) cada 15 días. Incorporar compost maduro o humus de lombriz. Sembrar leguminosas como cultivo de cobertura. Verificar pH del suelo (ideal 6-7)."
+  },
+  {
+    "id": 9,
+    "nombre": "Deficiencia de hierro (clorosis férrica)",
+    "partes": ["hoja"],
+    "sintomas_clave": ["manchas_amarillas"],
+    "causa": "Falta de hierro asimilable, generalmente por pH alto (suelo alcalino) que bloquea la absorción. Hojas amarillas con nervios verdes.",
+    "recomendacion": "Acidificar el suelo con azufre elemental o vinagre diluido. Aplicar quelato de hierro foliar. Incorporar compost para bajar pH. Verificar y ajustar pH del suelo."
+  },
+  {
+    "id": 10,
+    "nombre": "Deficiencia de potasio",
+    "partes": ["hoja", "fruto"],
+    "sintomas_clave": ["manchas_marrones", "frutos_deformes"],
+    "causa": "Escasez de potasio en el suelo, importante para la formación de frutos y resistencia a enfermedades.",
+    "recomendacion": "Aplicar ceniza de madera como fuente de potasio orgánico. Incorporar compost. Usar biol enriquecido. Evitar el exceso de nitrógeno que bloquea la absorción de potasio."
+  },
+  {
+    "id": 11,
+    "nombre": "Trips (Frankliniella occidentalis)",
+    "partes": ["hoja", "fruto"],
+    "sintomas_clave": ["presencia_insectos", "manchas_amarillas", "frutos_deformes"],
+    "causa": "Insectos diminutos que rascan y chupan la savia. Transmiten virus y deforman frutos en desarrollo.",
+    "recomendacion": "Usar trampas azules adhesivas. Aplicar extracto de neem o jabón potásico. Mantener el área sin malezas. Liberar ácaros predadores. Eliminar restos de cosecha."
+  },
+  {
+    "id": 12,
+    "nombre": "Minador de hojas (Liriomyza spp.)",
+    "partes": ["hoja"],
+    "sintomas_clave": ["presencia_insectos", "manchas_amarillas"],
+    "causa": "Larvas de mosca que crean galerías sinuosas dentro del tejido foliar, reduciendo la fotosíntesis.",
+    "recomendacion": "Eliminar y destruir hojas afectadas. Aplicar extracto de neem. Usar trampas amarillas adhesivas para atrapar adultos. Usar parasitoides naturales (Diglyphus isaea)."
+  },
+  {
+    "id": 13,
+    "nombre": "Podredumbre del fruto (Botrytis / Alternaria)",
+    "partes": ["fruto"],
+    "sintomas_clave": ["manchas_marrones", "frutos_deformes"],
+    "causa": "Hongos que atacan frutos en condiciones de alta humedad, heridas o madurez excesiva.",
+    "recomendacion": "Cosechar a tiempo y evitar heridas en los frutos. Mejorar ventilación. Aplicar caldo bordelés preventivo. Eliminar frutos afectados inmediatamente. No mojar los frutos al regar."
+  },
+  {
+    "id": 14,
+    "nombre": "Nematodos del suelo (Meloidogyne spp.)",
+    "partes": ["raiz"],
+    "sintomas_clave": ["raices_podridas", "manchas_amarillas"],
+    "causa": "Gusanos microscópicos que forman nódulos en las raíces bloqueando el paso de agua y nutrientes. Suelo arenoso y caliente los favorece.",
+    "recomendacion": "Rotar con cultivos no hospedantes (cebolla, ajo, marigold). Aplicar compost abundante para estimular hongos antagonistas. Sembrar tagetes (flor de muerto) como repelente. Solarizar el suelo antes de sembrar."
+  },
+  {
+    "id": 15,
+    "nombre": "Gusano cortador (Agrotis spp.)",
+    "partes": ["tallo"],
+    "sintomas_clave": ["tallos_blandos"],
+    "causa": "Larvas nocturnas que cortan los tallos a nivel del suelo. Actúan principalmente en almácigos y plantas jóvenes.",
+    "recomendacion": "Buscar y eliminar manualmente las larvas en el suelo al amanecer. Aplicar cal o ceniza alrededor de las plantas. Colocar trampas con melaza. Aplicar Bacillus thuringiensis (Bt) al suelo."
+  },
+  {
+    "id": 16,
+    "nombre": "Oruga del repollo (Plutella xylostella)",
+    "partes": ["hoja", "toda_la_planta"],
+    "sintomas_clave": ["presencia_insectos", "hojas_enrolladas", "manchas_marrones"],
+    "causa": "Larva de polilla que consume hojas de crucíferas (col, brócoli, kale). Muy resistente a insecticidas convencionales.",
+    "recomendacion": "Aplicar Bacillus thuringiensis var. kurstaki (Bt). Usar extracto de ajo-ají. Cubrir con malla antiinsectos. Eliminar restos vegetales. Introducir parasitoides naturales."
+  },
+  {
+    "id": 17,
+    "nombre": "Virus del mosaico",
+    "partes": ["hoja", "toda_la_planta"],
+    "sintomas_clave": ["manchas_amarillas", "hojas_enrolladas", "frutos_deformes"],
+    "causa": "Virus transmitidos principalmente por pulgones. Causan deformación y mosaico de colores en hojas y frutos.",
+    "recomendacion": "No existe cura. Eliminar plantas enfermas y destruirlas. Controlar pulgones como vectores. Desinfectar herramientas. Usar semillas certificadas. Evitar tocar plantas sanas después de enfermas."
+  }
+]

@@ -1,0 +1,152 @@
+[
+  {
+    "nombre": "Lechuga",
+    "riego": "Cada 2 días, preferiblemente por goteo o con regadera fina. Evitar mojar el cogollo.",
+    "sustrato": "Suelo suelto rico en materia orgánica o humus de lombriz (30%). Compost maduro.",
+    "plagas_comunes": ["Pulgones", "Babosas", "Minador de hojas"],
+    "enfermedades_comunes": ["Mildiu", "Podredumbre del cuello"],
+    "rotacion": "Rotar con leguminosas (frijol, arveja) o raíces (rabanito, zanahoria).",
+    "tiempo_cosecha_dias": "45-60 días desde siembra",
+    "consejo_extra": "Sembrar en épocas frescas. En Lambayeque, evitar los meses más calurosos o sembrar con sombra parcial."
+  },
+  {
+    "nombre": "Culantro",
+    "riego": "Frecuente y ligero, cada 1-2 días. El suelo debe estar húmedo pero no encharcado.",
+    "sustrato": "Suelo arenoso-limoso bien drenado. Agregar compost para mejor desarrollo.",
+    "plagas_comunes": ["Pulgones", "Mosca blanca"],
+    "enfermedades_comunes": ["Mildiu polvoroso", "Marchitez por hongos"],
+    "rotacion": "Rotar con solanáceas (tomate, pimiento) o cucurbitáceas.",
+    "tiempo_cosecha_dias": "30-45 días desde siembra",
+    "consejo_extra": "Sembrar a chorro continuo. Puede hacerse en macetas pequeñas. Cortar solo hojas externas para prolongar la producción."
+  },
+  {
+    "nombre": "Tomate",
+    "riego": "Profundo y espaciado, 2-3 veces por semana. Evitar mojar el follaje para prevenir hongos.",
+    "sustrato": "Suelo franco-arcilloso con buen drenaje. Compost + guano de isla o biol como fertilizante.",
+    "plagas_comunes": ["Mosca blanca", "Trips", "Gusano de fruto (Helicoverpa)"],
+    "enfermedades_comunes": ["Tizón tardío", "Fusarium", "Virus del mosaico"],
+    "rotacion": "No sembrar tomate en el mismo lugar por al menos 2 temporadas. Rotar con crucíferas o leguminosas.",
+    "tiempo_cosecha_dias": "70-90 días desde trasplante",
+    "consejo_extra": "Requiere tutores (estacas o alambre). Podar los brotes laterales para mejorar rendimiento. Usar biol cada 15 días."
+  },
+  {
+    "nombre": "Rabanito",
+    "riego": "Moderado, cada 2-3 días. Suelo siempre ligeramente húmedo.",
+    "sustrato": "Suelo suelto, profundo y sin piedras para facilitar el engrosamiento de la raíz. Compost fino.",
+    "plagas_comunes": ["Pulgones del repollo", "Gusano cortador"],
+    "enfermedades_comunes": ["Mildiu", "Pudrición blanda"],
+    "rotacion": "Excelente para rotaciones cortas. Sembrar antes de cultivos de hoja o leguminosas.",
+    "tiempo_cosecha_dias": "25-35 días desde siembra",
+    "consejo_extra": "Cultivo de ciclo muy corto, ideal para biohuertos pequeños. Sembrar escalonado cada 10 días para cosecha continua."
+  },
+  {
+    "nombre": "Cebolla china",
+    "riego": "Regular, cada 2-3 días. No inundar el cuello de la planta.",
+    "sustrato": "Suelo bien drenado con compost. pH entre 6 y 7.",
+    "plagas_comunes": ["Trips de la cebolla", "Gusano de la hoja"],
+    "enfermedades_comunes": ["Mildiu (Peronospora)", "Fusarium en cuello"],
+    "rotacion": "Rotar con tomate, pepino o lechugas.",
+    "tiempo_cosecha_dias": "60-90 días desde siembra directa",
+    "consejo_extra": "Sembrar por champas o mediante hijuelos. Puede cosecharse por partes cortando las hojas desde la base."
+  },
+  {
+    "nombre": "Espinaca",
+    "riego": "Constante, cada 1-2 días. Necesita humedad para crecer hojas grandes y suaves.",
+    "sustrato": "Suelo fértil y húmedo con alto contenido de nitrógeno (compost maduro o biol).",
+    "plagas_comunes": ["Pulgones", "Minador de hojas"],
+    "enfermedades_comunes": ["Mildiu lanoso", "Viruela de la espinaca"],
+    "rotacion": "Rotar con tomate, pepino o maíz.",
+    "tiempo_cosecha_dias": "40-50 días desde siembra",
+    "consejo_extra": "Prospera mejor en climas templados. En Lambayeque, sembrar en meses frescos o con sombra parcial. Aplicar biol cada 15 días."
+  },
+  {
+    "nombre": "Albahaca",
+    "riego": "Moderado, cada 2-3 días. No tolera encharcamiento.",
+    "sustrato": "Suelo ligero y bien drenado con compost. Prefiere suelos cálidos.",
+    "plagas_comunes": ["Pulgones", "Babosas"],
+    "enfermedades_comunes": ["Mildiu polvoroso", "Marchitez por Fusarium"],
+    "rotacion": "Compañera ideal del tomate y pepino. Repele algunas plagas.",
+    "tiempo_cosecha_dias": "30-45 días desde trasplante",
+    "consejo_extra": "Pinzar las flores para prolongar producción de hojas. Sembrar cerca de tomate para control biológico mutuo."
+  },
+  {
+    "nombre": "Perejil",
+    "riego": "Regular, cada 2 días. Mantener humedad constante en la primera semana post-siembra.",
+    "sustrato": "Suelo húmedo, rico en materia orgánica. Compost o humus de lombriz.",
+    "plagas_comunes": ["Mosca de la zanahoria", "Pulgones"],
+    "enfermedades_comunes": ["Septoria (manchas foliares)", "Mildiu"],
+    "rotacion": "Rotar con solanáceas o cucurbitáceas.",
+    "tiempo_cosecha_dias": "70-90 días desde siembra (germinación lenta)",
+    "consejo_extra": "Remojo de semillas 24 horas antes de siembra para acelerar germinación. Sembrar en macetas o en bordes del biohuerto."
+  },
+  {
+    "nombre": "Col",
+    "riego": "Abundante, cada 2-3 días. Muy sensible a la falta de agua durante el cuajado de la cabeza.",
+    "sustrato": "Suelo fértil con compost y buen drenaje. Requiere calcio (ceniza de madera).",
+    "plagas_comunes": ["Oruga del repollo (Plutella)", "Pulgones del repollo", "Ácaros"],
+    "enfermedades_comunes": ["Mildiu", "Hernia del repollo", "Alternaria"],
+    "rotacion": "Rotar con leguminosas para recuperar nitrógeno en el suelo.",
+    "tiempo_cosecha_dias": "90-120 días desde trasplante",
+    "consejo_extra": "Usar extracto de ají o ajo para controlar orugas. Trasplantar plántulas de 4-5 hojas verdaderas."
+  },
+  {
+    "nombre": "Betarraga",
+    "riego": "Regular y moderado, cada 3 días. El exceso causa podredumbre.",
+    "sustrato": "Suelo profundo, suelto y bien drenado. Agregar compost maduro. Evitar suelos ácidos.",
+    "plagas_comunes": ["Gusano de tierra", "Pulgones"],
+    "enfermedades_comunes": ["Cercospora (manchas foliares)", "Viruela"],
+    "rotacion": "Rotar con leguminosas o cucurbitáceas.",
+    "tiempo_cosecha_dias": "60-80 días desde siembra",
+    "consejo_extra": "Sembrar la semilla directamente. Ralear a 10 cm entre plantas. Puede cosecharse en diferentes tamaños según necesidad."
+  },
+  {
+    "nombre": "Pimiento",
+    "riego": "Regular, cada 2-3 días. Evitar encharcamiento. Riego al goteo es ideal.",
+    "sustrato": "Suelo franco con materia orgánica. Compost + biol como fertilizante.",
+    "plagas_comunes": ["Mosca blanca", "Trips", "Ácaros"],
+    "enfermedades_comunes": ["Antracnosis en frutos", "Phytophthora", "Virus del mosaico"],
+    "rotacion": "No repetir en el mismo lugar más de 2 años. Rotar con cucurbitáceas o leguminosas.",
+    "tiempo_cosecha_dias": "70-90 días desde trasplante",
+    "consejo_extra": "Requiere clima cálido. En Lambayeque produce bien entre octubre y marzo. Tutorar cuando la planta crece."
+  },
+  {
+    "nombre": "Pepino",
+    "riego": "Abundante, 2-3 veces por semana. La irregularidad en el riego causa frutos amargos.",
+    "sustrato": "Suelo rico en materia orgánica con buen drenaje. Compost + mulching para conservar humedad.",
+    "plagas_comunes": ["Mosca blanca", "Ácaros", "Pulgones"],
+    "enfermedades_comunes": ["Mildiu polvoroso", "Antracnosis", "Viruela"],
+    "rotacion": "Rotar con leguminosas o solanáceas.",
+    "tiempo_cosecha_dias": "50-70 días desde siembra",
+    "consejo_extra": "Instalar espaldera o red para que trepen. Cosechar frecuentemente para estimular producción continua."
+  },
+  {
+    "nombre": "Zapallo",
+    "riego": "Moderado pero profundo, 2 veces por semana. Reduce riego en etapa de maduración.",
+    "sustrato": "Suelo fértil con compost abundante. Puede crecer en suelos pobres si hay suficiente materia orgánica.",
+    "plagas_comunes": ["Mosca de la calabaza", "Ácaros", "Pulgones"],
+    "enfermedades_comunes": ["Mildiu polvoroso", "Antracnosis"],
+    "rotacion": "Ocupa mucho espacio. Rotar con maíz, frijol o cultivos de raíz.",
+    "tiempo_cosecha_dias": "90-120 días desde siembra",
+    "consejo_extra": "Necesita espacio amplio (2-3 m entre plantas). Ideal para bordes o zonas con espacio libre del biohuerto."
+  },
+  {
+    "nombre": "Frijol",
+    "riego": "Moderado, cada 3-4 días. Sensible al exceso de agua en floración.",
+    "sustrato": "Suelo bien drenado. No requiere mucho abono ya que fija nitrógeno atmosférico.",
+    "plagas_comunes": ["Mosca de la semilla", "Ácaros", "Cogollero"],
+    "enfermedades_comunes": ["Roya", "Antracnosis", "Mosaico del frijol"],
+    "rotacion": "Excelente para recuperar suelos. Sembrar antes de cultivos exigentes en nitrógeno.",
+    "tiempo_cosecha_dias": "60-90 días desde siembra",
+    "consejo_extra": "Inocular semillas con Rhizobium para mejorar fijación de nitrógeno. Ideal como cultivo de rotación."
+  },
+  {
+    "nombre": "Maíz choclo",
+    "riego": "Abundante, 2-3 veces por semana. Crítico en floración y llenado de grano.",
+    "sustrato": "Suelo fértil, profundo y bien drenado. Compost + biol cada 20 días.",
+    "plagas_comunes": ["Cogollero (Spodoptera)", "Gusano de mazorca", "Pulgones"],
+    "enfermedades_comunes": ["Roya del maíz", "Tizón foliar"],
+    "rotacion": "Rotar con leguminosas (frijol, soya) para recuperar nitrógeno.",
+    "tiempo_cosecha_dias": "75-90 días desde siembra",
+    "consejo_extra": "Sembrar en grupos de 4+ plantas para asegurar polinización. Aporcar (subir tierra al tallo) a los 30 días para fortalecer la planta."
+  }
+]
