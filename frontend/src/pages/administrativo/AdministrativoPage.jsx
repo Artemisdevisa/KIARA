@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, UserCog, TreePine, BadgeCheck } from 'lucide-react'
+import { ArrowRight, UserCog, TreePine, BadgeCheck, Sprout } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
 
 const cards = [
@@ -14,6 +14,12 @@ const cards = [
     label: 'Biohuertos',
     desc: 'Administra todos los biohuertos registrados, sus productores y el estado de cada espacio.',
     to: '/biohuertos',
+  },
+  {
+    icon: Sprout,
+    label: 'Cultivos',
+    desc: 'Gestiona los cultivos activos, sus etapas, fechas de siembra y cosecha estimada.',
+    to: '/cultivos',
   },
   {
     icon: BadgeCheck,
@@ -43,7 +49,7 @@ export default function AdministrativoPage() {
       </div>
 
       {/* Grid de cards */}
-      <div className="grid grid-cols-3 gap-6 max-w-4xl">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl">
         {cards.map(({ icon: Icon, label, desc, to }) => (
           <button
             key={to}

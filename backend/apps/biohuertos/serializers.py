@@ -10,7 +10,8 @@ class BiohuertSerializer(serializers.ModelSerializer):
         model = Biohuerto
         fields = [
             'id', 'nombre', 'codigo', 'ubicacion', 'area', 'descripcion',
-            'activo', 'productor_nombre', 'cultivos_count', 'created_at', 'updated_at'
+            'activo', 'departamento', 'provincia', 'distrito', 'latitud', 'longitud',
+            'productor_nombre', 'cultivos_count', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 

@@ -9,7 +9,7 @@ import { useState } from 'react'
 
 const modules = [
   { to: '/administrativo', icon: ShieldCheck,  label: 'Administrativo', desc: 'Usuarios y biohuertos' },
-  { to: '/cultivos',       icon: Wheat,         label: 'Cultivos',       desc: 'Siembras activas'     },
+  { to: '/cultivos',       icon: Wheat,         label: 'Ventas',         desc: 'Siembras activas'     },
   { to: '/monitoreo',      icon: Thermometer,   label: 'Monitoreo',      desc: 'Clima y ambiente'     },
   { to: '/alertas',        icon: BellRing,      label: 'Alertas',        desc: 'Recordatorios'        },
   { to: '/diagnostico',    icon: Microscope,    label: 'Diagnóstico',    desc: 'Fitosanitario'        },
@@ -107,7 +107,7 @@ export default function Sidebar() {
             <NavLink key={to} to={to} onClick={() => setOpen(false)}>
               {({ isActive }) => (
                 <div
-                  className="flex flex-col gap-2.5 p-3.5 rounded-xl transition-all duration-200 cursor-pointer min-h-[76px]"
+                  className="flex flex-col gap-2.5 p-4 rounded-xl transition-all duration-200 cursor-pointer min-h-[88px]"
                   style={{
                     backgroundColor: isActive ? 'rgba(22,163,74,0.20)' : p.cardIdle,
                     border: `1px solid ${isActive ? 'rgba(22,163,74,0.50)' : p.cardBorder}`,

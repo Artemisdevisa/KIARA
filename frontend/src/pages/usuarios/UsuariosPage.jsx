@@ -262,6 +262,7 @@ export default function UsuariosPage() {
               backgroundColor: dark ? D.inputBg : '#f9fafb',
               border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
               color: dark ? D.text : '#374151',
+              height: '36px',
             }}
           />
         </div>
@@ -272,8 +273,9 @@ export default function UsuariosPage() {
             <button
               key={r.value}
               onClick={() => setRolFilter(r.value)}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+              className="px-3 rounded-lg text-xs font-bold transition-all"
               style={{
+                height: '36px',
                 backgroundColor: rolFilter === r.value ? '#16a34a' : dark ? D.btnIdle : '#f3f4f6',
                 border: `1px solid ${rolFilter === r.value ? '#16a34a' : dark ? D.btnBorder : '#e5e7eb'}`,
                 color: rolFilter === r.value ? '#fff' : dark ? D.sub : '#6b7280',
@@ -355,19 +357,21 @@ export default function UsuariosPage() {
                     </td>
 
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => { setEditUser(u); setModalOpen(true) }}
-                          className="p-2 rounded-lg transition-colors"
-                          style={{ color: dark ? D.sub : '#9ca3af' }}
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = dark ? 'rgba(96,165,250,0.12)' : '#eff6ff'; e.currentTarget.style.color = '#3b82f6' }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = dark ? D.sub : '#9ca3af' }}
-                        ><Pencil size={14} /></button>
-                        <button onClick={() => setDeleteUser(u)}
-                          className="p-2 rounded-lg transition-colors"
-                          style={{ color: dark ? D.sub : '#9ca3af' }}
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.12)' : '#fef2f2'; e.currentTarget.style.color = '#ef4444' }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = dark ? D.sub : '#9ca3af' }}
-                        ><Trash2 size={14} /></button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => { setEditUser(u); setModalOpen(true) }}
+                          className="p-2 rounded-lg transition-all duration-150"
+                          style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: 'transparent' }}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff' }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                        ><Pencil size={16} /></button>
+                        <button
+                          onClick={() => setDeleteUser(u)}
+                          className="p-2 rounded-lg transition-all duration-150"
+                          style={{ color: dark ? '#f87171' : '#dc2626', backgroundColor: 'transparent' }}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2' }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                        ><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
