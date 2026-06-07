@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import {
   LayoutDashboard, Leaf, Wheat, Thermometer, BellRing,
-  Microscope, PackageCheck, BarChart3, ShoppingCart, LogOut, Menu, X, ShieldCheck
+  Microscope, PackageCheck, BarChart3, ShoppingCart, LogOut, Menu, X, ShieldCheck, BookOpen
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -16,6 +16,7 @@ const modules = [
   { to: '/cosechas',       icon: PackageCheck,  label: 'Cosechas',       desc: 'Mis productos'        },
   { to: '/trazabilidad',   icon: BarChart3,     label: 'Trazabilidad',   desc: 'Costos y prácticas'   },
   { to: '/marketplace',    icon: ShoppingCart,  label: 'Marketplace',    desc: 'Mercado local'        },
+  { to: '/recomendaciones',icon: BookOpen,      label: 'Guía de cultivos',desc: 'Manejo sostenible'   },
 ]
 
 /* Paleta sidebar: siempre verde oscuro en light, azul marino en dark */

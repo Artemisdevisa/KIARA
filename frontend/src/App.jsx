@@ -30,6 +30,7 @@ import DiagnosticoPage from './pages/diagnostico/DiagnosticoPage'
 import CosechasPage from './pages/cosechas/CosechasPage'
 import CosechasForm from './pages/cosechas/CosechasForm'
 import TrazabilidadPage from './pages/trazabilidad/TrazabilidadPage'
+import RecomendacionesPage from './pages/recomendaciones/RecomendacionesPage'
 import AdministrativoPage from './pages/administrativo/AdministrativoPage'
 import UsuariosPage from './pages/usuarios/UsuariosPage'
 
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="cosechas" element={<CosechasPage />} />
         <Route path="cosechas/nueva" element={<CosechasForm />} />
         <Route path="trazabilidad" element={<TrazabilidadPage />} />
+        <Route path="recomendaciones" element={<RecomendacionesPage />} />
         <Route path="administrativo" element={<AdministrativoPage />} />
         <Route path="usuarios" element={<UsuariosPage />} />
       </Route>
