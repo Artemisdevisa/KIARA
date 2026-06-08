@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Menu, Search, Heart, ShoppingCart, X, ChevronRight, Leaf } from 'lucide-react'
+import { Menu, Search, Heart, ShoppingCart, X, ChevronRight, Leaf, ChevronDown, LayoutDashboard, ShoppingBag, User, LogOut } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import api from '../../api/axios'
@@ -313,8 +313,95 @@ function MenuDrawer({ open, onClose, token, categorias }) {
 /* ────────────────────────────────────────────
    HEADER PRINCIPAL
 ──────────────────────────────────────────── */
+/* ────────────────────────────────────────────
+   USER DROPDOWN
+──────────────────────────────────────────── */
+function Tooltip({ label, danger }) {
+  return (
+    <div className="absolute bottom-[calc(100%+7px)] left-1/2 -translate-x-1/2 pointer-events-none
+      opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 whitespace-nowrap">
+      <div className="px-2.5 py-1.5 rounded-lg text-[11px] font-black text-white"
+        style={{ background: danger ? '#DC2626' : '#1B4332', boxShadow: '0 4px 12px rgba(0,0,0,0.18)' }}>
+        {label}
+      </div>
+      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0"
+        style={{ borderLeft: '5px solid transparent', borderRight: '5px solid transparent',
+          borderTop: `5px solid ${danger ? '#DC2626' : '#1B4332'}` }} />
+    </div>
+  )
+}
+
+function UserDropdown({ user, onLogout }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const navigate = useNavigate()
+
+  const displayName = user?.first_name || user?.username || 'Usuario'
+  const initials    = displayName.slice(0, 2).toUpperCase()
+
+  useEffect(() => {
+    const fn = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', fn)
+    return () => document.removeEventListener('mousedown', fn)
+  }, [])
+
+  const go = path => { setOpen(false); navigate(path) }
+
+  const ACTIONS = [
+    { icon: ShoppingBag,    label: 'Mis compras',     action: () => go('/mis-compras') },
+    { icon: User,           label: 'Mi cuenta',       action: () => go('/mi-cuenta')   },
+    { icon: LayoutDashboard,label: 'Panel admin',     action: () => go('/dashboard')   },
+    { icon: LogOut,         label: 'Cerrar sesión',   action: () => { setOpen(false); onLogout() }, danger: true },
+  ]
+
+  return (
+    <div ref={ref} className="relative hidden sm:block">
+      {/* Trigger */}
+      <button onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all hover:bg-[#f0fdf4]">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-black shrink-0"
+          style={{ background: 'linear-gradient(135deg,#2D6A4F,#1B4332)' }}>
+          {initials}
+        </div>
+        <span className="text-sm font-bold max-w-[110px] truncate" style={{ color: '#1B4332' }}>
+          Hola, {displayName}
+        </span>
+        <ChevronDown size={13} className="transition-transform duration-200 shrink-0"
+          style={{ color: '#6B7280', transform: open ? 'rotate(180deg)' : 'rotate(0)' }} />
+      </button>
+
+      {/* Popup horizontal */}
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+10px)] z-50 flex items-center gap-0.5 px-2 py-2 rounded-2xl"
+          style={{ background: '#fff', boxShadow: '0 8px 32px rgba(27,67,50,0.14)', border: '1px solid #F3F4F6' }}>
+
+          {/* Separador vertical antes de logout */}
+          {ACTIONS.map(({ icon: Icon, label, action, danger }, i) => (
+            <div key={label} className="flex items-center">
+              {i === ACTIONS.length - 1 && (
+                <div className="w-px h-6 mx-1 shrink-0" style={{ background: '#F3F4F6' }} />
+              )}
+              <div className="relative group">
+                <button
+                  onClick={action}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-150"
+                  style={{ color: danger ? '#EF4444' : '#2D6A4F' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = danger ? '#FEF2F2' : '#F0FDF4' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                  <Icon size={17} />
+                </button>
+                <Tooltip label={label} danger={danger} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Header() {
-  const { token } = useAuth()
+  const { token, user, logout } = useAuth()
   const { count } = useCart()
   const navigate  = useNavigate()
 
@@ -501,10 +588,8 @@ export default function Header() {
             </Link>
 
             {/* 6 · Auth */}
-            {token ? (
-              <div className="hidden sm:block ml-1">
-                <BtnPrimary to="/dashboard">Mi Dashboard</BtnPrimary>
-              </div>
+            {token && user ? (
+              <UserDropdown user={user} onLogout={() => { logout(); navigate('/') }} />
             ) : (
               <div className="hidden sm:flex items-center gap-2 ml-1">
                 <BtnSecondary to="/login">Ingresar</BtnSecondary>

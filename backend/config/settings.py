@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'apps.trazabilidad',
     'apps.dashboard',
     'apps.pedidos',
+    'apps.campanas',
 ]
 
 MIDDLEWARE = [
@@ -95,6 +96,8 @@ LANGUAGE_CODE = 'es-pe'
 TIME_ZONE = 'America/Lima'
 USE_I18N = True
 USE_TZ = True
+
+X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'

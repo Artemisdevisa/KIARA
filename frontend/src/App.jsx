@@ -12,6 +12,7 @@ import QuienesSomosPage from './pages/QuienesSomosPage'
 import ComoFuncionaPage from './pages/ComoFuncionaPage'
 import ContactoPage from './pages/ContactoPage'
 import CartPage from './pages/cart/CartPage'
+import MisComprasPage from './pages/MisComprasPage'
 import CheckoutPage from './pages/checkout/CheckoutPage'
 import PagoExitosoPage from './pages/checkout/PagoExitosoPage'
 import PagoPendientePage from './pages/checkout/PagoPendientePage'
@@ -37,7 +38,19 @@ import CosechasForm from './pages/cosechas/CosechasForm'
 import TrazabilidadPage from './pages/trazabilidad/TrazabilidadPage'
 import RecomendacionesPage from './pages/recomendaciones/RecomendacionesPage'
 import AdministrativoPage from './pages/administrativo/AdministrativoPage'
+import AsignarRolesPage from './pages/administrativo/AsignarRolesPage'
 import UsuariosPage from './pages/usuarios/UsuariosPage'
+import CampanasPage from './pages/campanas/CampanasPage'
+import CampanaDetailPage from './pages/campanas/CampanaDetailPage'
+import CatalogosPage from './pages/catalogos/CatalogosPage'
+import VariedadesPage from './pages/catalogos/VariedadesPage'
+import ProductosPage from './pages/catalogos/ProductosPage'
+import TiposLaborPage from './pages/catalogos/TiposLaborPage'
+import UnidadesPage from './pages/catalogos/UnidadesPage'
+import PlagasPage from './pages/catalogos/PlagasPage'
+import ObjetivosPage from './pages/catalogos/ObjetivosPage'
+import CondicionesPage from './pages/catalogos/CondicionesPage'
+import MiHuertoPage from './pages/mihuerto/MiHuertoPage'
 
 function ProtectedRoute({ children }) {
   const { token } = useAuth()
@@ -55,6 +68,7 @@ export default function App() {
         <Route path="como-funciona" element={<ComoFuncionaPage />} />
         <Route path="contacto" element={<ContactoPage />} />
         <Route path="carrito" element={<CartPage />} />
+        <Route path="mis-compras" element={<MisComprasPage />} />
         <Route path="checkout" element={<CheckoutPage />} />
         <Route path="pago-exitoso" element={<PagoExitosoPage />} />
         <Route path="pago-pendiente" element={<PagoPendientePage />} />
@@ -83,7 +97,19 @@ export default function App() {
         <Route path="trazabilidad" element={<TrazabilidadPage />} />
         <Route path="recomendaciones" element={<RecomendacionesPage />} />
         <Route path="administrativo" element={<AdministrativoPage />} />
+        <Route path="asignar-roles" element={<AsignarRolesPage />} />
         <Route path="usuarios" element={<UsuariosPage />} />
+        <Route path="mi-huerto" element={<MiHuertoPage />} />
+        <Route path="campanas" element={<CampanasPage />} />
+        <Route path="campanas/:id" element={<CampanaDetailPage />} />
+        <Route path="catalogos" element={<CatalogosPage />} />
+        <Route path="catalogos/variedades" element={<VariedadesPage />} />
+        <Route path="catalogos/productos" element={<ProductosPage />} />
+        <Route path="catalogos/labores" element={<TiposLaborPage />} />
+        <Route path="catalogos/unidades" element={<UnidadesPage />} />
+        <Route path="catalogos/plagas" element={<PlagasPage />} />
+        <Route path="catalogos/objetivos" element={<ObjetivosPage />} />
+        <Route path="catalogos/condiciones" element={<CondicionesPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -19,8 +19,10 @@ class RegistroSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password2')
         password = validated_data.pop('password')
+        rol = validated_data.get('rol', 'cliente')
         user = User(**validated_data)
         user.set_password(password)
+        user.roles = [rol]
         user.save()
         return user
 
@@ -28,7 +30,7 @@ class RegistroSerializer(serializers.ModelSerializer):
 class PerfilSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'telefono', 'rol', 'date_joined']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'telefono', 'rol', 'roles', 'date_joined']
         read_only_fields = ['id', 'username', 'date_joined']
 
 
@@ -37,7 +39,7 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'telefono', 'rol', 'is_active', 'date_joined', 'password']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'telefono', 'rol', 'roles', 'is_active', 'date_joined', 'password']
         read_only_fields = ['id', 'date_joined']
 
     def update(self, instance, validated_data):

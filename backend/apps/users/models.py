@@ -4,12 +4,13 @@ from django.db import models
 
 class User(AbstractUser):
     ROL_CHOICES = [
+        ('cliente',   'Cliente'),
         ('productor', 'Productor'),
-        ('consumidor', 'Consumidor'),
-        ('admin', 'Administrador'),
+        ('admin',     'Administrador'),
     ]
     telefono = models.CharField(max_length=20, blank=True, verbose_name='Teléfono')
-    rol      = models.CharField(max_length=20, choices=ROL_CHOICES, default='productor', verbose_name='Rol')
+    rol      = models.CharField(max_length=20, choices=ROL_CHOICES, default='cliente', verbose_name='Rol principal')
+    roles    = models.JSONField(default=list, verbose_name='Roles')
     latitud  = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='Latitud')
     longitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='Longitud')
 

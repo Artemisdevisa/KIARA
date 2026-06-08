@@ -31,6 +31,14 @@ export function AuthProvider({ children }) {
     return userData
   }
 
+  const loginWithTokens = (access, refresh, userData) => {
+    localStorage.setItem('access_token', access)
+    localStorage.setItem('refresh_token', refresh)
+    api.defaults.headers.common['Authorization'] = `Bearer ${access}`
+    setToken(access)
+    setUser(userData)
+  }
+
   const logout = () => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
@@ -40,7 +48,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, loginWithTokens, logout, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   )

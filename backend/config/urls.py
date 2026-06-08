@@ -15,4 +15,5 @@ urlpatterns = [
     path('api/trazabilidad/', include('apps.trazabilidad.urls')),
     path('api/dashboard/', include('apps.dashboard.urls')),
     path('api/pedidos/', include('apps.pedidos.urls')),
+    path('api/campanas/', include('apps.campanas.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

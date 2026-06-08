@@ -6,25 +6,27 @@ import { UserPlus, Search, Pencil, Trash2, X, Eye, EyeOff, UserCog } from 'lucid
 
 const ROLES = [
   { value: '',           label: 'Todos'     },
+  { value: 'cliente',    label: 'Cliente'   },
   { value: 'productor',  label: 'Productor' },
-  { value: 'consumidor', label: 'Consumidor'},
   { value: 'admin',      label: 'Admin'     },
 ]
 
 const ROL_BADGE = {
+  cliente:    { bg: '#f3f4f6', color: '#4b5563' },
   productor:  { bg: '#dcfce7', color: '#15803d' },
   consumidor: { bg: '#dbeafe', color: '#1d4ed8' },
   admin:      { bg: '#fee2e2', color: '#b91c1c' },
 }
 const ROL_BADGE_DARK = {
-  productor:  { bg: 'rgba(22,163,74,0.18)',  color: '#4ade80' },
-  consumidor: { bg: 'rgba(59,130,246,0.18)', color: '#60a5fa' },
-  admin:      { bg: 'rgba(239,68,68,0.18)',  color: '#f87171' },
+  cliente:    { bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' },
+  productor:  { bg: 'rgba(22,163,74,0.18)',   color: '#4ade80' },
+  consumidor: { bg: 'rgba(59,130,246,0.18)',  color: '#60a5fa' },
+  admin:      { bg: 'rgba(239,68,68,0.18)',   color: '#f87171' },
 }
 
 const EMPTY_FORM = {
   username: '', email: '', first_name: '', last_name: '',
-  telefono: '', rol: 'productor', password: '', password2: '', is_active: true,
+  telefono: '', rol: 'cliente', password: '', password2: '', is_active: true,
 }
 
 /* ── Paleta dark coherente con el tema azul marino ── */
@@ -115,8 +117,8 @@ function UsuarioModal({ dark, onClose, onSaved, editUser }) {
             <div>
               <label style={labelStyle}>Rol</label>
               <select name="rol" value={form.rol} onChange={handle} style={inputStyle}>
+                <option value="cliente">Cliente</option>
                 <option value="productor">Productor</option>
-                <option value="consumidor">Consumidor</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
@@ -336,10 +338,14 @@ export default function UsuariosPage() {
                     <td className="px-5 py-3.5 hidden sm:table-cell text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>{u.telefono || '—'}</td>
 
                     <td className="px-5 py-3.5">
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full capitalize"
-                        style={{ backgroundColor: badge[u.rol]?.bg, color: badge[u.rol]?.color }}>
-                        {u.rol}
-                      </span>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {(u.roles?.length ? u.roles : [u.rol]).map(r => (
+                          <span key={r} className="text-xs font-bold px-2 py-0.5 rounded-full capitalize"
+                            style={{ backgroundColor: badge[r]?.bg || badge.cliente.bg, color: badge[r]?.color || badge.cliente.color }}>
+                            {r}
+                          </span>
+                        ))}
+                      </div>
                     </td>
 
                     <td className="px-5 py-3.5 hidden lg:table-cell text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>

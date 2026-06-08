@@ -1,15 +1,75 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useGoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../context/AuthContext'
+import api from '../api/axios'
 import toast from 'react-hot-toast'
-import { Leaf, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight } from 'lucide-react'
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.859-3.048.859-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/>
+      <path d="M3.964 10.705A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.705V4.963H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.037l3.007-2.332Z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.963L3.964 7.295C4.672 5.163 6.656 3.58 9 3.58Z" fill="#EA4335"/>
+    </svg>
+  )
+}
+
+function GoogleBtnActive({ label, onSuccess }) {
+  const [loading, setLoading] = useState(false)
+  const trigger = useGoogleLogin({
+    onSuccess: async (res) => {
+      setLoading(true)
+      try { await onSuccess(res) }
+      catch { toast.error('No se pudo autenticar con Google.') }
+      finally { setLoading(false) }
+    },
+    onError: () => toast.error('Google cancelado.'),
+  })
+  return (
+    <button type="button" onClick={() => trigger()} disabled={loading}
+      className="w-full flex items-center justify-center gap-3 font-bold text-sm py-3 rounded-xl transition-all hover:shadow-md disabled:opacity-60"
+      style={{ border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151' }}>
+      {loading ? 'Conectando...' : <><GoogleIcon /> {label}</>}
+    </button>
+  )
+}
+
+function GoogleBtn({ label, onSuccess }) {
+  if (!GOOGLE_CLIENT_ID) {
+    return (
+      <button type="button"
+        onClick={() => toast('Configura VITE_GOOGLE_CLIENT_ID en frontend/.env', { icon: '⚙️' })}
+        className="w-full flex items-center justify-center gap-3 font-bold text-sm py-3 rounded-xl transition-all hover:shadow-md"
+        style={{ border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151' }}>
+        <GoogleIcon /> {label}
+      </button>
+    )
+  }
+  return <GoogleBtnActive label={label} onSuccess={onSuccess} />
+}
 
 export default function Login() {
-  const { login } = useAuth()
+  const { login, loginWithTokens, token } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ username: '', password: '' })
+  const [form, setForm]         = useState({ username: '', password: '' })
   const [showPass, setShowPass] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading]   = useState(false)
+
+  useEffect(() => {
+    if (token) navigate('/dashboard', { replace: true })
+  }, [token])
+
+  const handleGoogleSuccess = async (tokenResponse) => {
+    const res = await api.post('/auth/google/', { token: tokenResponse.access_token })
+    loginWithTokens(res.data.access, res.data.refresh, res.data.user)
+    toast.success('¡Bienvenido!')
+    navigate('/dashboard')
+  }
 
   const handleSubmit = async e => {
     e.preventDefault()
@@ -26,70 +86,189 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-700 to-primary-900 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
-        <div className="flex flex-col items-center mb-8">
-          <div className="bg-primary-100 rounded-full p-4 mb-3">
-            <Leaf size={32} className="text-primary-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">BioHuerto USAT</h1>
-          <p className="text-gray-500 text-sm mt-1">Gestión agroecológica urbana</p>
+    <div className="min-h-screen flex">
+
+      {/* ── Panel izquierdo — branding ── */}
+      <div className="hidden lg:flex flex-col justify-between w-[46%] shrink-0 p-12 relative overflow-hidden"
+        style={{ background: 'linear-gradient(160deg,#1B4332 0%,#2D6A4F 60%,#40916C 100%)' }}>
+
+        {/* Patrón de puntos */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.06]"
+          style={{ backgroundImage: 'radial-gradient(circle,#fff 1px,transparent 1px)', backgroundSize: '28px 28px' }} />
+
+        {/* Blobs */}
+        <div className="absolute top-[-80px] right-[-80px] w-80 h-80 rounded-full opacity-20 blur-3xl"
+          style={{ background: '#74C69D' }} />
+        <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 rounded-full opacity-15 blur-3xl"
+          style={{ background: '#52B788' }} />
+
+        {/* Logo */}
+        <div className="relative z-10 flex items-center gap-3">
+          <svg width="40" height="40" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="18" fill="rgba(255,255,255,0.15)" />
+            <path d="M18 28 C18 28 8 22 9 14 C12 12 16 15 18 28Z" fill="white" opacity="0.9" />
+            <path d="M18 24 C18 24 28 18 27 10 C24 8 20 11 18 24Z" fill="white" />
+            <path d="M18 28 L18 30" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+          </svg>
+          <span className="font-black tracking-[0.12em] text-2xl text-white">KIARA</span>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
-            <input
-              type="text"
-              className="input-field"
-              placeholder="Tu nombre de usuario"
-              value={form.username}
-              onChange={e => setForm({ ...form, username: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-            <div className="relative">
-              <input
-                type={showPass ? 'text' : 'password'}
-                className="input-field pr-10"
-                placeholder="Tu contraseña"
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-                required
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                onClick={() => setShowPass(!showPass)}
-              >
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
-            {loading ? 'Ingresando...' : 'Ingresar'}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center space-y-2">
-          <p className="text-sm text-gray-500">
-            ¿No tienes cuenta?{' '}
-            <Link to="/register" className="text-primary-600 font-medium hover:underline">
-              Regístrate
-            </Link>
+        {/* Centro */}
+        <div className="relative z-10">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] mb-4"
+            style={{ color: 'rgba(255,255,255,0.55)' }}>
+            Biohuertos Urbanos · USAT
           </p>
-          <p className="text-sm text-gray-500">
-            <Link to="/marketplace" className="text-primary-600 hover:underline">
+          <h2 className="font-black text-white leading-tight mb-5"
+            style={{ fontSize: 'clamp(2rem,3.2vw,2.8rem)' }}>
+            Cultiva, conecta<br />y transforma.
+          </h2>
+          <p className="text-base max-w-xs leading-relaxed"
+            style={{ color: 'rgba(255,255,255,0.60)' }}>
+            La plataforma digital para productores de biohuertos urbanos de Lambayeque.
+          </p>
+
+          {/* Stats */}
+          <div className="flex gap-6 mt-10">
+            {[['50+','Productores'],['200+','Cosechas'],['8','Comunidades']].map(([n,l]) => (
+              <div key={l} className="text-center">
+                <p className="font-black text-2xl text-white leading-none">{n}</p>
+                <p className="text-[11px] font-semibold mt-1" style={{ color: 'rgba(255,255,255,0.45)' }}>{l}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer branding */}
+        <p className="relative z-10 text-xs font-semibold"
+          style={{ color: 'rgba(255,255,255,0.28)' }}>
+          © 2026 KIARA · Universidad Católica Santo Toribio de Mogrovejo
+        </p>
+      </div>
+
+      {/* ── Panel derecho — formulario ── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12"
+        style={{ background: '#FAFAFA' }}>
+
+        {/* Logo móvil */}
+        <div className="lg:hidden flex items-center gap-2 mb-10">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="18" fill="url(#lgm)" />
+            <path d="M18 28 C18 28 8 22 9 14 C12 12 16 15 18 28Z" fill="white" opacity="0.9" />
+            <path d="M18 24 C18 24 28 18 27 10 C24 8 20 11 18 24Z" fill="white" />
+            <path d="M18 28 L18 30" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+            <defs><linearGradient id="lgm" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#2D6A4F" /><stop offset="100%" stopColor="#1B4332" />
+            </linearGradient></defs>
+          </svg>
+          <span className="font-black tracking-[0.10em] text-xl"
+            style={{ background: 'linear-gradient(135deg,#1B4332,#2D6A4F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            KIARA
+          </span>
+        </div>
+
+        <div className="w-full max-w-sm">
+          <h1 className="font-black text-3xl mb-1" style={{ color: '#1B4332' }}>
+            Bienvenido
+          </h1>
+          <p className="text-sm mb-8" style={{ color: '#9CA3AF' }}>
+            Ingresa a tu cuenta para continuar
+          </p>
+
+          {/* Google button */}
+          <div className="mb-5">
+            <GoogleBtn label="Continuar con Google" onSuccess={handleGoogleSuccess} />
+          </div>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 h-px" style={{ background: '#E5E7EB' }} />
+            <span className="text-xs font-semibold" style={{ color: '#9CA3AF' }}>o con usuario</span>
+            <div className="flex-1 h-px" style={{ background: '#E5E7EB' }} />
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* Usuario */}
+            <div>
+              <label className="block text-[12px] font-black uppercase tracking-wider mb-2"
+                style={{ color: '#374151' }}>
+                Usuario
+              </label>
+              <input
+                type="text"
+                value={form.username}
+                onChange={e => setForm({ ...form, username: e.target.value })}
+                placeholder="Tu nombre de usuario"
+                required
+                className="w-full px-4 py-3 text-sm rounded-xl outline-none transition-all"
+                style={{
+                  border: '1.5px solid #E5E7EB',
+                  background: '#fff',
+                  color: '#111827',
+                }}
+                onFocus={e => { e.target.style.borderColor = '#2D6A4F'; e.target.style.boxShadow = '0 0 0 3px rgba(45,106,79,0.08)' }}
+                onBlur={e => { e.target.style.borderColor = '#E5E7EB'; e.target.style.boxShadow = 'none' }}
+              />
+            </div>
+
+            {/* Contraseña */}
+            <div>
+              <label className="block text-[12px] font-black uppercase tracking-wider mb-2"
+                style={{ color: '#374151' }}>
+                Contraseña
+              </label>
+              <div className="relative">
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  placeholder="Tu contraseña"
+                  required
+                  className="w-full px-4 py-3 pr-12 text-sm rounded-xl outline-none transition-all"
+                  style={{ border: '1.5px solid #E5E7EB', background: '#fff', color: '#111827' }}
+                  onFocus={e => { e.target.style.borderColor = '#2D6A4F'; e.target.style.boxShadow = '0 0 0 3px rgba(45,106,79,0.08)' }}
+                  onBlur={e => { e.target.style.borderColor = '#E5E7EB'; e.target.style.boxShadow = 'none' }}
+                />
+                <button type="button"
+                  onClick={() => setShowPass(v => !v)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                  style={{ color: '#9CA3AF' }}>
+                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit */}
+            <button type="submit" disabled={loading}
+              className="w-full flex items-center justify-center gap-2 font-black text-sm py-3.5 rounded-xl text-white transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{ background: loading ? '#6B7280' : 'linear-gradient(135deg,#2D6A4F,#1B4332)', boxShadow: '0 4px 20px rgba(45,106,79,0.28)' }}>
+              {loading ? 'Ingresando...' : <>Ingresar <ArrowRight size={15} /></>}
+            </button>
+          </form>
+
+          {/* Links */}
+          <div className="mt-7 space-y-3 text-center">
+            <p className="text-sm" style={{ color: '#6B7280' }}>
+              ¿No tienes cuenta?{' '}
+              <Link to="/register" className="font-black transition-colors hover:underline" style={{ color: '#2D6A4F' }}>
+                Regístrate gratis
+              </Link>
+            </p>
+            <Link to="/marketplace" className="block text-sm font-semibold transition-colors hover:underline"
+              style={{ color: '#9CA3AF' }}>
               Ver cosechas disponibles →
             </Link>
-          </p>
-        </div>
+          </div>
 
-        <div className="mt-6 p-3 bg-primary-50 rounded-lg text-xs text-center text-gray-500">
-          <strong>Demo:</strong> usuario <code className="bg-white px-1 rounded">productor_demo</code> / contraseña <code className="bg-white px-1 rounded">Demo1234</code>
+          {/* Demo */}
+          <div className="mt-8 px-4 py-3.5 rounded-2xl" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+            <p className="text-[11px] font-black uppercase tracking-wider mb-2" style={{ color: '#15803D' }}>
+              Cuenta demo
+            </p>
+            <div className="flex gap-4 text-xs" style={{ color: '#166534' }}>
+              <span>Usuario: <code className="font-black bg-white px-1.5 py-0.5 rounded-lg">productor_demo</code></span>
+              <span>Pass: <code className="font-black bg-white px-1.5 py-0.5 rounded-lg">Demo1234</code></span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

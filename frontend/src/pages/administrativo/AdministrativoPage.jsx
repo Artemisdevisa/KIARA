@@ -1,25 +1,13 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, UserCog, TreePine, BadgeCheck, Sprout } from 'lucide-react'
+import { ArrowRight, UserCog, BadgeCheck, Users } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
 
 const cards = [
   {
-    icon: UserCog,
+    icon: Users,
     label: 'Usuarios',
     desc: 'Gestiona los usuarios registrados: productores, consumidores y administradores.',
     to: '/usuarios',
-  },
-  {
-    icon: TreePine,
-    label: 'Biohuertos',
-    desc: 'Administra todos los biohuertos registrados, sus productores y el estado de cada espacio.',
-    to: '/biohuertos',
-  },
-  {
-    icon: Sprout,
-    label: 'Cultivos',
-    desc: 'Gestiona los cultivos activos, sus etapas, fechas de siembra y cosecha estimada.',
-    to: '/cultivos',
   },
   {
     icon: BadgeCheck,
@@ -44,7 +32,7 @@ export default function AdministrativoPage() {
           Panel Administrativo
         </h1>
         <p className="text-sm mt-1" style={{ color: dark ? 'rgba(255,255,255,0.40)' : '#9ca3af' }}>
-          Selecciona un módulo para administrar
+          Usuarios y permisos del sistema
         </p>
       </div>
 

@@ -2,38 +2,60 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
-import { Sprout, Plus, Search, Pencil, Trash2, X, Calendar, Power } from 'lucide-react'
+import { Sprout, Plus, Search, Pencil, Trash2, X, Calendar, Power, TreeDeciduous, RefreshCw } from 'lucide-react'
 
-const ESTADO_FILTERS = [
-  { value: '',          label: 'Todos'      },
-  { value: 'activo',    label: 'Activo'     },
-  { value: 'cosechado', label: 'Cosechado'  },
-  { value: 'perdido',   label: 'Perdido'    },
-]
-
-const ETAPA_OPTS = [
+/* ─── Etapas por tipo de ciclo ─── */
+const ETAPAS_ANUAL = [
   { value: 'germinacion', label: 'Germinación' },
   { value: 'crecimiento', label: 'Crecimiento' },
   { value: 'floracion',   label: 'Floración'   },
   { value: 'cosecha',     label: 'Cosecha'     },
 ]
+const ETAPAS_PERENNE = [
+  { value: 'establecido', label: 'Establecido' },
+  { value: 'poda',        label: 'Poda'        },
+  { value: 'brotacion',   label: 'Brotación'   },
+  { value: 'floracion',   label: 'Floración'   },
+  { value: 'cosecha',     label: 'Cosecha'     },
+]
 
+const ESTADO_FILTERS = [
+  { value: '',          label: 'Todos'     },
+  { value: 'activo',    label: 'Activo'    },
+  { value: 'cosechado', label: 'Cosechado' },
+  { value: 'perdido',   label: 'Perdido'   },
+]
+
+const TIPO_FILTERS = [
+  { value: '',        label: 'Todos'   },
+  { value: 'anual',   label: 'Anual'   },
+  { value: 'perenne', label: 'Perenne' },
+]
+
+/* Badge colors */
 const ETAPA_BADGE = {
   germinacion: { bg: '#fef9c3', color: '#a16207' },
   crecimiento: { bg: '#dbeafe', color: '#1d4ed8' },
+  establecido: { bg: '#ccfbf1', color: '#0f766e' },
+  poda:        { bg: '#ffedd5', color: '#c2410c' },
+  brotacion:   { bg: '#dcfce7', color: '#15803d' },
   floracion:   { bg: '#f3e8ff', color: '#7e22ce' },
-  cosecha:     { bg: '#dcfce7', color: '#15803d' },
+  cosecha:     { bg: '#d1fae5', color: '#065f46' },
 }
 const ETAPA_BADGE_DARK = {
   germinacion: { bg: 'rgba(234,179,8,0.18)',   color: '#fde047' },
   crecimiento: { bg: 'rgba(59,130,246,0.18)',  color: '#60a5fa' },
+  establecido: { bg: 'rgba(20,184,166,0.18)',  color: '#2dd4bf' },
+  poda:        { bg: 'rgba(249,115,22,0.18)',  color: '#fb923c' },
+  brotacion:   { bg: 'rgba(34,197,94,0.18)',   color: '#4ade80' },
   floracion:   { bg: 'rgba(168,85,247,0.18)',  color: '#c084fc' },
-  cosecha:     { bg: 'rgba(22,163,74,0.18)',   color: '#4ade80' },
+  cosecha:     { bg: 'rgba(16,185,129,0.18)',  color: '#34d399' },
 }
 
 const EMPTY_FORM = {
-  biohuerto: '', nombre: '', fecha_siembra: '', etapa: 'germinacion',
-  cantidad: '', unidad: 'm²', fecha_estimada_cosecha: '', notas: '', estado: 'activo',
+  biohuerto: '', nombre: '', tipo_ciclo: 'anual', fecha_siembra: '',
+  etapa: 'germinacion', cantidad: '', unidad: 'm²',
+  fecha_estimada_cosecha: '', notas: '', estado: 'activo',
 }
 
 const D = {
@@ -51,8 +73,8 @@ const D = {
 
 /* ── Modal crear/editar ── */
 function CultivoModal({ dark, onClose, onSaved, editItem }) {
-  const [form, setForm]           = useState(editItem ? { ...editItem } : EMPTY_FORM)
-  const [loading, setLoading]     = useState(false)
+  const [form,       setForm]       = useState(editItem ? { ...editItem, biohuerto: editItem.biohuerto ?? '' } : EMPTY_FORM)
+  const [loading,    setLoading]    = useState(false)
   const [biohuertos, setBiohuertos] = useState([])
 
   useEffect(() => {
@@ -61,15 +83,31 @@ function CultivoModal({ dark, onClose, onSaved, editItem }) {
 
   const handle = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
+  const handleTipoCiclo = tipo => {
+    setForm(f => ({
+      ...f,
+      tipo_ciclo: tipo,
+      etapa: tipo === 'anual' ? 'germinacion' : 'establecido',
+      fecha_siembra: tipo === 'perenne' ? '' : f.fecha_siembra,
+    }))
+  }
+
+  const etapaOpts = form.tipo_ciclo === 'perenne' ? ETAPAS_PERENNE : ETAPAS_ANUAL
+
   const submit = async e => {
     e.preventDefault()
     setLoading(true)
     try {
+      const payload = {
+        ...form,
+        fecha_siembra:          form.fecha_siembra          || null,
+        fecha_estimada_cosecha: form.fecha_estimada_cosecha || null,
+      }
       if (editItem) {
-        await api.patch(`/cultivos/${editItem.id}/`, form)
+        await api.patch(`/cultivos/${editItem.id}/`, payload)
         toast.success('Cultivo actualizado.')
       } else {
-        await api.post('/cultivos/', form)
+        await api.post('/cultivos/', payload)
         toast.success('Cultivo registrado.')
       }
       onSaved()
@@ -88,18 +126,23 @@ function CultivoModal({ dark, onClose, onSaved, editItem }) {
     backgroundColor: dark ? D.inputBg : '#f9fafb',
     border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
     color: dark ? D.text : '#111827',
-    width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '13px', outline: 'none',
+    width: '100%', borderRadius: '10px', padding: '9px 13px', fontSize: '15px', outline: 'none',
   }
   const labelStyle = {
-    display: 'block', fontSize: '11px', fontWeight: 700, marginBottom: '4px',
+    display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '5px',
     color: dark ? D.sub : '#6b7280',
   }
+
+  const isPerenne = form.tipo_ciclo === 'perenne'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-2xl shadow-2xl p-6 z-10" style={panelStyle}>
-        <div className="flex items-center justify-between mb-5">
+      <div className="relative w-full max-w-lg rounded-2xl shadow-2xl z-10 flex flex-col"
+        style={{ ...panelStyle, maxHeight: '92vh' }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
           <h2 className="text-base font-extrabold" style={{ color: dark ? D.text : '#111827' }}>
             {editItem ? 'Editar cultivo' : 'Registrar cultivo'}
           </h2>
@@ -108,59 +151,147 @@ function CultivoModal({ dark, onClose, onSaved, editItem }) {
           </button>
         </div>
 
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label style={labelStyle}>Biohuerto</label>
-            <select name="biohuerto" value={form.biohuerto} onChange={handle} style={inputStyle} required>
-              <option value="">Selecciona un biohuerto</option>
-              {biohuertos.map(b => (
-                <option key={b.id} value={b.id}>{b.nombre}</option>
-              ))}
-            </select>
-          </div>
+        <form onSubmit={submit} className="flex flex-col min-h-0" style={{ flex: 1 }}>
+          <div className="overflow-y-auto thin-scroll px-6 pb-4 space-y-4" style={{ flex: 1 }}>
 
-          <div className="grid grid-cols-2 gap-3">
+            {/* Tipo de ciclo */}
             <div>
-              <label style={labelStyle}>Nombre del cultivo</label>
-              <input name="nombre" value={form.nombre} onChange={handle} style={inputStyle} placeholder="Tomate cherry" required />
+              <label style={labelStyle}>Tipo de ciclo *</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  {
+                    value: 'anual',
+                    icon: <RefreshCw size={15} />,
+                    title: 'Anual',
+                    desc: 'Siembra → cosecha → replanta',
+                  },
+                  {
+                    value: 'perenne',
+                    icon: <TreeDeciduous size={15} />,
+                    title: 'Perenne',
+                    desc: 'Planta permanente, ciclos de cosecha',
+                  },
+                ].map(opt => {
+                  const active = form.tipo_ciclo === opt.value
+                  return (
+                    <button key={opt.value} type="button" onClick={() => handleTipoCiclo(opt.value)}
+                      className="flex items-start gap-2.5 p-3 rounded-xl text-left transition-all"
+                      style={{
+                        border: `1.5px solid ${active
+                          ? (opt.value === 'anual' ? '#d97706' : '#16a34a')
+                          : dark ? D.inputBorder : '#e5e7eb'}`,
+                        backgroundColor: active
+                          ? (opt.value === 'anual'
+                              ? (dark ? 'rgba(217,119,6,0.12)' : '#fffbeb')
+                              : (dark ? 'rgba(22,163,74,0.12)' : '#f0fdf4'))
+                          : (dark ? D.inputBg : '#f9fafb'),
+                      }}>
+                      <span style={{
+                        color: active
+                          ? (opt.value === 'anual' ? '#d97706' : '#16a34a')
+                          : dark ? D.sub : '#9ca3af',
+                        marginTop: '1px',
+                      }}>
+                        {opt.icon}
+                      </span>
+                      <div>
+                        <p className="text-xs font-extrabold" style={{
+                          color: active
+                            ? (opt.value === 'anual' ? (dark ? '#fbbf24' : '#d97706') : (dark ? '#4ade80' : '#15803d'))
+                            : dark ? D.text : '#374151',
+                        }}>
+                          {opt.title}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: dark ? D.sub : '#9ca3af' }}>
+                          {opt.desc}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
+
+            {/* Biohuerto */}
             <div>
-              <label style={labelStyle}>Etapa</label>
-              <select name="etapa" value={form.etapa} onChange={handle} style={inputStyle}>
-                {ETAPA_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              <label style={labelStyle}>Biohuerto *</label>
+              <select name="biohuerto" value={form.biohuerto} onChange={handle} style={inputStyle} required>
+                <option value="">Selecciona un biohuerto</option>
+                {biohuertos.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
               </select>
             </div>
+
+            {/* Nombre + Etapa */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label style={labelStyle}>Nombre del cultivo *</label>
+                <input name="nombre" value={form.nombre} onChange={handle} style={inputStyle}
+                  placeholder={isPerenne ? 'Vid, Manzano…' : 'Lechuga, Tomate…'} required />
+              </div>
+              <div>
+                <label style={labelStyle}>Etapa actual *</label>
+                <select name="etapa" value={form.etapa} onChange={handle} style={inputStyle}>
+                  {etapaOpts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Cantidad + Unidad */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label style={labelStyle}>Cantidad *</label>
+                <input name="cantidad" type="number" step="0.01" min="0" value={form.cantidad}
+                  onChange={handle} style={inputStyle} placeholder="50.00" required />
+              </div>
+              <div>
+                <label style={labelStyle}>Unidad</label>
+                <input name="unidad" value={form.unidad} onChange={handle} style={inputStyle} placeholder="m²" />
+              </div>
+            </div>
+
+            {/* Fechas */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label style={labelStyle}>
+                  {isPerenne ? 'Fecha de plantación' : 'Fecha de siembra *'}
+                </label>
+                <input name="fecha_siembra" type="date" value={form.fecha_siembra}
+                  onChange={handle} style={inputStyle}
+                  required={!isPerenne} />
+                {isPerenne && (
+                  <p className="mt-1 text-xs" style={{ color: dark ? 'rgba(255,255,255,0.28)' : '#9ca3af' }}>
+                    Opcional si la planta ya estaba establecida
+                  </p>
+                )}
+              </div>
+              <div>
+                <label style={labelStyle}>
+                  {isPerenne ? 'Próxima cosecha est.' : 'Cosecha estimada *'}
+                </label>
+                <input name="fecha_estimada_cosecha" type="date" value={form.fecha_estimada_cosecha}
+                  onChange={handle} style={inputStyle}
+                  required={!isPerenne} />
+                {isPerenne && (
+                  <p className="mt-1 text-xs" style={{ color: dark ? 'rgba(255,255,255,0.28)' : '#9ca3af' }}>
+                    Se actualiza cada ciclo
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Notas */}
+            <div>
+              <label style={labelStyle}>Notas</label>
+              <textarea name="notas" value={form.notas} onChange={handle} rows={2}
+                style={{ ...inputStyle, resize: 'none' }}
+                placeholder={isPerenne ? 'Variedad, edad de la planta, últimas podas…' : 'Observaciones adicionales…'} />
+            </div>
+
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label style={labelStyle}>Cantidad</label>
-              <input name="cantidad" type="number" step="0.01" min="0" value={form.cantidad} onChange={handle} style={inputStyle} placeholder="50.00" required />
-            </div>
-            <div>
-              <label style={labelStyle}>Unidad</label>
-              <input name="unidad" value={form.unidad} onChange={handle} style={inputStyle} placeholder="m²" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label style={labelStyle}>Fecha de siembra</label>
-              <input name="fecha_siembra" type="date" value={form.fecha_siembra} onChange={handle} style={inputStyle} required />
-            </div>
-            <div>
-              <label style={labelStyle}>Cosecha estimada</label>
-              <input name="fecha_estimada_cosecha" type="date" value={form.fecha_estimada_cosecha} onChange={handle} style={inputStyle} required />
-            </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Notas</label>
-            <textarea name="notas" value={form.notas} onChange={handle} rows={2}
-              style={{ ...inputStyle, resize: 'none' }} placeholder="Observaciones adicionales..." />
-          </div>
-
-          <div className="flex gap-3 pt-1">
+          {/* Footer fijo */}
+          <div className="flex gap-3 px-6 py-4 shrink-0"
+            style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}` }}>
             <button type="button" onClick={onClose} className="flex-1 btn-secondary text-sm">Cancelar</button>
             <button type="submit" disabled={loading} className="flex-1 btn-primary text-sm">
               {loading ? 'Guardando...' : editItem ? 'Guardar cambios' : 'Registrar'}
@@ -205,14 +336,15 @@ function ConfirmModal({ dark, item, onClose, onConfirm, loading }) {
 /* ── Página principal ── */
 export default function CultivosPage() {
   const { dark } = useTheme()
-  const [cultivos, setCultivos]       = useState([])
-  const [loading, setLoading]         = useState(true)
-  const [search, setSearch]           = useState('')
-  const [estadoFilter, setEstadoFilter] = useState('')
-  const [modalOpen, setModalOpen]     = useState(false)
-  const [editItem, setEditItem]       = useState(null)
-  const [deleteItem, setDeleteItem]   = useState(null)
-  const [delLoading, setDelLoading]   = useState(false)
+  const [cultivos,      setCultivos]      = useState([])
+  const [loading,       setLoading]       = useState(true)
+  const [search,        setSearch]        = useState('')
+  const [estadoFilter,  setEstadoFilter]  = useState('')
+  const [tipoFilter,    setTipoFilter]    = useState('')
+  const [modalOpen,     setModalOpen]     = useState(false)
+  const [editItem,      setEditItem]      = useState(null)
+  const [deleteItem,    setDeleteItem]    = useState(null)
+  const [delLoading,    setDelLoading]    = useState(false)
 
   const fetchCultivos = useCallback(async () => {
     setLoading(true)
@@ -231,7 +363,7 @@ export default function CultivosPage() {
     const siguiente = ESTADO_CICLO[c.estado]
     try {
       await api.patch(`/cultivos/${c.id}/`, { estado: siguiente })
-      toast.success(`Estado cambiado a ${siguiente}.`)
+      toast.success(`Estado → ${siguiente}.`)
       fetchCultivos()
     } catch { toast.error('No se pudo cambiar el estado.') }
   }
@@ -253,7 +385,8 @@ export default function CultivosPage() {
       c.nombre.toLowerCase().includes(q) ||
       c.biohuerto_nombre?.toLowerCase().includes(q)
     const matchEstado = !estadoFilter || c.estado === estadoFilter
-    return matchSearch && matchEstado
+    const matchTipo   = !tipoFilter   || c.tipo_ciclo === tipoFilter
+    return matchSearch && matchEstado && matchTipo
   })
 
   const cardStyle = {
@@ -261,8 +394,22 @@ export default function CultivosPage() {
     border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`,
     borderRadius: '16px',
   }
-
   const etapaBadge = dark ? ETAPA_BADGE_DARK : ETAPA_BADGE
+
+  const tipoBadge = (tipo) => {
+    if (tipo === 'perenne') return {
+      bg:    dark ? 'rgba(22,163,74,0.15)'  : '#f0fdf4',
+      color: dark ? '#4ade80' : '#15803d',
+      icon:  <TreeDeciduous size={10} />,
+      label: 'Perenne',
+    }
+    return {
+      bg:    dark ? 'rgba(217,119,6,0.15)' : '#fffbeb',
+      color: dark ? '#fbbf24' : '#d97706',
+      icon:  <RefreshCw size={10} />,
+      label: 'Anual',
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -283,47 +430,59 @@ export default function CultivosPage() {
         </div>
         <button
           onClick={() => { setEditItem(null); setModalOpen(true) }}
-          className="flex items-center gap-2 btn-primary text-sm"
-        >
-          <Plus size={15} />
-          Nuevo cultivo
+          className="flex items-center gap-2 btn-primary text-sm">
+          <Plus size={15} /> Nuevo cultivo
         </button>
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center"
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap"
         style={{ ...cardStyle, padding: '14px 16px' }}>
-        <div className="relative w-64 shrink-0">
+        <div className="relative w-56 shrink-0">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2"
             style={{ color: dark ? D.sub : '#9ca3af' }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar cultivo..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cultivo..."
             style={{
               width: '100%', paddingLeft: '32px', paddingRight: '12px',
               paddingTop: '7px', paddingBottom: '7px',
-              fontSize: '13px', borderRadius: '10px', outline: 'none',
+              fontSize: '15px', borderRadius: '10px', outline: 'none',
               backgroundColor: dark ? D.inputBg : '#f9fafb',
               border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
-              color: dark ? D.text : '#374151',
-              height: '36px',
-            }}
-          />
+              color: dark ? D.text : '#374151', height: '36px',
+            }} />
         </div>
+
+        {/* Filtro ciclo */}
+        <div className="flex gap-1.5">
+          {TIPO_FILTERS.map(f => (
+            <button key={f.value} onClick={() => setTipoFilter(f.value)}
+              className="px-3 rounded-lg text-xs font-bold transition-all"
+              style={{
+                height: '36px',
+                backgroundColor: tipoFilter === f.value
+                  ? (f.value === 'perenne' ? '#16a34a' : f.value === 'anual' ? '#d97706' : '#374151')
+                  : dark ? D.btnIdle : '#f3f4f6',
+                border: `1px solid ${tipoFilter === f.value
+                  ? (f.value === 'perenne' ? '#16a34a' : f.value === 'anual' ? '#d97706' : '#374151')
+                  : dark ? D.btnBorder : '#e5e7eb'}`,
+                color: tipoFilter === f.value ? '#fff' : dark ? D.sub : '#6b7280',
+              }}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Filtro estado */}
         <div className="flex gap-1.5 flex-wrap">
           {ESTADO_FILTERS.map(f => (
-            <button
-              key={f.value}
-              onClick={() => setEstadoFilter(f.value)}
+            <button key={f.value} onClick={() => setEstadoFilter(f.value)}
               className="px-3 rounded-lg text-xs font-bold transition-all"
               style={{
                 height: '36px',
                 backgroundColor: estadoFilter === f.value ? '#16a34a' : dark ? D.btnIdle : '#f3f4f6',
                 border: `1px solid ${estadoFilter === f.value ? '#16a34a' : dark ? D.btnBorder : '#e5e7eb'}`,
                 color: estadoFilter === f.value ? '#fff' : dark ? D.sub : '#6b7280',
-              }}
-            >
+              }}>
               {f.label}
             </button>
           ))}
@@ -346,14 +505,14 @@ export default function CultivosPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                  {['Cultivo', 'Biohuerto', 'Etapa', 'Cantidad', 'Siembra', 'Cosecha est.', 'Estado', ''].map((h, i) => (
+                  {['Cultivo', 'Biohuerto', 'Ciclo', 'Etapa', 'Cantidad', 'Siembra', 'Cosecha est.', 'Estado', ''].map((h, i) => (
                     <th key={i}
-                      className={`px-5 py-3 text-left text-xs font-bold uppercase tracking-wide
+                      className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide
                         ${i === 1 ? 'hidden md:table-cell' : ''}
-                        ${i === 3 ? 'hidden sm:table-cell' : ''}
-                        ${i === 4 ? 'hidden lg:table-cell' : ''}
+                        ${i === 4 ? 'hidden sm:table-cell' : ''}
                         ${i === 5 ? 'hidden lg:table-cell' : ''}
-                        ${i === 7 ? 'text-right' : ''}`}
+                        ${i === 6 ? 'hidden lg:table-cell' : ''}
+                        ${i === 8 ? 'text-right' : ''}`}
                       style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>
                       {h}
                     </th>
@@ -361,95 +520,113 @@ export default function CultivosPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(c => (
-                  <tr
-                    key={c.id}
-                    style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <td className="px-5 py-3.5">
-                      <p className="font-semibold leading-tight" style={{ color: dark ? D.text : '#111827' }}>
-                        {c.nombre}
-                      </p>
-                    </td>
+                {filtered.map(c => {
+                  const tb = tipoBadge(c.tipo_ciclo)
+                  return (
+                    <tr key={c.id}
+                      style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
 
-                    <td className="px-5 py-3.5 hidden md:table-cell text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
-                      {c.biohuerto_nombre}
-                    </td>
+                      <td className="px-4 py-3.5">
+                        <p className="font-semibold leading-tight" style={{ color: dark ? D.text : '#111827' }}>{c.nombre}</p>
+                      </td>
 
-                    <td className="px-5 py-3.5">
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full capitalize"
-                        style={{ backgroundColor: etapaBadge[c.etapa]?.bg, color: etapaBadge[c.etapa]?.color }}>
-                        {c.etapa_display}
-                      </span>
-                    </td>
+                      <td className="px-4 py-3.5 hidden md:table-cell text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
+                        {c.biohuerto_nombre}
+                      </td>
 
-                    <td className="px-5 py-3.5 hidden sm:table-cell text-xs" style={{ color: dark ? D.text : '#374151' }}>
-                      {c.cantidad} {c.unidad}
-                    </td>
+                      <td className="px-4 py-3.5">
+                        <span className="flex items-center gap-1 text-[13px] font-bold px-2 py-0.5 rounded-full w-fit"
+                          style={{ backgroundColor: tb.bg, color: tb.color }}>
+                          {tb.icon} {tb.label}
+                        </span>
+                      </td>
 
-                    <td className="px-5 py-3.5 hidden lg:table-cell">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar size={12} style={{ color: dark ? D.sub : '#9ca3af' }} />
-                        <span className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>{c.fecha_siembra}</span>
-                      </div>
-                    </td>
+                      <td className="px-4 py-3.5">
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full capitalize"
+                          style={{ backgroundColor: etapaBadge[c.etapa]?.bg, color: etapaBadge[c.etapa]?.color }}>
+                          {c.etapa_display}
+                        </span>
+                      </td>
 
-                    <td className="px-5 py-3.5 hidden lg:table-cell">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar size={12} style={{ color: dark ? D.sub : '#9ca3af' }} />
-                        <span className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>{c.fecha_estimada_cosecha}</span>
-                        {c.dias_para_cosecha !== null && c.estado === 'activo' && (
-                          <span className="text-xs font-semibold" style={{ color: c.dias_para_cosecha <= 7 ? '#f97316' : dark ? D.sub : '#9ca3af' }}>
-                            ({c.dias_para_cosecha >= 0 ? `${c.dias_para_cosecha}d` : `-${Math.abs(c.dias_para_cosecha)}d`})
+                      <td className="px-4 py-3.5 hidden sm:table-cell text-xs" style={{ color: dark ? D.text : '#374151' }}>
+                        {c.cantidad} {c.unidad}
+                      </td>
+
+                      <td className="px-4 py-3.5 hidden lg:table-cell">
+                        {c.fecha_siembra ? (
+                          <div className="flex items-center gap-1.5">
+                            <Calendar size={12} style={{ color: dark ? D.sub : '#9ca3af' }} />
+                            <span className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>{c.fecha_siembra}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs italic" style={{ color: dark ? 'rgba(255,255,255,0.25)' : '#d1d5db' }}>
+                            ya establecido
                           </span>
                         )}
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="px-5 py-3.5">
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full capitalize"
-                        style={
-                          c.estado === 'activo'    ? { backgroundColor: dark ? 'rgba(22,163,74,0.18)'  : '#dcfce7', color: dark ? '#4ade80' : '#15803d' } :
-                          c.estado === 'cosechado' ? { backgroundColor: dark ? 'rgba(59,130,246,0.18)' : '#dbeafe', color: dark ? '#60a5fa' : '#1d4ed8' } :
-                                                     { backgroundColor: dark ? 'rgba(239,68,68,0.18)'  : '#fee2e2', color: dark ? '#f87171' : '#dc2626' }
-                        }>
-                        {c.estado_display}
-                      </span>
-                    </td>
+                      <td className="px-4 py-3.5 hidden lg:table-cell">
+                        {c.fecha_estimada_cosecha ? (
+                          <div className="flex items-center gap-1.5">
+                            <Calendar size={12} style={{ color: dark ? D.sub : '#9ca3af' }} />
+                            <span className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>{c.fecha_estimada_cosecha}</span>
+                            {c.dias_para_cosecha !== null && c.estado === 'activo' && (
+                              <span className="text-xs font-semibold"
+                                style={{ color: c.dias_para_cosecha <= 7 ? '#f97316' : dark ? D.sub : '#9ca3af' }}>
+                                ({c.dias_para_cosecha >= 0 ? `${c.dias_para_cosecha}d` : `+${Math.abs(c.dias_para_cosecha)}d`})
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs" style={{ color: dark ? 'rgba(255,255,255,0.25)' : '#d1d5db' }}>—</span>
+                        )}
+                      </td>
 
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => { setEditItem(c); setModalOpen(true) }}
-                          className="p-2 rounded-lg transition-all duration-150"
-                          style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: 'transparent' }}
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff' }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
-                        ><Pencil size={16} /></button>
-                        <button
-                          onClick={() => handleToggleEstado(c)}
-                          className="p-2 rounded-lg transition-all duration-150"
-                          title={`Estado: ${c.estado} → ${ESTADO_CICLO[c.estado]}`}
-                          style={{
-                            color: c.estado === 'activo' ? (dark ? '#4ade80' : '#16a34a') : c.estado === 'cosechado' ? (dark ? '#60a5fa' : '#2563eb') : (dark ? '#f87171' : '#dc2626'),
-                            backgroundColor: 'transparent',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6' }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
-                        ><Power size={16} /></button>
-                        <button
-                          onClick={() => setDeleteItem(c)}
-                          className="p-2 rounded-lg transition-all duration-150"
-                          style={{ color: dark ? '#f87171' : '#dc2626', backgroundColor: 'transparent' }}
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2' }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
-                        ><Trash2 size={16} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      <td className="px-4 py-3.5">
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full capitalize"
+                          style={
+                            c.estado === 'activo'    ? { backgroundColor: dark ? 'rgba(22,163,74,0.18)'  : '#dcfce7', color: dark ? '#4ade80' : '#15803d' } :
+                            c.estado === 'cosechado' ? { backgroundColor: dark ? 'rgba(59,130,246,0.18)' : '#dbeafe', color: dark ? '#60a5fa' : '#1d4ed8' } :
+                                                       { backgroundColor: dark ? 'rgba(239,68,68,0.18)'  : '#fee2e2', color: dark ? '#f87171' : '#dc2626' }
+                          }>
+                          {c.estado_display}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => { setEditItem(c); setModalOpen(true) }}
+                            className="p-2 rounded-lg transition-all duration-150"
+                            style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: 'transparent' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                            <Pencil size={16} />
+                          </button>
+                          <button onClick={() => handleToggleEstado(c)}
+                            className="p-2 rounded-lg transition-all duration-150"
+                            title={`Estado: ${c.estado} → ${ESTADO_CICLO[c.estado]}`}
+                            style={{
+                              color: c.estado === 'activo' ? (dark ? '#4ade80' : '#16a34a') : c.estado === 'cosechado' ? (dark ? '#60a5fa' : '#2563eb') : (dark ? '#f87171' : '#dc2626'),
+                              backgroundColor: 'transparent',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                            <Power size={16} />
+                          </button>
+                          <button onClick={() => setDeleteItem(c)}
+                            className="p-2 rounded-lg transition-all duration-150"
+                            style={{ color: dark ? '#f87171' : '#dc2626', backgroundColor: 'transparent' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

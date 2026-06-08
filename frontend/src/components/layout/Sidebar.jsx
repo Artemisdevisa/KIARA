@@ -2,21 +2,21 @@ import { NavLink, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import {
-  LayoutDashboard, Leaf, Wheat, Thermometer, BellRing,
-  Microscope, PackageCheck, BarChart3, ShoppingCart, LogOut, Menu, X, ShieldCheck, BookOpen
+  LayoutDashboard, Thermometer, BellRing,
+  Microscope, PackageCheck, ShoppingCart, LogOut, Menu, X, ShieldCheck, BookOpen,
+  TreePine
 } from 'lucide-react'
 import { useState } from 'react'
 
 const modules = [
-  { to: '/administrativo', icon: ShieldCheck,  label: 'Administrativo', desc: 'Usuarios y biohuertos' },
-  { to: '/cultivos',       icon: Wheat,         label: 'Ventas',         desc: 'Siembras activas'     },
-  { to: '/monitoreo',      icon: Thermometer,   label: 'Monitoreo',      desc: 'Clima y ambiente'     },
-  { to: '/alertas',        icon: BellRing,      label: 'Alertas',        desc: 'Recordatorios'        },
-  { to: '/diagnostico',    icon: Microscope,    label: 'Diagnóstico',    desc: 'Fitosanitario'        },
-  { to: '/cosechas',       icon: PackageCheck,  label: 'Cosechas',       desc: 'Mis productos'        },
-  { to: '/trazabilidad',   icon: BarChart3,     label: 'Trazabilidad',   desc: 'Costos y prácticas'   },
-  { to: '/marketplace',    icon: ShoppingCart,  label: 'Marketplace',    desc: 'Mercado local'        },
-  { to: '/recomendaciones',icon: BookOpen,      label: 'Guía de cultivos',desc: 'Manejo sostenible'   },
+  { to: '/administrativo', icon: ShieldCheck,   label: 'Administrativo',  desc: 'Usuarios y roles'      },
+  { to: '/mi-huerto',      icon: TreePine,       label: 'Mi Huerto',       desc: 'Parcelas y campañas'   },
+  { to: '/monitoreo',      icon: Thermometer,    label: 'Monitoreo',       desc: 'Clima y ambiente'      },
+  { to: '/alertas',        icon: BellRing,       label: 'Alertas',         desc: 'Recordatorios'         },
+  { to: '/diagnostico',    icon: Microscope,     label: 'Diagnóstico',     desc: 'Fitosanitario'         },
+  { to: '/cosechas',       icon: PackageCheck,   label: 'Cosechas',        desc: 'Mis productos'         },
+  { to: '/marketplace',    icon: ShoppingCart,   label: 'Marketplace',     desc: 'Mercado local'         },
+  { to: '/recomendaciones',icon: BookOpen,       label: 'Guía cultivos',   desc: 'Manejo sostenible'     },
 ]
 
 /* Paleta sidebar: siempre verde oscuro en light, azul marino en dark */

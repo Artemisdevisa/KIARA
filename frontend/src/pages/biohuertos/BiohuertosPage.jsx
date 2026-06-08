@@ -2,16 +2,39 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
-import { TreePine, Plus, Search, Pencil, Trash2, X, MapPin, Ruler, Leaf, Power, Navigation } from 'lucide-react'
+import {
+  TreePine, Plus, Search, Pencil, Trash2, X, MapPin, Ruler,
+  Power, Navigation, FileText, Eye, Upload, Paperclip, ChevronDown,
+} from 'lucide-react'
 
 const ESTADO_FILTERS = [
-  { value: '',        label: 'Todos'   },
-  { value: 'activo',  label: 'Activo'  },
-  { value: 'inactivo',label: 'Inactivo'},
+  { value: '',         label: 'Todos'   },
+  { value: 'activo',   label: 'Activo'  },
+  { value: 'inactivo', label: 'Inactivo'},
 ]
 
+const TIPO_DOC = [
+  { value: 'licencia',       label: 'Licencia'       },
+  { value: 'certificacion',  label: 'Certificación'  },
+  { value: 'permiso',        label: 'Permiso'        },
+  { value: 'otro',           label: 'Otro'           },
+]
+
+const TIPO_COLOR = {
+  licencia:      { bg: 'rgba(59,130,246,0.15)',  text: '#60a5fa'  },
+  certificacion: { bg: 'rgba(168,85,247,0.15)',  text: '#c084fc'  },
+  permiso:       { bg: 'rgba(234,179,8,0.15)',   text: '#facc15'  },
+  otro:          { bg: 'rgba(255,255,255,0.08)', text: '#94a3b8'  },
+}
+const TIPO_COLOR_L = {
+  licencia:      { bg: '#dbeafe', text: '#1d4ed8' },
+  certificacion: { bg: '#f3e8ff', text: '#7e22ce' },
+  permiso:       { bg: '#fef9c3', text: '#854d0e' },
+  otro:          { bg: '#f3f4f6', text: '#6b7280' },
+}
+
 const EMPTY_FORM = {
-  nombre: '', codigo: '', ubicacion: '', area: '', descripcion: '',
+  nombre: '', ubicacion: '', area: '', descripcion: '',
   departamento: '', provincia: '', distrito: '', latitud: '', longitud: '',
 }
 
@@ -28,10 +51,9 @@ const D = {
   sub:         'rgba(255,255,255,0.45)',
 }
 
-/* ── Carga el script de Google Maps una sola vez ── */
+/* ── Google Maps loader ── */
 let gmapReady = false
 let gmapCallbacks = []
-
 function loadGoogleMaps() {
   if (gmapReady) return Promise.resolve()
   if (window.google?.maps) { gmapReady = true; return Promise.resolve() }
@@ -42,74 +64,54 @@ function loadGoogleMaps() {
     const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
     s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&language=es`
     s.async = true
-    s.onload = () => {
-      gmapReady = true
-      gmapCallbacks.forEach(cb => cb())
-      gmapCallbacks = []
-    }
+    s.onload = () => { gmapReady = true; gmapCallbacks.forEach(cb => cb()); gmapCallbacks = [] }
     document.head.appendChild(s)
   })
 }
 
-/* ── Componente mapa satelital ── */
+/* ── Mapa satélite ── */
 function MapPicker({ dark, latitud, longitud, onLocationSelect }) {
-  const mapDivRef   = useRef(null)
-  const searchRef   = useRef(null)
-  const mapRef      = useRef(null)
-  const markerRef   = useRef(null)
+  const mapDivRef = useRef(null)
+  const searchRef = useRef(null)
+  const mapRef    = useRef(null)
+  const markerRef = useRef(null)
   const [ready, setReady] = useState(false)
 
-  useEffect(() => {
-    loadGoogleMaps().then(() => setReady(true))
-  }, [])
+  useEffect(() => { loadGoogleMaps().then(() => setReady(true)) }, [])
 
   useEffect(() => {
     if (!ready || !mapDivRef.current) return
-
-    const DEFAULT_CENTER = { lat: -6.7714, lng: -79.8409 } // Chiclayo
+    const DEFAULT_CENTER = { lat: -6.7714, lng: -79.8409 }
     const center = latitud && longitud
       ? { lat: parseFloat(latitud), lng: parseFloat(longitud) }
       : DEFAULT_CENTER
-
     const map = new window.google.maps.Map(mapDivRef.current, {
-      center,
-      zoom: latitud && longitud ? 16 : 13,
-      mapTypeId: 'satellite',
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
+      center, zoom: latitud && longitud ? 16 : 13, mapTypeId: 'satellite',
+      mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
       zoomControlOptions: { position: window.google.maps.ControlPosition.RIGHT_BOTTOM },
     })
     mapRef.current = map
-
     if (latitud && longitud) {
-      markerRef.current = new window.google.maps.Marker({
-        position: center, map, draggable: true,
-      })
+      markerRef.current = new window.google.maps.Marker({ position: center, map, draggable: true })
       markerRef.current.addListener('dragend', e => reverseGeocode(e.latLng))
     }
-
     map.addListener('click', e => placeMarker(e.latLng))
-
     if (searchRef.current) {
       const ac = new window.google.maps.places.Autocomplete(searchRef.current, {
-        componentRestrictions: { country: 'pe' },
-        fields: ['geometry', 'formatted_address'],
+        componentRestrictions: { country: 'pe' }, fields: ['geometry', 'formatted_address'],
       })
       ac.addListener('place_changed', () => {
         const place = ac.getPlace()
         if (!place.geometry?.location) return
-        map.setCenter(place.geometry.location)
-        map.setZoom(17)
+        map.setCenter(place.geometry.location); map.setZoom(17)
         placeMarker(place.geometry.location)
       })
     }
   }, [ready])
 
   const placeMarker = latLng => {
-    if (markerRef.current) {
-      markerRef.current.setPosition(latLng)
-    } else {
+    if (markerRef.current) { markerRef.current.setPosition(latLng) }
+    else {
       markerRef.current = new window.google.maps.Marker({
         position: latLng, map: mapRef.current, draggable: true,
         animation: window.google.maps.Animation.DROP,
@@ -130,47 +132,32 @@ function MapPicker({ dark, latitud, longitud, onLocationSelect }) {
         if (c.types.includes('administrative_area_level_2')) provincia    = c.long_name
         if (c.types.includes('locality') || c.types.includes('administrative_area_level_3')) distrito = c.long_name
       }
-      onLocationSelect({
-        latitud:  latLng.lat(),
-        longitud: latLng.lng(),
-        departamento, provincia, distrito,
-        direccion: results[0].formatted_address,
-      })
+      onLocationSelect({ latitud: latLng.lat(), longitud: latLng.lng(), departamento, provincia, distrito, direccion: results[0].formatted_address })
     })
   }
 
   const inputStyle = {
-    width: '100%', padding: '7px 12px 7px 32px',
-    fontSize: '12px', borderRadius: '8px', outline: 'none',
-    backgroundColor: dark ? D.inputBg : '#f9fafb',
-    border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
+    width: '100%', padding: '7px 12px 7px 32px', fontSize: '12px', borderRadius: '8px', outline: 'none',
+    backgroundColor: dark ? D.inputBg : '#f9fafb', border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
     color: dark ? D.text : '#111827',
   }
-
   return (
     <div className="space-y-2">
-      {/* Buscador */}
       <div className="relative">
         <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
           style={{ color: dark ? D.sub : '#9ca3af' }} />
-        <input ref={searchRef} type="text" placeholder="Buscar dirección en Perú..."
-          style={inputStyle} />
+        <input ref={searchRef} type="text" placeholder="Buscar dirección en Perú..." style={inputStyle} />
       </div>
-
-      {/* Mapa */}
-      <div style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden',
-        border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}` }}>
+      <div style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}` }}>
         {!ready && (
-          <div className="flex items-center justify-center"
-            style={{ height: '220px', backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f3f4f6' }}>
+          <div className="flex items-center justify-center" style={{ height: '220px', backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f3f4f6' }}>
             <div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
         <div ref={mapDivRef} style={{ width: '100%', height: '220px', display: ready ? 'block' : 'none' }} />
         {!latitud && ready && (
           <div className="absolute bottom-2 left-2 right-2 flex justify-center pointer-events-none">
-            <span className="text-xs px-2 py-1 rounded-full"
-              style={{ backgroundColor: 'rgba(0,0,0,0.55)', color: '#fff' }}>
+            <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: 'rgba(0,0,0,0.55)', color: '#fff' }}>
               Haz clic en el mapa para marcar la ubicación
             </span>
           </div>
@@ -180,10 +167,294 @@ function MapPicker({ dark, latitud, longitud, onLocationSelect }) {
   )
 }
 
-/* ── Modal crear/editar ── */
+/* ── Preview PDF modal (full-screen overlay) ── */
+function PdfPreviewModal({ dark, url, nombre, onClose }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col" style={{ backgroundColor: 'rgba(0,0,0,0.88)' }}>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-5 py-3 shrink-0"
+        style={{ backgroundColor: dark ? '#1a2332' : '#1e293b', borderBottom: '1px solid rgba(255,255,255,0.10)' }}>
+        <div className="flex items-center gap-2.5">
+          <FileText size={16} style={{ color: '#60a5fa' }} />
+          <span className="text-sm font-semibold text-white truncate max-w-xs">{nombre}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <a href={url} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-colors"
+            style={{ backgroundColor: 'rgba(255,255,255,0.10)' }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.18)'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.10)'}>
+            <Eye size={13} /> Abrir en nueva pestaña
+          </a>
+          <button onClick={onClose} className="p-2 rounded-lg text-white"
+            style={{ backgroundColor: 'rgba(255,255,255,0.07)' }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.25)'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.07)'}>
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+      {/* PDF iframe */}
+      <div className="flex-1 relative">
+        <iframe src={url} className="w-full h-full border-0" title={nombre} />
+      </div>
+    </div>
+  )
+}
+
+/* ── Sección de documentos dentro del modal ── */
+function DocSection({ dark, biohuerto, stagedDocs, setStagedDocs }) {
+  const fileRef = useRef(null)
+  const [docs,       setDocs]       = useState(biohuerto?.documentos ?? [])
+  const [uploading,  setUploading]  = useState(false)
+  const [preview,    setPreview]    = useState(null) // { url, nombre }
+  const [collapsed,  setCollapsed]  = useState(false)
+
+  const fetchDocs = async () => {
+    if (!biohuerto) return
+    try {
+      const res = await api.get(`/biohuertos/${biohuerto.id}/documentos/`)
+      setDocs(res.data)
+    } catch { /* silent */ }
+  }
+
+  const inputStyle = {
+    backgroundColor: dark ? D.inputBg : '#f9fafb',
+    border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
+    color: dark ? D.text : '#111827',
+    borderRadius: '8px', padding: '6px 10px', fontSize: '12px', outline: 'none',
+  }
+  const labelSt = { fontSize: '13px', fontWeight: 700, color: dark ? D.sub : '#6b7280' }
+
+  const handleFileChange = e => {
+    const files = Array.from(e.target.files)
+    if (!files.length) return
+    const newStaged = files.map(f => ({
+      file:              f,
+      nombre:            f.name.replace(/\.[^/.]+$/, ''),
+      tipo:              'otro',
+      fecha_emision:     '',
+      fecha_vencimiento: '',
+      objectUrl:         URL.createObjectURL(f),
+    }))
+    if (biohuerto) {
+      // upload immediately
+      uploadFiles(newStaged)
+    } else {
+      setStagedDocs(prev => [...prev, ...newStaged])
+    }
+    e.target.value = ''
+  }
+
+  const uploadFiles = async (files) => {
+    setUploading(true)
+    for (const f of files) {
+      try {
+        const fd = new FormData()
+        fd.append('archivo',           f.file)
+        fd.append('nombre',            f.nombre)
+        fd.append('tipo',              f.tipo)
+        if (f.fecha_emision)     fd.append('fecha_emision',     f.fecha_emision)
+        if (f.fecha_vencimiento) fd.append('fecha_vencimiento', f.fecha_vencimiento)
+        await api.post(`/biohuertos/${biohuerto.id}/documentos/`, fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        toast.success(`"${f.nombre}" subido.`)
+      } catch { toast.error(`Error al subir "${f.nombre}".`) }
+    }
+    setUploading(false)
+    fetchDocs()
+  }
+
+  const handleDeleteSaved = async (doc) => {
+    try {
+      await api.delete(`/biohuertos/documentos/${doc.id}/`)
+      setDocs(prev => prev.filter(d => d.id !== doc.id))
+      toast.success('Documento eliminado.')
+    } catch { toast.error('No se pudo eliminar.') }
+  }
+
+  const handleDeleteStaged = idx => {
+    setStagedDocs(prev => {
+      URL.revokeObjectURL(prev[idx].objectUrl)
+      return prev.filter((_, i) => i !== idx)
+    })
+  }
+
+  const updateStaged = (idx, field, value) =>
+    setStagedDocs(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d))
+
+  const tipoBadge = (tipo, dark) => {
+    const c = dark ? TIPO_COLOR[tipo] ?? TIPO_COLOR.otro : TIPO_COLOR_L[tipo] ?? TIPO_COLOR_L.otro
+    return (
+      <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+        style={{ backgroundColor: c.bg, color: c.text }}>
+        {TIPO_DOC.find(t => t.value === tipo)?.label ?? tipo}
+      </span>
+    )
+  }
+
+  const divider = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'
+  const sectionBg = dark ? 'rgba(255,255,255,0.03)' : '#f9fafb'
+
+  return (
+    <>
+      {/* Section header */}
+      <div style={{ borderTop: `1px solid ${divider}`, paddingTop: '16px' }}>
+        <button type="button"
+          className="flex items-center justify-between w-full"
+          onClick={() => setCollapsed(c => !c)}>
+          <div className="flex items-center gap-2">
+            <Paperclip size={14} style={{ color: dark ? '#60a5fa' : '#2563eb' }} />
+            <span className="text-xs font-extrabold uppercase tracking-wide"
+              style={{ color: dark ? D.text : '#374151' }}>
+              Documentos PDF
+            </span>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: dark ? 'rgba(96,165,250,0.15)' : '#dbeafe', color: dark ? '#60a5fa' : '#1d4ed8' }}>
+              {docs.length + stagedDocs.length}
+            </span>
+          </div>
+          <ChevronDown size={14} style={{
+            color: dark ? D.sub : '#9ca3af',
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s',
+          }} />
+        </button>
+
+        {!collapsed && (
+          <div className="mt-3 space-y-2">
+            {/* Docs ya guardados */}
+            {docs.map(doc => (
+              <div key={doc.id} className="flex items-center gap-2 p-2.5 rounded-xl"
+                style={{ backgroundColor: sectionBg, border: `1px solid ${divider}` }}>
+                <FileText size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold truncate" style={{ color: dark ? D.text : '#111827' }}>{doc.nombre}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {tipoBadge(doc.tipo, dark)}
+                    {doc.fecha_vencimiento && (
+                      <span className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>
+                        Vence: {doc.fecha_vencimiento}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button type="button"
+                  onClick={() => setPreview({ url: doc.archivo_url, nombre: doc.nombre })}
+                  className="p-1.5 rounded-lg transition-colors shrink-0"
+                  title="Ver PDF"
+                  style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: 'transparent' }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                  <Eye size={15} />
+                </button>
+                <button type="button"
+                  onClick={() => handleDeleteSaved(doc)}
+                  className="p-1.5 rounded-lg transition-colors shrink-0"
+                  title="Eliminar"
+                  style={{ color: dark ? '#f87171' : '#dc2626', backgroundColor: 'transparent' }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+
+            {/* Docs en staging (solo en crear) */}
+            {stagedDocs.map((doc, idx) => (
+              <div key={idx} className="rounded-xl p-3 space-y-2"
+                style={{ backgroundColor: sectionBg, border: `1px dashed ${dark ? 'rgba(96,165,250,0.35)' : '#93c5fd'}` }}>
+                <div className="flex items-center gap-2">
+                  <FileText size={16} style={{ color: '#ef4444', flexShrink: 0 }} />
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: dark ? 'rgba(96,165,250,0.15)' : '#dbeafe', color: dark ? '#60a5fa' : '#1d4ed8' }}>
+                    pendiente
+                  </span>
+                  <span className="text-[13px] truncate flex-1" style={{ color: dark ? D.sub : '#6b7280' }}>
+                    {doc.file.name}
+                  </span>
+                  <button type="button" onClick={() => setPreview({ url: doc.objectUrl, nombre: doc.nombre })}
+                    className="p-1.5 rounded-lg shrink-0" title="Vista previa"
+                    style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: 'transparent' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                    <Eye size={14} />
+                  </button>
+                  <button type="button" onClick={() => handleDeleteStaged(idx)}
+                    className="p-1.5 rounded-lg shrink-0" title="Quitar"
+                    style={{ color: dark ? '#f87171' : '#dc2626', backgroundColor: 'transparent' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p style={{ ...labelSt, marginBottom: '3px' }}>Nombre</p>
+                    <input value={doc.nombre} onChange={e => updateStaged(idx, 'nombre', e.target.value)}
+                      style={{ ...inputStyle, width: '100%' }} />
+                  </div>
+                  <div>
+                    <p style={{ ...labelSt, marginBottom: '3px' }}>Tipo</p>
+                    <select value={doc.tipo} onChange={e => updateStaged(idx, 'tipo', e.target.value)}
+                      style={{ ...inputStyle, width: '100%' }}>
+                      {TIPO_DOC.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <p style={{ ...labelSt, marginBottom: '3px' }}>Emisión</p>
+                    <input type="date" value={doc.fecha_emision}
+                      onChange={e => updateStaged(idx, 'fecha_emision', e.target.value)}
+                      style={{ ...inputStyle, width: '100%' }} />
+                  </div>
+                  <div>
+                    <p style={{ ...labelSt, marginBottom: '3px' }}>Vencimiento</p>
+                    <input type="date" value={doc.fecha_vencimiento}
+                      onChange={e => updateStaged(idx, 'fecha_vencimiento', e.target.value)}
+                      style={{ ...inputStyle, width: '100%' }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Upload button */}
+            <input ref={fileRef} type="file" accept=".pdf" multiple className="hidden" onChange={handleFileChange} />
+            <button type="button" disabled={uploading}
+              onClick={() => fileRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all"
+              style={{
+                border: `1.5px dashed ${dark ? 'rgba(255,255,255,0.18)' : '#d1d5db'}`,
+                color: dark ? D.sub : '#6b7280',
+                backgroundColor: uploading ? (dark ? 'rgba(255,255,255,0.03)' : '#f9fafb') : 'transparent',
+              }}
+              onMouseEnter={e => { if (!uploading) e.currentTarget.style.borderColor = dark ? 'rgba(96,165,250,0.5)' : '#93c5fd'; if (!uploading) e.currentTarget.style.color = dark ? '#60a5fa' : '#2563eb' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.18)' : '#d1d5db'; e.currentTarget.style.color = dark ? D.sub : '#6b7280' }}>
+              {uploading
+                ? <><div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Subiendo...</>
+                : <><Upload size={13} /> Adjuntar PDF(s)</>}
+            </button>
+
+            {!biohuerto && stagedDocs.length > 0 && (
+              <p className="text-[13px] text-center" style={{ color: dark ? 'rgba(96,165,250,0.70)' : '#2563eb' }}>
+                {stagedDocs.length} documento{stagedDocs.length > 1 ? 's' : ''} se adjuntará{stagedDocs.length > 1 ? 'n' : ''} al registrar el biohuerto.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* PDF Preview overlay */}
+      {preview && <PdfPreviewModal dark={dark} url={preview.url} nombre={preview.nombre} onClose={() => setPreview(null)} />}
+    </>
+  )
+}
+
+/* ── Modal crear/editar biohuerto ── */
 function BiohuertModal({ dark, onClose, onSaved, editItem }) {
-  const [form, setForm]       = useState(editItem ? { ...editItem } : EMPTY_FORM)
-  const [loading, setLoading] = useState(false)
+  const [form,       setForm]       = useState(editItem ? { ...editItem } : EMPTY_FORM)
+  const [loading,    setLoading]    = useState(false)
+  const [stagedDocs, setStagedDocs] = useState([])
 
   const handle = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
@@ -199,6 +470,23 @@ function BiohuertModal({ dark, onClose, onSaved, editItem }) {
     }))
   }
 
+  const uploadStagedDocs = async (biohuertId) => {
+    for (const d of stagedDocs) {
+      try {
+        const fd = new FormData()
+        fd.append('archivo',           d.file)
+        fd.append('nombre',            d.nombre)
+        fd.append('tipo',              d.tipo)
+        if (d.fecha_emision)     fd.append('fecha_emision',     d.fecha_emision)
+        if (d.fecha_vencimiento) fd.append('fecha_vencimiento', d.fecha_vencimiento)
+        await api.post(`/biohuertos/${biohuertId}/documentos/`, fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+      } catch { toast.error(`Error al subir "${d.nombre}".`) }
+    }
+    stagedDocs.forEach(d => URL.revokeObjectURL(d.objectUrl))
+  }
+
   const submit = async e => {
     e.preventDefault()
     setLoading(true)
@@ -208,7 +496,8 @@ function BiohuertModal({ dark, onClose, onSaved, editItem }) {
         await api.patch(`/biohuertos/${editItem.id}/`, payload)
         toast.success('Biohuerto actualizado.')
       } else {
-        await api.post('/biohuertos/', payload)
+        const res = await api.post('/biohuertos/', payload)
+        if (stagedDocs.length) await uploadStagedDocs(res.data.id)
         toast.success('Biohuerto registrado.')
       }
       onSaved()
@@ -227,12 +516,13 @@ function BiohuertModal({ dark, onClose, onSaved, editItem }) {
     backgroundColor: dark ? D.inputBg : '#f9fafb',
     border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
     color: dark ? D.text : '#111827',
-    width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '13px', outline: 'none',
+    width: '100%', borderRadius: '10px', padding: '9px 13px', fontSize: '15px', outline: 'none',
   }
   const labelStyle = {
-    display: 'block', fontSize: '11px', fontWeight: 700, marginBottom: '4px',
+    display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '5px',
     color: dark ? D.sub : '#6b7280',
   }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -249,80 +539,80 @@ function BiohuertModal({ dark, onClose, onSaved, editItem }) {
           </button>
         </div>
 
-        {/* Contenido scrolleable */}
-        <div className="overflow-y-auto px-6 pb-6" style={{ flex: 1 }}>
-          <form onSubmit={submit} className="space-y-4">
+        {/* Scrollable form */}
+        <form onSubmit={submit} className="flex flex-col min-h-0" style={{ flex: 1 }}>
+          <div className="overflow-y-auto thin-scroll px-6 pb-4 space-y-4" style={{ flex: 1 }}>
 
-            {/* Nombre / Código */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label style={labelStyle}>Nombre</label>
-                <input name="nombre" value={form.nombre} onChange={handle} style={inputStyle} placeholder="Huerto Central" required />
-              </div>
-              <div>
-                <label style={labelStyle}>Código</label>
-                <input name="codigo" value={form.codigo} onChange={handle} style={inputStyle} placeholder="HUE-001" />
-              </div>
+            {/* Nombre */}
+            <div>
+              <label style={labelStyle}>Nombre *</label>
+              <input name="nombre" value={form.nombre} onChange={handle} style={inputStyle}
+                placeholder="Huerto Central" required />
+              {!editItem && (
+                <p className="mt-1 text-[13px]" style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>
+                  El código (BH-001, BH-002…) se asigna automáticamente al registrar.
+                </p>
+              )}
+              {editItem?.codigo && (
+                <p className="mt-1 text-[13px] font-bold" style={{ color: dark ? '#4ade80' : '#16a34a' }}>
+                  Código: {editItem.codigo}
+                </p>
+              )}
             </div>
 
-            {/* Mapa satelital */}
+            {/* Área */}
+            <div>
+              <label style={labelStyle}>Área (m²) *</label>
+              <input name="area" type="number" step="0.01" min="0" value={form.area} onChange={handle}
+                style={inputStyle} placeholder="120.00" required />
+            </div>
+
+            {/* Mapa */}
             <div>
               <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Navigation size={11} /> Ubicación en mapa
+                <span style={{ fontWeight: 400, color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>
+                  — haz clic para marcar
+                </span>
               </label>
-              <MapPicker
-                dark={dark}
-                latitud={form.latitud}
-                longitud={form.longitud}
-                onLocationSelect={handleMapSelect}
-              />
+              <MapPicker dark={dark} latitud={form.latitud} longitud={form.longitud} onLocationSelect={handleMapSelect} />
             </div>
 
             {/* Departamento / Provincia / Distrito */}
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label style={labelStyle}>Departamento</label>
-                <input name="departamento" value={form.departamento} onChange={handle}
-                  style={inputStyle} placeholder="La Libertad" />
+                <input name="departamento" value={form.departamento} onChange={handle} style={inputStyle} placeholder="Lambayeque" />
               </div>
               <div>
                 <label style={labelStyle}>Provincia</label>
-                <input name="provincia" value={form.provincia} onChange={handle}
-                  style={inputStyle} placeholder="Chiclayo" />
+                <input name="provincia" value={form.provincia} onChange={handle} style={inputStyle} placeholder="Chiclayo" />
               </div>
               <div>
                 <label style={labelStyle}>Distrito</label>
-                <input name="distrito" value={form.distrito} onChange={handle}
-                  style={inputStyle} placeholder="Chiclayo" />
+                <input name="distrito" value={form.distrito} onChange={handle} style={inputStyle} placeholder="Chiclayo" />
               </div>
             </div>
 
-            {/* Coordenadas (read-only) */}
+            {/* Coordenadas */}
             {form.latitud && form.longitud && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label style={labelStyle}>Latitud</label>
-                  <input readOnly value={form.latitud} style={{ ...inputStyle, opacity: 0.7, cursor: 'default' }} />
+                  <input readOnly value={form.latitud} style={{ ...inputStyle, opacity: 0.6, cursor: 'default' }} />
                 </div>
                 <div>
                   <label style={labelStyle}>Longitud</label>
-                  <input readOnly value={form.longitud} style={{ ...inputStyle, opacity: 0.7, cursor: 'default' }} />
+                  <input readOnly value={form.longitud} style={{ ...inputStyle, opacity: 0.6, cursor: 'default' }} />
                 </div>
               </div>
             )}
 
-            {/* Ubicación texto */}
+            {/* Dirección */}
             <div>
-              <label style={labelStyle}>Dirección de referencia</label>
+              <label style={labelStyle}>Dirección de referencia *</label>
               <input name="ubicacion" value={form.ubicacion} onChange={handle} style={inputStyle}
                 placeholder="Av. Chiclayo 123, Chiclayo" required />
-            </div>
-
-            {/* Área */}
-            <div>
-              <label style={labelStyle}>Área (m²)</label>
-              <input name="area" type="number" step="0.01" min="0" value={form.area} onChange={handle}
-                style={inputStyle} placeholder="120.00" required />
             </div>
 
             {/* Descripción */}
@@ -332,16 +622,25 @@ function BiohuertModal({ dark, onClose, onSaved, editItem }) {
                 style={{ ...inputStyle, resize: 'none' }} placeholder="Descripción del biohuerto..." />
             </div>
 
-            {/* Botones */}
-            <div className="flex gap-3 pt-1">
-              <button type="button" onClick={onClose} className="flex-1 btn-secondary text-sm">Cancelar</button>
-              <button type="submit" disabled={loading} className="flex-1 btn-primary text-sm">
-                {loading ? 'Guardando...' : editItem ? 'Guardar cambios' : 'Registrar'}
-              </button>
-            </div>
+            {/* Sección documentos */}
+            <DocSection
+              dark={dark}
+              biohuerto={editItem || null}
+              stagedDocs={stagedDocs}
+              setStagedDocs={setStagedDocs}
+            />
 
-          </form>
-        </div>
+          </div>
+
+          {/* Footer fijo */}
+          <div className="flex gap-3 px-6 py-4 shrink-0"
+            style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}` }}>
+            <button type="button" onClick={onClose} className="flex-1 btn-secondary text-sm">Cancelar</button>
+            <button type="submit" disabled={loading} className="flex-1 btn-primary text-sm">
+              {loading ? 'Guardando...' : editItem ? 'Guardar cambios' : 'Registrar'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )
@@ -380,14 +679,14 @@ function ConfirmModal({ dark, item, onClose, onConfirm, loading }) {
 /* ── Página principal ── */
 export default function BiohuertosPage() {
   const { dark } = useTheme()
-  const [biohuertos, setBiohuertos]     = useState([])
-  const [loading, setLoading]           = useState(true)
-  const [search, setSearch]             = useState('')
-  const [estadoFilter, setEstadoFilter] = useState('')
-  const [modalOpen, setModalOpen]       = useState(false)
-  const [editItem, setEditItem]         = useState(null)
-  const [deleteItem, setDeleteItem]     = useState(null)
-  const [delLoading, setDelLoading]     = useState(false)
+  const [biohuertos,    setBiohuertos]    = useState([])
+  const [loading,       setLoading]       = useState(true)
+  const [search,        setSearch]        = useState('')
+  const [estadoFilter,  setEstadoFilter]  = useState('')
+  const [modalOpen,     setModalOpen]     = useState(false)
+  const [editItem,      setEditItem]      = useState(null)
+  const [deleteItem,    setDeleteItem]    = useState(null)
+  const [delLoading,    setDelLoading]    = useState(false)
 
   const fetchBiohuertos = useCallback(async () => {
     setLoading(true)
@@ -455,10 +754,8 @@ export default function BiohuertosPage() {
         </div>
         <button
           onClick={() => { setEditItem(null); setModalOpen(true) }}
-          className="flex items-center gap-2 btn-primary text-sm"
-        >
-          <Plus size={15} />
-          Nuevo biohuerto
+          className="flex items-center gap-2 btn-primary text-sm">
+          <Plus size={15} /> Nuevo biohuerto
         </button>
       </div>
 
@@ -468,20 +765,14 @@ export default function BiohuertosPage() {
         <div className="relative w-64 shrink-0">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2"
             style={{ color: dark ? D.sub : '#9ca3af' }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar biohuerto..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar biohuerto..."
             style={{
               width: '100%', paddingLeft: '32px', paddingRight: '12px',
-              paddingTop: '7px', paddingBottom: '7px',
-              fontSize: '13px', borderRadius: '10px', outline: 'none',
+              paddingTop: '7px', paddingBottom: '7px', fontSize: '15px', borderRadius: '10px', outline: 'none',
               backgroundColor: dark ? D.inputBg : '#f9fafb',
               border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
-              color: dark ? D.text : '#374151',
-              height: '36px',
-            }}
-          />
+              color: dark ? D.text : '#374151', height: '36px',
+            }} />
         </div>
         <div className="flex gap-1.5 flex-wrap">
           {ESTADO_FILTERS.map(f => (
@@ -515,13 +806,14 @@ export default function BiohuertosPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                  {['Nombre', 'Ubicación', 'Área', 'Cultivos', 'Coordenadas', 'Estado', ''].map((h, i) => (
+                  {['Nombre', 'Ubicación', 'Área', 'Cultivos', 'Docs', 'Coordenadas', 'Estado', ''].map((h, i) => (
                     <th key={i}
                       className={`px-5 py-3 text-left text-xs font-bold uppercase tracking-wide
                         ${i === 1 ? 'hidden md:table-cell' : ''}
                         ${i === 3 ? 'hidden sm:table-cell' : ''}
-                        ${i === 4 ? 'hidden xl:table-cell' : ''}
-                        ${i === 6 ? 'text-right' : ''}`}
+                        ${i === 4 ? 'hidden sm:table-cell' : ''}
+                        ${i === 5 ? 'hidden xl:table-cell' : ''}
+                        ${i === 7 ? 'text-right' : ''}`}
                       style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>
                       {h}
                     </th>
@@ -536,27 +828,21 @@ export default function BiohuertosPage() {
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
 
                     <td className="px-5 py-3.5">
-                      <p className="font-semibold leading-tight" style={{ color: dark ? D.text : '#111827' }}>
-                        {b.nombre}
-                      </p>
+                      <p className="font-semibold leading-tight" style={{ color: dark ? D.text : '#111827' }}>{b.nombre}</p>
                       {b.codigo && <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>{b.codigo}</p>}
                     </td>
 
                     <td className="px-5 py-3.5 hidden md:table-cell">
                       <div className="flex items-center gap-1.5">
                         <MapPin size={12} style={{ color: dark ? D.sub : '#9ca3af' }} />
-                        <span className="text-xs line-clamp-1" style={{ color: dark ? D.sub : '#6b7280' }}>
-                          {b.ubicacion}
-                        </span>
+                        <span className="text-xs line-clamp-1" style={{ color: dark ? D.sub : '#6b7280' }}>{b.ubicacion}</span>
                       </div>
                     </td>
 
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-1.5">
                         <Ruler size={12} style={{ color: dark ? D.sub : '#9ca3af' }} />
-                        <span className="text-xs font-medium" style={{ color: dark ? D.text : '#374151' }}>
-                          {b.area} m²
-                        </span>
+                        <span className="text-xs font-medium" style={{ color: dark ? D.text : '#374151' }}>{b.area} m²</span>
                       </div>
                     </td>
 
@@ -564,6 +850,17 @@ export default function BiohuertosPage() {
                       <span className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
                         {b.cultivos_count} activo{b.cultivos_count !== 1 ? 's' : ''}
                       </span>
+                    </td>
+
+                    <td className="px-5 py-3.5 hidden sm:table-cell">
+                      {b.documentos?.length > 0 ? (
+                        <span className="flex items-center gap-1 text-xs font-bold"
+                          style={{ color: dark ? '#60a5fa' : '#2563eb' }}>
+                          <FileText size={12} /> {b.documentos.length}
+                        </span>
+                      ) : (
+                        <span className="text-xs" style={{ color: dark ? D.sub : '#d1d5db' }}>—</span>
+                      )}
                     </td>
 
                     <td className="px-5 py-3.5 hidden xl:table-cell">
@@ -591,22 +888,24 @@ export default function BiohuertosPage() {
                         <button onClick={() => { setEditItem(b); setModalOpen(true) }}
                           className="p-2 rounded-lg transition-all duration-150"
                           style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: 'transparent' }}
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff' }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
-                        ><Pencil size={16} /></button>
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                          <Pencil size={16} />
+                        </button>
                         <button onClick={() => handleToggleActivo(b)}
-                          className="p-2 rounded-lg transition-all duration-150"
-                          title={b.activo ? 'Desactivar' : 'Activar'}
+                          className="p-2 rounded-lg transition-all duration-150" title={b.activo ? 'Desactivar' : 'Activar'}
                           style={{ color: b.activo ? (dark ? '#4ade80' : '#16a34a') : (dark ? D.sub : '#9ca3af'), backgroundColor: 'transparent' }}
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = b.activo ? (dark ? 'rgba(22,163,74,0.15)' : '#f0fdf4') : (dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6') }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
-                        ><Power size={16} /></button>
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = b.activo ? (dark ? 'rgba(22,163,74,0.15)' : '#f0fdf4') : (dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6')}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                          <Power size={16} />
+                        </button>
                         <button onClick={() => setDeleteItem(b)}
                           className="p-2 rounded-lg transition-all duration-150"
                           style={{ color: dark ? '#f87171' : '#dc2626', backgroundColor: 'transparent' }}
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2' }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
-                        ><Trash2 size={16} /></button>
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </td>
                   </tr>
