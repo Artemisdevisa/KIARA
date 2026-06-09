@@ -4,6 +4,7 @@ import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
 import { CalendarRange, Plus, X, Search, Pencil, Trash2, Leaf, Calendar } from 'lucide-react'
+import Breadcrumb from '../../components/ui/Breadcrumb'
 
 const D = {
   cardBg: 'rgba(255,255,255,0.05)', cardBorder: 'rgba(255,255,255,0.09)',
@@ -182,6 +183,7 @@ export default function CampanasPage() {
 
   return (
     <div className="space-y-5">
+      <Breadcrumb items={[{ label: 'Mi Huerto', to: '/mi-huerto' }, { label: 'Campañas' }]} />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f0fdf4' }}>

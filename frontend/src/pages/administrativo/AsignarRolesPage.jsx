@@ -3,6 +3,7 @@ import { Search, ShieldCheck, Check, Loader2 } from 'lucide-react'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
+import Breadcrumb from '../../components/ui/Breadcrumb'
 
 const ALL_ROLES = [
   { value: 'cliente',   label: 'Cliente',   bg: '#dbeafe', color: '#1d4ed8', darkBg: 'rgba(59,130,246,0.18)', darkColor: '#60a5fa' },
@@ -154,6 +155,7 @@ export default function AsignarRolesPage() {
 
   return (
     <div className="space-y-5">
+      <Breadcrumb items={[{ label: 'Administrativo', to: '/administrativo' }, { label: 'Asignar Roles' }]} />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

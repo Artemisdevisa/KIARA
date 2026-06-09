@@ -20,8 +20,8 @@ class Biohuerto(models.Model):
     distrito     = models.CharField(max_length=100, blank=True, verbose_name='Distrito')
     latitud      = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='Latitud')
     longitud     = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='Longitud')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at   = models.DateTimeField(auto_now_add=True)
+    updated_at   = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Biohuerto'
@@ -30,6 +30,24 @@ class Biohuerto(models.Model):
 
     def __str__(self):
         return f'{self.nombre} - {self.productor.username}'
+
+
+class BiohuertMiembro(models.Model):
+    ROL = [
+        ('admin',    'Administrador'),
+        ('operario', 'Operario'),
+    ]
+    biohuerto  = models.ForeignKey(Biohuerto, on_delete=models.CASCADE, related_name='miembros')
+    usuario    = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='memberships_biohuerto')
+    rol        = models.CharField(max_length=20, choices=ROL, default='operario')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['biohuerto', 'usuario']
+        ordering = ['rol', 'usuario__first_name']
+
+    def __str__(self):
+        return f'{self.usuario.username} — {self.get_rol_display()} @ {self.biohuerto.nombre}'
 
 
 class DocumentoBiohuerto(models.Model):

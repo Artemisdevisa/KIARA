@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Plus, Pencil, Trash2, X, Search, SlidersHorizontal } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Search, SlidersHorizontal } from 'lucide-react'
+import Breadcrumb from '../../components/ui/Breadcrumb'
 
 const D = {
   cardBg: 'rgba(255,255,255,0.05)', cardBorder: 'rgba(255,255,255,0.09)',
@@ -13,7 +13,6 @@ const D = {
 
 export default function CondicionesPage() {
   const { dark } = useTheme()
-  const navigate = useNavigate()
   const [data, setData]     = useState([])
   const [search, setSearch] = useState('')
   const [modal, setModal]   = useState(null)
@@ -54,13 +53,8 @@ export default function CondicionesPage() {
 
   return (
     <div className="space-y-5">
+      <Breadcrumb items={[{ label: 'Catálogos', to: '/catalogos' }, { label: 'Condiciones' }]} />
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/catalogos')} className="p-2 rounded-xl transition-all"
-          style={{ color: dark ? D.sub : '#6b7280', backgroundColor: dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6' }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'}>
-          <ArrowLeft size={16} />
-        </button>
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: accentBg }}>
             <SlidersHorizontal size={18} style={{ color: accent }} />

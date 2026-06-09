@@ -39,6 +39,7 @@ import TrazabilidadPage from './pages/trazabilidad/TrazabilidadPage'
 import RecomendacionesPage from './pages/recomendaciones/RecomendacionesPage'
 import AdministrativoPage from './pages/administrativo/AdministrativoPage'
 import AsignarRolesPage from './pages/administrativo/AsignarRolesPage'
+import BiohuertMiembrosPage from './pages/administrativo/BiohuertMiembrosPage'
 import UsuariosPage from './pages/usuarios/UsuariosPage'
 import CampanasPage from './pages/campanas/CampanasPage'
 import CampanaDetailPage from './pages/campanas/CampanaDetailPage'
@@ -98,6 +99,7 @@ export default function App() {
         <Route path="recomendaciones" element={<RecomendacionesPage />} />
         <Route path="administrativo" element={<AdministrativoPage />} />
         <Route path="asignar-roles" element={<AsignarRolesPage />} />
+        <Route path="administrativo/biohuert-miembros" element={<BiohuertMiembrosPage />} />
         <Route path="usuarios" element={<UsuariosPage />} />
         <Route path="mi-huerto" element={<MiHuertoPage />} />
         <Route path="campanas" element={<CampanasPage />} />

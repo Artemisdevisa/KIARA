@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Plus, Pencil, Trash2, X, Search, Wrench } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Search, Wrench, ChevronDown, Check } from 'lucide-react'
+import Breadcrumb from '../../components/ui/Breadcrumb'
 
 const D = {
   cardBg: 'rgba(255,255,255,0.05)', cardBorder: 'rgba(255,255,255,0.09)',
@@ -30,6 +30,84 @@ const TIPO_COLOR = {
   otro:       { dark: { bg: 'rgba(255,255,255,0.08)', c: '#94a3b8' }, light: { bg: '#f3f4f6', c: '#6b7280' } },
 }
 
+/* ── Dropdown con buscador ── */
+function SearchSelect({ dark, value, onChange, options, placeholder = 'Selecciona', allLabel }) {
+  const [open, setOpen]     = useState(false)
+  const [q, setQ]           = useState('')
+  const ref                 = useRef(null)
+
+  useEffect(() => {
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const filtered = options.filter(o => o.label.toLowerCase().includes(q.toLowerCase()))
+  const selected = options.find(o => o.value === value)
+
+  const ist = {
+    backgroundColor: dark ? D.inputBg : '#f9fafb',
+    border: `1px solid ${dark ? (open ? 'rgba(96,165,250,0.5)' : D.inputBorder) : (open ? '#93c5fd' : '#e5e7eb')}`,
+    color: dark ? D.text : '#111827',
+    borderRadius: '10px',
+    outline: 'none',
+  }
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <button type="button" onClick={() => { setOpen(o => !o); setQ('') }}
+        className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium transition-all"
+        style={ist}>
+        <span style={{ color: selected ? (dark ? D.text : '#111827') : (dark ? D.sub : '#9ca3af') }}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`}
+          style={{ color: dark ? D.sub : '#9ca3af', flexShrink: 0 }} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 z-50 mt-1 rounded-xl shadow-2xl overflow-hidden"
+          style={{ backgroundColor: dark ? '#1e2a3a' : '#fff', border: `1.5px solid ${dark ? 'rgba(255,255,255,0.10)' : '#e5e7eb'}` }}>
+          <div className="p-2" style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: dark ? D.sub : '#9ca3af' }} />
+              <input autoFocus value={q} onChange={e => setQ(e.target.value)}
+                placeholder="Buscar..."
+                className="w-full text-sm pl-7 pr-3 py-1.5 rounded-lg outline-none"
+                style={{ backgroundColor: dark ? 'rgba(255,255,255,0.06)' : '#f9fafb', color: dark ? D.text : '#111827', border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}` }} />
+            </div>
+          </div>
+          <div className="max-h-48 overflow-y-auto thin-scroll py-1">
+            {allLabel && (
+              <button type="button" onClick={() => { onChange(''); setOpen(false) }}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-colors"
+                style={{ color: dark ? D.sub : '#6b7280', backgroundColor: value === '' ? (dark ? 'rgba(255,255,255,0.06)' : '#f9fafb') : 'transparent' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = value === '' ? (dark ? 'rgba(255,255,255,0.06)' : '#f9fafb') : 'transparent'}>
+                {allLabel}
+                {value === '' && <Check size={13} />}
+              </button>
+            )}
+            {filtered.map(o => (
+              <button type="button" key={o.value} onClick={() => { onChange(o.value); setOpen(false) }}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-colors"
+                style={{ color: dark ? D.text : '#111827', backgroundColor: value === o.value ? (dark ? 'rgba(96,165,250,0.10)' : '#eff6ff') : 'transparent' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = value === o.value ? (dark ? 'rgba(96,165,250,0.10)' : '#eff6ff') : 'transparent'}>
+                {o.label}
+                {value === o.value && <Check size={13} style={{ color: dark ? '#60a5fa' : '#2563eb', flexShrink: 0 }} />}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <p className="px-3 py-3 text-xs text-center" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin resultados</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Modal({ dark, title, onClose, onSubmit, loading, children }) {
   const ps = { backgroundColor: dark ? '#1e2a3a' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb' }
   return (
@@ -54,7 +132,6 @@ function Modal({ dark, title, onClose, onSubmit, loading, children }) {
 
 export default function TiposLaborPage() {
   const { dark } = useTheme()
-  const navigate = useNavigate()
   const [data, setData]       = useState([])
   const [search, setSearch]   = useState('')
   const [filtro, setFiltro]   = useState('')
@@ -99,14 +176,9 @@ export default function TiposLaborPage() {
 
   return (
     <div className="space-y-5">
+      <Breadcrumb items={[{ label: 'Catálogos', to: '/catalogos' }, { label: 'Tipos de labor' }]} />
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/catalogos')} className="p-2 rounded-xl transition-all"
-          style={{ color: dark ? D.sub : '#6b7280', backgroundColor: dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6' }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'}>
-          <ArrowLeft size={16} />
-        </button>
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: dark ? 'rgba(251,191,36,0.12)' : '#fffbeb' }}>
             <Wrench size={18} style={{ color: dark ? '#fbbf24' : '#d97706' }} />
@@ -125,11 +197,10 @@ export default function TiposLaborPage() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar código o nombre..."
             style={{ ...ist, paddingLeft: '36px', width: '260px', height: '40px', paddingTop: 0, paddingBottom: 0 }} />
         </div>
-        <select value={filtro} onChange={e => setFiltro(e.target.value)}
-          style={{ ...ist, width: 'auto', height: '40px', paddingTop: 0, paddingBottom: 0 }}>
-          <option value="">Todos los tipos</option>
-          {TIPO_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <div style={{ width: '200px' }}>
+          <SearchSelect dark={dark} value={filtro} onChange={setFiltro}
+            options={TIPO_OPTS} placeholder="Todos los tipos" allLabel="Todos los tipos" />
+        </div>
         <div className="ml-auto">
           <button onClick={openNew} className="flex items-center gap-2 btn-primary"><Plus size={15} /> Nueva labor</button>
         </div>
@@ -140,9 +211,9 @@ export default function TiposLaborPage() {
         <table className="w-full">
           <thead>
             <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-              {['Código', 'Nombre', 'Tipo', 'Unidad', 'Costo / unidad', ''].map((h, i) => (
+              {['Código', 'Nombre', 'Tipo', 'Unidad', 'Costo / unidad', ''].map((col, i) => (
                 <th key={i} className={`px-5 py-3 text-left text-xs font-bold uppercase tracking-wide ${i === 5 ? 'text-right' : ''}`}
-                  style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{h}</th>
+                  style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{col}</th>
               ))}
             </tr>
           </thead>
@@ -182,17 +253,30 @@ export default function TiposLaborPage() {
 
       {modal && (
         <Modal dark={dark} title={modal === 'edit' ? 'Editar labor' : 'Nueva labor'} onClose={() => setModal(null)} onSubmit={submit} loading={loading}>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label style={lst}>Código *</label><input name="codigo" value={form.codigo} onChange={h} style={ist} placeholder="LB-033" required /></div>
-            <div><label style={lst}>Tipo</label>
-              <select name="tipo" value={form.tipo} onChange={h} style={ist}>
-                {TIPO_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+          {modal === 'edit' && (
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '12px', fontWeight: 700, color: dark ? D.sub : '#6b7280' }}>Código:</span>
+              <span className="font-mono font-bold text-sm px-2.5 py-1 rounded-lg"
+                style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: dark ? 'rgba(96,165,250,0.10)' : '#eff6ff' }}>
+                {form.codigo}
+              </span>
             </div>
+          )}
+          <div>
+            <label style={lst}>Tipo</label>
+            <SearchSelect dark={dark} value={form.tipo}
+              onChange={v => setForm(f => ({ ...f, tipo: v }))}
+              options={TIPO_OPTS} placeholder="Selecciona tipo" />
           </div>
           <div><label style={lst}>Nombre *</label><input name="nombre" value={form.nombre} onChange={h} style={ist} placeholder="Poda de formación" required /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label style={lst}>Unidad</label><input name="unidad_default" value={form.unidad_default} onChange={h} style={ist} placeholder="hora, jornal, ha" /></div>
+            <div>
+              <label style={lst}>Unidad</label>
+              <input name="unidad_default" value={form.unidad_default} onChange={h} style={ist} placeholder="hora, jornal, ha" list="unidades-labor" />
+              <datalist id="unidades-labor">
+                {['hora','jornal','día','m²','ha','m','kg','L','unid.','saco'].map(u => <option key={u} value={u} />)}
+              </datalist>
+            </div>
             <div><label style={lst}>Costo por unidad (S/.) *</label><input name="costo_unitario_default" type="number" step="0.01" min="0" value={form.costo_unitario_default} onChange={h} style={ist} required /></div>
           </div>
         </Modal>

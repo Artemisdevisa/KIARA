@@ -63,7 +63,7 @@ class TipoLabor(models.Model):
         ('cosecha',    'Cosecha'),
         ('otro',       'Otro'),
     ]
-    codigo                 = models.CharField(max_length=20, unique=True)
+    codigo                 = models.CharField(max_length=20, unique=True, blank=True)
     nombre                 = models.CharField(max_length=200)
     tipo                   = models.CharField(max_length=20, choices=TIPO, default='otro')
     unidad_default         = models.CharField(max_length=50, default='hora')
@@ -74,6 +74,16 @@ class TipoLabor(models.Model):
         ordering = ['codigo']
         verbose_name = 'Tipo de labor'
         verbose_name_plural = 'Tipos de labor'
+
+    def save(self, *args, **kwargs):
+        if not self.codigo:
+            n = TipoLabor.objects.count() + 1
+            candidate = f'TL-{n:04d}'
+            while TipoLabor.objects.filter(codigo=candidate).exists():
+                n += 1
+                candidate = f'TL-{n:04d}'
+            self.codigo = candidate
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.codigo} — {self.nombre}'
@@ -213,6 +223,7 @@ class LaborCampana(models.Model):
 
 
 class ItemFitosanitario(models.Model):
+    ESTADO = [('programado', 'Programado'), ('aplicado', 'Aplicado')]
     campana            = models.ForeignKey(Campana, on_delete=models.CASCADE, related_name='plan_fitosanitario')
     producto           = models.ForeignKey(ProductoAgricola, on_delete=models.PROTECT)
     objetivo           = models.ForeignKey(Objetivo, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
@@ -224,6 +235,8 @@ class ItemFitosanitario(models.Model):
     frecuencia_dias    = models.IntegerField(null=True, blank=True)
     fecha_inicio       = models.DateField(null=True, blank=True)
     etapa              = models.CharField(max_length=15, choices=ETAPA_CHOICES, blank=True, default='')
+    estado             = models.CharField(max_length=15, choices=ESTADO, default='programado')
+    fecha_aplicada     = models.DateField(null=True, blank=True)
     activo             = models.BooleanField(default=True)
 
     class Meta:

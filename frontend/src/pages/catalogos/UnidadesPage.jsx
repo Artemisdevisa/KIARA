@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Plus, Pencil, Trash2, X, Search, Ruler } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Search, Ruler } from 'lucide-react'
+import Breadcrumb from '../../components/ui/Breadcrumb'
 
 const D = {
   cardBg: 'rgba(255,255,255,0.05)', cardBorder: 'rgba(255,255,255,0.09)',
@@ -37,7 +37,6 @@ function Badge({ tipo, dark }) {
 
 export default function UnidadesPage() {
   const { dark } = useTheme()
-  const navigate = useNavigate()
   const [data, setData]     = useState([])
   const [search, setSearch] = useState('')
   const [filtro, setFiltro] = useState('')
@@ -79,14 +78,9 @@ export default function UnidadesPage() {
 
   return (
     <div className="space-y-5">
+      <Breadcrumb items={[{ label: 'Catálogos', to: '/catalogos' }, { label: 'Unidades de medida' }]} />
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/catalogos')} className="p-2 rounded-xl transition-all"
-          style={{ color: dark ? D.sub : '#6b7280', backgroundColor: dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6' }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'}>
-          <ArrowLeft size={16} />
-        </button>
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: dark ? 'rgba(59,130,246,0.15)' : '#eff6ff' }}>
             <Ruler size={18} style={{ color: dark ? '#60a5fa' : '#2563eb' }} />

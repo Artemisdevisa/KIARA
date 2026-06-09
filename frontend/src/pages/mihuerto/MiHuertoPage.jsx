@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, TreePine, CalendarRange, Sprout, Leaf, FlaskConical, Wrench } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
+import Breadcrumb from '../../components/ui/Breadcrumb'
 
 const SECTIONS = [
   {
@@ -86,6 +87,7 @@ export default function MiHuertoPage() {
 
   return (
     <div className="space-y-10">
+      <Breadcrumb items={[{ label: 'Mi Huerto' }]} />
       <div>
         <h1 className="text-2xl font-extrabold" style={{ color: dark ? 'rgba(255,255,255,0.92)' : '#111827' }}>
           Mi Huerto

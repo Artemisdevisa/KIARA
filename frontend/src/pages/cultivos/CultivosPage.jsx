@@ -3,6 +3,7 @@ import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
 import { Sprout, Plus, Search, Pencil, Trash2, X, Calendar, Power, TreeDeciduous, RefreshCw } from 'lucide-react'
+import Breadcrumb from '../../components/ui/Breadcrumb'
 
 /* ─── Etapas por tipo de ciclo ─── */
 const ETAPAS_ANUAL = [
@@ -413,6 +414,7 @@ export default function CultivosPage() {
 
   return (
     <div className="space-y-5">
+      <Breadcrumb items={[{ label: 'Mi Huerto', to: '/mi-huerto' }, { label: 'Cultivos' }]} />
 
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

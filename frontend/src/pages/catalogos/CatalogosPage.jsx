@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Ruler, Bug, Target, SlidersHorizontal } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
+import Breadcrumb from '../../components/ui/Breadcrumb'
 
 const CARDS = [
   {
@@ -64,6 +65,7 @@ export default function CatalogosPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[{ label: 'Catálogos' }]} />
       <div>
         <h1 className="text-2xl font-extrabold" style={{ color: dark ? 'rgba(255,255,255,0.92)' : '#111827' }}>
           Catálogos de apoyo

@@ -25,8 +25,9 @@ class ProductoAgricolaSerializer(serializers.ModelSerializer):
 class TipoLaborSerializer(serializers.ModelSerializer):
     tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
     class Meta:
-        model  = TipoLabor
-        fields = '__all__'
+        model             = TipoLabor
+        fields            = '__all__'
+        read_only_fields  = ['codigo']
 
 
 class UnidadMedidaSerializer(serializers.ModelSerializer):
@@ -90,6 +91,7 @@ class ItemFitosanitarioSerializer(serializers.ModelSerializer):
     unidad_codigo    = serializers.CharField(source='unidad.codigo',           read_only=True, allow_null=True)
     condicion_nombre = serializers.CharField(source='condicion.nombre',        read_only=True, allow_null=True)
     etapa_display    = serializers.CharField(source='get_etapa_display',       read_only=True)
+    estado_display   = serializers.CharField(source='get_estado_display',      read_only=True)
 
     class Meta:
         model  = ItemFitosanitario
@@ -110,6 +112,7 @@ class RegistroAplicacionSerializer(serializers.ModelSerializer):
 class PlanRiegoSerializer(serializers.ModelSerializer):
     metodo_display       = serializers.CharField(source='get_metodo_display',   read_only=True)
     fertilizante_nombre  = serializers.CharField(source='fertilizante.nombre', read_only=True, allow_null=True)
+    fertilizante_precio  = serializers.DecimalField(source='fertilizante.precio_unitario', max_digits=10, decimal_places=2, read_only=True, allow_null=True)
 
     class Meta:
         model  = PlanRiego

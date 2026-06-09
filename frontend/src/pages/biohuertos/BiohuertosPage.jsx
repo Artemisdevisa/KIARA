@@ -6,6 +6,7 @@ import {
   TreePine, Plus, Search, Pencil, Trash2, X, MapPin, Ruler,
   Power, Navigation, FileText, Eye, Upload, Paperclip, ChevronDown,
 } from 'lucide-react'
+import Breadcrumb from '../../components/ui/Breadcrumb'
 
 const ESTADO_FILTERS = [
   { value: '',         label: 'Todos'   },
@@ -737,6 +738,7 @@ export default function BiohuertosPage() {
 
   return (
     <div className="space-y-5">
+      <Breadcrumb items={[{ label: 'Mi Huerto', to: '/mi-huerto' }, { label: 'Biohuertos' }]} />
 
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

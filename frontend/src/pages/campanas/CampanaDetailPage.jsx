@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
 import {
-  ArrowLeft, CalendarRange, Calendar, ClipboardList, FlaskConical, Droplets,
+  CalendarRange, Calendar, ClipboardList, FlaskConical, Droplets,
   Wallet, Leaf, Plus, Pencil, Trash2, X, CheckCircle2, Circle,
-  AlertTriangle, Printer, TrendingUp, TrendingDown, Minus,
+  AlertTriangle, Printer, TrendingUp, TrendingDown, Minus, Eye, ChevronDown,
 } from 'lucide-react'
+import Breadcrumb from '../../components/ui/Breadcrumb'
 
 const D = {
   cardBg: 'rgba(255,255,255,0.05)', cardBorder: 'rgba(255,255,255,0.09)',
@@ -126,6 +127,32 @@ function MiniModal({ dark, title, onClose, onSubmit, loading, children }) {
   )
 }
 
+/* ── Modal detalle (solo lectura) ── */
+function InfoModal({ dark, title, onClose, children }) {
+  const ps = { backgroundColor: dark ? '#1e2a3a' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb' }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-5 z-10" style={ps}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-extrabold" style={{ color: dark ? D.text : '#111827' }}>{title}</h3>
+          <button onClick={onClose} style={{ color: D.sub }}><X size={16} /></button>
+        </div>
+        <div className="space-y-0">{children}</div>
+      </div>
+    </div>
+  )
+}
+function IR({ label, value, dark, color }) {
+  if (value === null || value === undefined || value === '') return null
+  return (
+    <div className="flex justify-between items-start gap-4 py-2" style={{ borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'}` }}>
+      <span className="text-xs font-bold shrink-0" style={{ color: dark ? D.sub : '#9ca3af' }}>{label}</span>
+      <span className="text-xs font-semibold text-right" style={{ color: color || (dark ? D.text : '#374151') }}>{value}</span>
+    </div>
+  )
+}
+
 /* ── TABS ── */
 const TABS = [
   { key: 'labores',       icon: ClipboardList, label: 'Labores'      },
@@ -134,6 +161,82 @@ const TABS = [
   { key: 'presupuesto',   icon: Wallet,        label: 'Presupuesto'  },
   { key: 'trazabilidad',  icon: Leaf,          label: 'Trazabilidad' },
 ]
+
+function OperarioSelect({ dark, value, onChange, miembros, ist }) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ]       = useState('')
+  const ref             = useRef(null)
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  const filtered = miembros.filter(m =>
+    !q || `${m.usuario_nombre} ${m.usuario_username}`.toLowerCase().includes(q.toLowerCase())
+  )
+
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => { setOpen(o => !o); setQ('') }}
+        className="w-full flex items-center justify-between gap-2"
+        style={{ ...ist, padding: '9px 13px', textAlign: 'left', cursor: 'pointer' }}>
+        <span style={{ color: value ? (dark ? 'rgba(255,255,255,0.90)' : '#111827') : (dark ? 'rgba(255,255,255,0.30)' : '#9ca3af') }}>
+          {value || 'Sin asignar (opcional)'}
+        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {value && (
+            <span onClick={e => { e.stopPropagation(); onChange('') }} style={{ color: dark ? 'rgba(255,255,255,0.45)' : '#9ca3af', cursor: 'pointer', lineHeight: 1 }}>
+              <X size={12} />
+            </span>
+          )}
+          <ChevronDown size={13} style={{ color: dark ? 'rgba(255,255,255,0.45)' : '#9ca3af' }} />
+        </div>
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 z-50 mt-1 rounded-xl shadow-2xl overflow-hidden"
+          style={{ backgroundColor: dark ? '#1e2a3a' : '#fff', border: `1.5px solid ${dark ? 'rgba(255,255,255,0.10)' : '#e5e7eb'}` }}>
+          {miembros.length > 3 && (
+            <div style={{ padding: '8px', borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
+              <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar operario..."
+                style={{ width: '100%', padding: '6px 10px', fontSize: '13px', borderRadius: '8px', outline: 'none',
+                  backgroundColor: dark ? D.inputBg : '#f9fafb', border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
+                  color: dark ? D.text : '#374151' }} />
+            </div>
+          )}
+          <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            <button type="button" onClick={() => { onChange(''); setOpen(false) }}
+              className="w-full text-left px-3 py-2.5 text-xs font-semibold transition-colors"
+              style={{ color: dark ? D.sub : '#9ca3af', borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              Sin asignar
+            </button>
+            {filtered.map(m => (
+              <button type="button" key={m.id} onClick={() => { onChange(m.usuario_nombre); setOpen(false) }}
+                className="w-full text-left px-3 py-2.5 transition-colors"
+                style={{ backgroundColor: value === m.usuario_nombre ? (dark ? 'rgba(96,165,250,0.10)' : '#eff6ff') : 'transparent' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = value === m.usuario_nombre ? (dark ? 'rgba(96,165,250,0.10)' : '#eff6ff') : 'transparent'}>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: dark ? D.text : '#111827' }}>{m.usuario_nombre}</p>
+                <p style={{ fontSize: '11px', color: dark ? D.sub : '#9ca3af' }}>@{m.usuario_username} · {m.rol_display}</p>
+              </button>
+            ))}
+            {miembros.length === 0 && (
+              <p style={{ padding: '12px', textAlign: 'center', fontSize: '13px', color: dark ? D.sub : '#9ca3af' }}>
+                Sin miembros en este biohuerto
+              </p>
+            )}
+            {miembros.length > 0 && filtered.length === 0 && (
+              <p style={{ padding: '12px', textAlign: 'center', fontSize: '13px', color: dark ? D.sub : '#9ca3af' }}>Sin resultados</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 /* ══════════════════════════════════════════════════════
    TAB: LABORES
@@ -145,8 +248,10 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
   const [delConfirm, setDelConfirm] = useState(null)
   const [ejModal, setEjModal]       = useState(null)
   const [ejForm, setEjForm]         = useState({ fecha_ejecutada: '', cantidad_ejecutada: '' })
-  const [form, setForm]             = useState({ tipo_labor: '', descripcion: '', fecha_programada: '', cantidad_programada: '', costo_unitario: '', operario: '', notas: '' })
+  const [viewItem, setViewItem]     = useState(null)
+  const [form, setForm]             = useState({ tipo_labor: '', nombre_libre: '', unidad_libre: '', descripcion: '', fecha_programada: '', cantidad_programada: '', costo_unitario: '', operario: '', notas: '' })
   const [loading, setLoading]       = useState(false)
+  const [miembros, setMiembros]     = useState([])
 
   const fetch = useCallback(async () => {
     const [r, t] = await Promise.all([api.get(`/campanas/${campanaId}/labores/`), api.get('/campanas/tipos-labor/')])
@@ -154,7 +259,13 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
   }, [campanaId])
   useEffect(() => { fetch() }, [fetch])
 
-  const openNew = () => { setForm({ tipo_labor: '', descripcion: '', fecha_programada: '', cantidad_programada: '', costo_unitario: '', etapa: '', operario: '', notas: '' }); setModal('new') }
+  useEffect(() => {
+    if (campana?.biohuerto) {
+      api.get(`/biohuertos/${campana.biohuerto}/miembros/`).then(r => setMiembros(r.data)).catch(() => {})
+    }
+  }, [campana?.biohuerto])
+
+  const openNew = () => { setForm({ tipo_labor: '', nombre_libre: '', unidad_libre: '', descripcion: '', fecha_programada: '', cantidad_programada: '', costo_unitario: '', etapa: '', operario: '', notas: '' }); setModal('new') }
   const openEdit = item => { setForm({ ...item, tipo_labor: item.tipo_labor }); setModal('edit') }
   const h = e => {
     const { name, value } = e.target
@@ -176,8 +287,19 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
   const submit = async e => {
     e.preventDefault(); setLoading(true)
     try {
-      if (modal === 'edit') { await api.patch(`/campanas/labores/${form.id}/`, form); toast.success('Labor actualizada.') }
-      else { await api.post(`/campanas/${campanaId}/labores/`, form); toast.success('Labor registrada.') }
+      let tipoId = form.tipo_labor
+      if (form.tipo_labor === '__libre__') {
+        const res = await api.post('/campanas/tipos-labor/', {
+          nombre: form.nombre_libre, tipo: 'otro',
+          unidad_default: form.unidad_libre || 'unid.',
+          costo_unitario_default: form.costo_unitario || 0,
+        })
+        tipoId = res.data.id
+        setTipos(ts => [...ts, res.data])
+      }
+      const payload = { ...form, tipo_labor: tipoId }
+      if (modal === 'edit') { await api.patch(`/campanas/labores/${form.id}/`, payload); toast.success('Labor actualizada.') }
+      else { await api.post(`/campanas/${campanaId}/labores/`, payload); toast.success('Labor registrada.') }
       setModal(null); fetch()
     } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
   }
@@ -317,8 +439,8 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
                           <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md"
                             style={{ backgroundColor: ebg, color: ec }}>{et.label}</span>
                         )}
+
                       </div>
-                      {l.descripcion && <p className="text-xs mt-0.5" style={{ color: dark ? D.sub : '#9ca3af' }}>{l.descripcion}</p>}
                     </td>
                     <td className="px-4 py-3 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{l.fecha_programada}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: dark ? D.text : '#374151' }}>{l.cantidad_programada} {l.tipo_labor_unidad}</td>
@@ -340,6 +462,9 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={() => setViewItem(l)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={13} /></button>
                         <button onClick={() => openEdit(l)} className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
                           onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
                           onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={13} /></button>
@@ -362,8 +487,24 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
             <select name="tipo_labor" value={form.tipo_labor} onChange={handleTipoChange} style={ist} required>
               <option value="">Selecciona</option>
               {tipos.map(t => <option key={t.id} value={t.id}>{t.codigo} — {t.nombre}</option>)}
+              <option value="__libre__">— Escribir labor nueva —</option>
             </select>
           </div>
+          {form.tipo_labor === '__libre__' && (
+            <div className="rounded-xl px-3 py-2.5 space-y-3"
+              style={{ backgroundColor: dark ? 'rgba(251,191,36,0.06)' : '#fffbeb', border: `1px solid ${dark ? 'rgba(251,191,36,0.20)' : '#fde68a'}` }}>
+              <p className="text-[11px] font-extrabold uppercase tracking-wide" style={{ color: dark ? '#fbbf24' : '#d97706' }}>Nueva labor personalizada</p>
+              <div><label style={lst}>Nombre de la labor *</label>
+                <input name="nombre_libre" value={form.nombre_libre} onChange={h} style={ist} placeholder="Ej: Instalación cinta de goteo" required={form.tipo_labor === '__libre__'} />
+              </div>
+              <div><label style={lst}>Unidad</label>
+                <input name="unidad_libre" value={form.unidad_libre} onChange={h} style={ist} placeholder="jornal, hora, m, unid." list="unidades-labor-libre" />
+                <datalist id="unidades-labor-libre">
+                  {['hora','jornal','día','m²','ha','m','kg','L','unid.'].map(u => <option key={u} value={u} />)}
+                </datalist>
+              </div>
+            </div>
+          )}
           <div><label style={lst}>Etapa fenológica</label>
             <select name="etapa" value={form.etapa} onChange={h} style={ist}>
               <option value="">Sin etapa</option>
@@ -381,11 +522,32 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
               </div>
               <input name="fecha_programada" type="date" value={form.fecha_programada} onChange={h} style={ist} required />
             </div>
-            <div><label style={lst}>Cantidad *</label><input name="cantidad_programada" type="number" step="0.01" value={form.cantidad_programada} onChange={h} style={ist} required /></div>
+            <div>
+              <label style={lst}>Cantidad *</label>
+              <div className="flex items-center gap-2">
+                <input name="cantidad_programada" type="number" step="0.01" value={form.cantidad_programada} onChange={h} style={{ ...ist, flex: 1 }} required />
+                {tipos.find(t => String(t.id) === String(form.tipo_labor))?.unidad_default && (
+                  <span className="text-xs font-extrabold px-2 py-1 rounded-lg shrink-0"
+                    style={{ backgroundColor: dark ? 'rgba(96,165,250,0.12)' : '#eff6ff', color: dark ? '#60a5fa' : '#2563eb' }}>
+                    {tipos.find(t => String(t.id) === String(form.tipo_labor)).unidad_default}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label style={lst}>Costo por unidad (S/.)</label><input name="costo_unitario" type="number" step="0.01" value={form.costo_unitario} onChange={h} style={ist} /></div>
-            <div><label style={lst}>Operario</label><input name="operario" value={form.operario} onChange={h} style={ist} /></div>
+            <div>
+              <label style={lst}>
+                Costo por {tipos.find(t => String(t.id) === String(form.tipo_labor))?.unidad_default ?? 'unidad'} (S/.)
+              </label>
+              <input name="costo_unitario" type="number" step="0.01" value={form.costo_unitario} onChange={h} style={ist} />
+            </div>
+            <div>
+              <label style={lst}>Operario</label>
+              <OperarioSelect dark={dark} value={form.operario} ist={ist}
+                onChange={v => setForm(f => ({ ...f, operario: v }))}
+                miembros={miembros} />
+            </div>
           </div>
           <div><label style={lst}>Notas</label><textarea name="notas" value={form.notas} onChange={h} rows={2} style={{ ...ist, resize: 'none' }} /></div>
         </MiniModal>
@@ -413,6 +575,21 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
           </p>
         </MiniModal>
       )}
+      {viewItem && (
+        <InfoModal dark={dark} title="Detalle de labor" onClose={() => setViewItem(null)}>
+          <IR dark={dark} label="Labor"           value={viewItem.tipo_labor_nombre} />
+          <IR dark={dark} label="Etapa"           value={etapaOf(viewItem.etapa)?.label} />
+          <IR dark={dark} label="Descripción"     value={viewItem.descripcion} />
+          <IR dark={dark} label="Fecha programada" value={viewItem.fecha_programada} />
+          <IR dark={dark} label="Cantidad prog."  value={`${viewItem.cantidad_programada} ${viewItem.tipo_labor_unidad}`} />
+          <IR dark={dark} label="Costo prog."     value={fmt(viewItem.costo_programado)} color={dark ? '#60a5fa' : '#2563eb'} />
+          <IR dark={dark} label="Fecha ejecutada" value={viewItem.fecha_ejecutada} />
+          <IR dark={dark} label="Cantidad real"   value={viewItem.cantidad_ejecutada ? `${viewItem.cantidad_ejecutada} ${viewItem.tipo_labor_unidad}` : null} color={dark ? '#4ade80' : '#15803d'} />
+          <IR dark={dark} label="Costo real"      value={viewItem.costo_ejecutado ? fmt(viewItem.costo_ejecutado) : null} color={dark ? '#4ade80' : '#15803d'} />
+          <IR dark={dark} label="Operario"        value={viewItem.operario} />
+          <IR dark={dark} label="Notas"           value={viewItem.notas} />
+        </InfoModal>
+      )}
       {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
     </div>
   )
@@ -421,13 +598,17 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
 /* ══════════════════════════════════════════════════════
    TAB: FITOSANITARIO
 ══════════════════════════════════════════════════════ */
-function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
+function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
   const [plan, setPlan]       = useState([])
   const [regs, setRegs]       = useState([])
   const [prods, setProds]           = useState([])
   const [modal, setModal]           = useState(null)
   const [regModal, setRegModal]     = useState(false)
+  const [apModal, setApModal]       = useState(null)
+  const [apForm, setApForm]         = useState({ fecha_aplicada: '' })
   const [delConfirm, setDelConfirm] = useState(null)
+  const [viewItem, setViewItem]     = useState(null)
+  const [viewReg, setViewReg]       = useState(null)
   const [form, setForm]             = useState({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' })
   const [regForm, setRegForm]       = useState({ producto: '', fecha: '', dosis_aplicada: '', area_aplicada: '', operario: '', es_sostenible: false, observaciones: '' })
   const [loading, setLoading]       = useState(false)
@@ -444,6 +625,24 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
 
   const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
   const hr = e => setRegForm(f => ({ ...f, [e.target.name]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
+
+  const openApModal = item => {
+    if (item.estado === 'aplicado') {
+      api.patch(`/campanas/fitosanitario/${item.id}/`, { estado: 'programado', fecha_aplicada: null })
+        .then(fetch).catch(() => toast.error('Error.'))
+      return
+    }
+    setApForm({ fecha_aplicada: new Date().toISOString().slice(0, 10) })
+    setApModal(item)
+  }
+
+  const confirmAplicacion = async e => {
+    e.preventDefault(); setLoading(true)
+    try {
+      await api.patch(`/campanas/fitosanitario/${apModal.id}/`, { estado: 'aplicado', fecha_aplicada: apForm.fecha_aplicada })
+      toast.success('Marcado como aplicado.'); setApModal(null); fetch()
+    } catch { toast.error('Error.') } finally { setLoading(false) }
+  }
 
   const submitPlan = async e => {
     e.preventDefault(); setLoading(true)
@@ -486,84 +685,125 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
       )}
 
       {/* Plan fitosanitario */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           <p className="text-xs font-extrabold uppercase tracking-wide" style={{ color: dark ? D.sub : '#6b7280' }}>Plan fitosanitario</p>
-          <button onClick={() => { setForm({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' }); setModal('new') }}
-            className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg"
-            style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.text : '#374151' }}>
-            <Plus size={12} /> Agregar producto
-          </button>
+          {plan.length > 0 && campana?.area && (
+            <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
+              style={{ backgroundColor: dark ? 'rgba(74,222,128,0.12)' : '#f0fdf4', color: dark ? '#4ade80' : '#15803d' }}>
+              {fmt(plan.reduce((s, i) => s + (i.dosis && i.producto_precio ? parseFloat(i.dosis) * parseFloat(campana.area) * parseFloat(i.producto_precio) : 0), 0))} est.
+            </span>
+          )}
         </div>
-        <div className="space-y-2">
-          {(() => {
-            const visible = etapaFilter ? plan.filter(i => i.etapa === etapaFilter) : plan
-            if (visible.length === 0)
-              return <p className="text-sm text-center py-6" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin productos{etapaFilter ? ' en esta etapa' : ' en el plan'}</p>
-            return visible.map(item => {
-              const et = etapaOf(item.etapa)
-              const ec = dark ? et.dc : et.lc
-              const ebg = dark ? et.dbg : et.lbg
-              return (
-                <div key={item.id} className="flex items-start gap-3 p-3 rounded-xl"
-                  style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f9fafb', border: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-xs font-bold" style={{ color: dark ? D.text : '#111827' }}>{item.producto_nombre}</p>
-                      <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>
-                        {item.dosis} {item.unidad_codigo || item.unidad}
-                      </span>
-                      {/* Badge tipo producto */}
-                      {(() => {
-                        const tipo = item.producto_tipo
-                        const cfg = {
-                          enmienda:       { bg: dark ? 'rgba(74,222,128,0.15)' : '#dcfce7',  c: dark ? '#4ade80' : '#15803d',  label: 'Orgánico' },
-                          biologico:      { bg: dark ? 'rgba(52,211,153,0.15)' : '#d1fae5',  c: dark ? '#34d399' : '#059669',  label: 'Biológico' },
-                          bioestimulante: { bg: dark ? 'rgba(96,165,250,0.15)' : '#dbeafe',  c: dark ? '#60a5fa' : '#2563eb',  label: 'Bioestimulante' },
-                          fertilizante:   { bg: dark ? 'rgba(251,191,36,0.15)' : '#fef9c3',  c: dark ? '#fbbf24' : '#d97706',  label: 'Fertilizante' },
-                          fitosanitario:  { bg: dark ? 'rgba(248,113,113,0.15)' : '#fee2e2', c: dark ? '#f87171' : '#dc2626',  label: 'Sintético' },
-                        }[tipo]
-                        return cfg ? (
-                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md"
-                            style={{ backgroundColor: cfg.bg, color: cfg.c }}>{cfg.label}</span>
-                        ) : null
-                      })()}
-                      {item.etapa && (
-                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md"
-                          style={{ backgroundColor: ebg, color: ec }}>{et.label}</span>
-                      )}
+        <button onClick={() => { setForm({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' }); setModal('new') }}
+          className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg"
+          style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.text : '#374151' }}>
+          <Plus size={12} /> Agregar producto
+        </button>
+      </div>
+      <div style={{ borderRadius: '14px', overflow: 'hidden', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, backgroundColor: dark ? D.cardBg : '#fff' }}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
+              {['', 'Producto', 'Tipo', 'Etapa', 'Dosis/m²', 'Total campo', 'Costo est.', 'Estado', ''].map((h, i) => (
+                <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide${i === 8 ? ' text-right' : ''}`}
+                  style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(() => {
+              const visible = etapaFilter ? plan.filter(i => i.etapa === etapaFilter) : plan
+              if (visible.length === 0)
+                return <tr><td colSpan={9} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin productos{etapaFilter ? ' en esta etapa' : ' en el plan'}</td></tr>
+              return visible.map(item => {
+                const et = etapaOf(item.etapa)
+                const ec = dark ? et.dc : et.lc
+                const ebg = dark ? et.dbg : et.lbg
+                const aplicado = item.estado === 'aplicado'
+                const TIPO_CFG = {
+                  enmienda:       { bg: dark ? 'rgba(74,222,128,0.15)' : '#dcfce7',  c: dark ? '#4ade80' : '#15803d',  label: 'Orgánico' },
+                  biologico:      { bg: dark ? 'rgba(52,211,153,0.15)' : '#d1fae5',  c: dark ? '#34d399' : '#059669',  label: 'Biológico' },
+                  bioestimulante: { bg: dark ? 'rgba(96,165,250,0.15)' : '#dbeafe',  c: dark ? '#60a5fa' : '#2563eb',  label: 'Bioestimulante' },
+                  fertilizante:   { bg: dark ? 'rgba(251,191,36,0.15)' : '#fef9c3',  c: dark ? '#fbbf24' : '#d97706',  label: 'Fertilizante' },
+                  fitosanitario:  { bg: dark ? 'rgba(248,113,113,0.15)' : '#fee2e2', c: dark ? '#f87171' : '#dc2626',  label: 'Sintético' },
+                }
+                const tipoCfg = TIPO_CFG[item.producto_tipo]
+                const totalCampo = item.dosis && campana?.area
+                  ? (parseFloat(item.dosis) * parseFloat(campana.area)).toFixed(2) : null
+                return (
+                  <tr key={item.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}`, opacity: aplicado ? 0.7 : 1 }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                    <td className="px-4 py-3">
+                      <button onClick={() => openApModal(item)} title={aplicado ? 'Revertir a pendiente' : 'Marcar como aplicado'}>
+                        {aplicado
+                          ? <CheckCircle2 size={18} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
+                          : <Circle size={18} style={{ color: dark ? D.sub : '#d1d5db' }} />}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? D.text : '#111827', textDecoration: aplicado ? 'line-through' : 'none' }}>
+                      {item.producto_nombre}
                       {item.dias_antes_cosecha && (
-                        <span className="text-xs font-bold px-1.5 py-0.5 rounded flex items-center gap-1"
+                        <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded"
                           style={{ backgroundColor: dark ? 'rgba(234,179,8,0.15)' : '#fef9c3', color: dark ? '#fbbf24' : '#d97706' }}>
-                          <AlertTriangle size={9} /> {item.dias_antes_cosecha}d antes cosecha
+                          {item.dias_antes_cosecha}d seguridad
                         </span>
                       )}
-                    </div>
-                    {item.objetivo_nombre && <p className="text-[13px] mt-0.5" style={{ color: dark ? D.sub : '#9ca3af' }}>{item.objetivo_nombre}</p>}
-                    {item.plaga_nombre && <p className="text-[13px]" style={{ color: dark ? '#f87171' : '#dc2626' }}>Plaga: {item.plaga_nombre}</p>}
-                    {item.condicion_nombre && <p className="text-[13px]" style={{ color: dark ? 'rgba(96,165,250,0.8)' : '#2563eb' }}>Si: {item.condicion_nombre}</p>}
-                    {item.frecuencia_dias && <p className="text-[13px]" style={{ color: dark ? D.sub : '#9ca3af' }}>Cada {item.frecuencia_dias} días</p>}
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                    <button onClick={() => { setForm({ ...item }); setModal('edit') }} className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={12} /></button>
-                    <button onClick={() => delPlan(item.id)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
-                  </div>
-                </div>
-              )
-            })
-          })()}
-        </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {tipoCfg && <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md"
+                        style={{ backgroundColor: tipoCfg.bg, color: tipoCfg.c }}>{tipoCfg.label}</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      {item.etapa && <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md"
+                        style={{ backgroundColor: ebg, color: ec }}>{et.label}</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? D.text : '#374151' }}>
+                      {item.dosis} {item.unidad_codigo || item.unidad}
+                    </td>
+                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? '#a78bfa' : '#7c3aed' }}>
+                      {totalCampo ? `${totalCampo} ${item.unidad_codigo || item.unidad}` : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
+                      {totalCampo && item.producto_precio
+                        ? fmt(parseFloat(totalCampo) * parseFloat(item.producto_precio))
+                        : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                        style={aplicado
+                          ? { backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }
+                          : { backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>
+                        {aplicado ? `Aplicado${item.fecha_aplicada ? ' · ' + item.fecha_aplicada : ''}` : 'Pendiente'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={() => setViewItem(item)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={12} /></button>
+                        <button onClick={() => { setForm({ ...item }); setModal('edit') }} className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={12} /></button>
+                        <button onClick={() => delPlan(item)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })
+            })()}
+          </tbody>
+        </table>
       </div>
 
       {/* Registros de aplicación */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-extrabold uppercase tracking-wide" style={{ color: dark ? D.sub : '#6b7280' }}>Aplicaciones ejecutadas</p>
-          <button onClick={() => { setRegForm({ producto: '', fecha: '', dosis_aplicada: '', area_aplicada: '', operario: '', es_sostenible: false, observaciones: '' }); setRegModal(true) }}
+          <button onClick={() => { setRegForm({ producto: '', fecha: new Date().toISOString().slice(0,10), dosis_aplicada: '', area_aplicada: campana?.area ?? '', operario: '', es_sostenible: false, observaciones: '' }); setRegModal(true) }}
             className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg"
             style={{ backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: dark ? '#4ade80' : '#15803d' }}>
             <Plus size={12} /> Registrar aplicación
@@ -592,9 +832,14 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
                   <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{r.area_aplicada} m²</td>
                   <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{fmt(r.costo_total)}</td>
                   <td className="px-4 py-2.5">
-                    <button onClick={() => delReg(r.id)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button onClick={() => setViewReg(r)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={12} /></button>
+                      <button onClick={() => delReg(r.id)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -603,6 +848,24 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
           </table>
         </div>
       </div>
+
+      {apModal && (
+        <MiniModal dark={dark} title={`Confirmar: ${apModal.producto_nombre}`} onClose={() => setApModal(null)} onSubmit={confirmAplicacion} loading={loading}>
+          <p className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
+            Indica la fecha en que se realizó esta aplicación fitosanitaria.
+          </p>
+          <div>
+            <label style={lst_(dark)}>Fecha de aplicación *</label>
+            <input type="date" value={apForm.fecha_aplicada}
+              onChange={e => setApForm(f => ({ ...f, fecha_aplicada: e.target.value }))}
+              style={ist_(dark)} required />
+          </div>
+          <p className="text-[11px]" style={{ color: dark ? 'rgba(255,255,255,0.3)' : '#9ca3af' }}>
+            Dosis planificada: {apModal.dosis} {apModal.unidad_codigo || apModal.unidad}
+            {campana?.area ? ` · Total campo: ${(parseFloat(apModal.dosis) * parseFloat(campana.area)).toFixed(2)} ${apModal.unidad_codigo || apModal.unidad}` : ''}
+          </p>
+        </MiniModal>
+      )}
 
       {modal && (
         <MiniModal dark={dark} title={modal === 'edit' ? 'Editar producto' : 'Agregar al plan'} onClose={() => setModal(null)} onSubmit={submitPlan} loading={loading}>
@@ -634,7 +897,12 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><label style={lst}>Dosis *</label><input name="dosis" type="number" step="0.001" value={form.dosis} onChange={h} style={ist} required /></div>
-            <div><label style={lst}>Unidad</label><input name="unidad" value={form.unidad} onChange={h} style={ist} /></div>
+            <div><label style={lst}>Unidad</label>
+              <input name="unidad" value={form.unidad} onChange={h} style={ist} list="unidades-dosis" placeholder="L/ha, g/m², mL/L…" />
+              <datalist id="unidades-dosis">
+                {['L/ha','mL/ha','L/m²','mL/m²','kg/ha','g/ha','kg/m²','g/m²','mL/L','g/L'].map(u => <option key={u} value={u} />)}
+              </datalist>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><label style={lst}>Intervalo seguridad (días)</label><input name="dias_antes_cosecha" type="number" value={form.dias_antes_cosecha} onChange={h} style={ist} placeholder="15" /></div>
@@ -650,7 +918,20 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
               onChange={e => {
                 const prod = prods.find(p => String(p.id) === e.target.value)
                 const esSos = prod ? ['enmienda','biologico','bioestimulante'].includes(prod.tipo) : false
-                setRegForm(f => ({ ...f, producto: e.target.value, es_sostenible: esSos }))
+                const planItem = plan.find(pi => String(pi.producto) === e.target.value)
+                const fechaSug = planItem?.etapa ? sugerirFecha(planItem.etapa, campana?.fecha_inicio, campana?.variedad_dias_ciclo) : ''
+                const area = campana?.area ? parseFloat(campana.area) : null
+                const dosisTotal = planItem?.dosis && area
+                  ? (parseFloat(planItem.dosis) * area).toFixed(3)
+                  : planItem?.dosis || ''
+                setRegForm(f => ({
+                  ...f,
+                  producto: e.target.value,
+                  es_sostenible: esSos,
+                  dosis_aplicada: dosisTotal || f.dosis_aplicada,
+                  area_aplicada: area ?? f.area_aplicada,
+                  fecha: fechaSug || f.fecha,
+                }))
               }}>
               <option value="">Selecciona</option>
               {[
@@ -675,7 +956,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
             <div><label style={lst}>Área aplicada (m²) *</label><input name="area_aplicada" type="number" step="0.01" value={regForm.area_aplicada} onChange={hr} style={ist} required /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label style={lst}>Dosis aplicada *</label><input name="dosis_aplicada" type="number" step="0.001" value={regForm.dosis_aplicada} onChange={hr} style={ist} required /></div>
+            <div><label style={lst}>Dosis total aplicada *{campana?.area ? <span style={{ fontWeight: 400, color: dark ? '#a78bfa' : '#7c3aed', marginLeft: 4 }}>({campana.area} {campana.unidad_area})</span> : ''}</label><input name="dosis_aplicada" type="number" step="0.001" value={regForm.dosis_aplicada} onChange={hr} style={ist} required /></div>
             <div><label style={lst}>Operario</label><input name="operario" value={regForm.operario} onChange={hr} style={ist} /></div>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
@@ -688,6 +969,32 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
           <div><label style={lst}>Observaciones</label><textarea name="observaciones" value={regForm.observaciones} onChange={hr} rows={2} style={{ ...ist, resize: 'none' }} /></div>
         </MiniModal>
       )}
+      {viewItem && (
+        <InfoModal dark={dark} title="Detalle del plan fitosanitario" onClose={() => setViewItem(null)}>
+          <IR dark={dark} label="Producto"       value={viewItem.producto_nombre} />
+          <IR dark={dark} label="Tipo"           value={viewItem.producto_tipo} />
+          <IR dark={dark} label="Etapa"          value={etapaOf(viewItem.etapa)?.label} />
+          <IR dark={dark} label="Dosis/m²"       value={`${viewItem.dosis} ${viewItem.unidad_codigo || viewItem.unidad}`} />
+          {campana?.area && viewItem.producto_precio && <IR dark={dark} label="Costo est."   value={fmt(parseFloat(viewItem.dosis) * parseFloat(campana.area) * parseFloat(viewItem.producto_precio))} color={dark ? '#4ade80' : '#15803d'} />}
+          <IR dark={dark} label="Objetivo"       value={viewItem.objetivo_nombre} />
+          <IR dark={dark} label="Plaga"          value={viewItem.plaga_nombre} />
+          <IR dark={dark} label="Condición"      value={viewItem.condicion_nombre} />
+          <IR dark={dark} label="Frecuencia"     value={viewItem.frecuencia_dias ? `c/ ${viewItem.frecuencia_dias} días` : null} />
+          <IR dark={dark} label="Seg. cosecha"   value={viewItem.dias_antes_cosecha ? `${viewItem.dias_antes_cosecha} días` : null} color={dark ? '#fbbf24' : '#d97706'} />
+        </InfoModal>
+      )}
+      {viewReg && (
+        <InfoModal dark={dark} title="Detalle de aplicación" onClose={() => setViewReg(null)}>
+          <IR dark={dark} label="Producto"       value={viewReg.producto_nombre} />
+          <IR dark={dark} label="Fecha"          value={viewReg.fecha} />
+          <IR dark={dark} label="Dosis total"    value={`${viewReg.dosis_aplicada} ${viewReg.producto_unidad}`} />
+          <IR dark={dark} label="Área"           value={`${viewReg.area_aplicada} m²`} />
+          <IR dark={dark} label="Costo"          value={fmt(viewReg.costo_total)} color={dark ? '#4ade80' : '#15803d'} />
+          <IR dark={dark} label="Operario"       value={viewReg.operario} />
+          <IR dark={dark} label="Sostenible"     value={viewReg.es_sostenible ? 'Sí' : null} color={dark ? '#4ade80' : '#15803d'} />
+          <IR dark={dark} label="Observaciones"  value={viewReg.observaciones} />
+        </InfoModal>
+      )}
       {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
     </div>
   )
@@ -696,10 +1003,12 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
 /* ══════════════════════════════════════════════════════
    TAB: RIEGO & FERTIRRIGACIÓN
 ══════════════════════════════════════════════════════ */
-function RiegoTab({ dark, campanaId }) {
+function RiegoTab({ dark, campanaId, campana }) {
   const [planes, setPlanes]         = useState([])
   const [regs, setRegs]             = useState([])
   const [prods, setProds]           = useState([])
+  const [viewPlan, setViewPlan]     = useState(null)
+  const [viewReg, setViewReg]       = useState(null)
   const [modal, setModal]           = useState(null)
   const [regModal, setRegModal]     = useState(false)
   const [delConfirm, setDelConfirm] = useState(null)
@@ -744,8 +1053,8 @@ function RiegoTab({ dark, campanaId }) {
   const delReg  = (id)   => setDelConfirm({ fn: async () => { await api.delete(`/campanas/registros-riego/${id}/`); fetch() }, msg: '¿Eliminar este registro de riego?' })
 
   const ist = ist_(dark); const lst = lst_(dark)
-  const total_agua   = regs.reduce((s, r) => s + parseFloat(r.costo_agua || 0), 0)
   const total_litros = regs.reduce((s, r) => s + parseFloat(r.litros_aplicados || 0), 0)
+  const total_costo  = regs.reduce((s, r) => s + parseFloat(r.costo_total || 0), 0)
 
   const METODO_BADGE = {
     goteo:     { dbg: 'rgba(59,130,246,0.15)',  lbg: '#dbeafe', dc: '#60a5fa', lc: '#2563eb' },
@@ -760,9 +1069,17 @@ function RiegoTab({ dark, campanaId }) {
       {/* ── Planes de riego ─────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: dark ? D.sub : '#9ca3af' }}>
-            {planes.length} plan{planes.length !== 1 ? 'es' : ''} de riego
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: dark ? D.sub : '#9ca3af' }}>
+              {planes.length} plan{planes.length !== 1 ? 'es' : ''} de riego
+            </p>
+            {planes.length > 0 && campana?.area && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
+                style={{ backgroundColor: dark ? 'rgba(74,222,128,0.12)' : '#f0fdf4', color: dark ? '#4ade80' : '#15803d' }}>
+                fert. {fmt(planes.reduce((s, p) => s + (p.fertilizante_precio && p.dosis_fertilizante ? parseFloat(p.dosis_fertilizante) * parseFloat(campana.area) * parseFloat(p.fertilizante_precio) : 0), 0))} est.
+              </span>
+            )}
+          </div>
           <button onClick={() => { setForm({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '' }); setModal('new') }}
             className="flex items-center gap-1.5 btn-primary text-sm">
             <Plus size={13} /> Nuevo plan
@@ -772,15 +1089,15 @@ function RiegoTab({ dark, campanaId }) {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                {['Nombre', 'Método', 'L/m²', 'Frecuencia', 'Duración', 'Fertirrigación', ''].map((col, i) => (
-                  <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide${i === 6 ? ' text-right' : ''}`}
+                {['Nombre', 'Método', 'L/m²', 'Frecuencia', 'Duración', 'Fertirrigación', 'Costo fert. est.', ''].map((col, i) => (
+                  <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide${i === 7 ? ' text-right' : ''}`}
                     style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{col}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {planes.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin planes — usa "Nuevo plan" para agregar</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin planes — usa "Nuevo plan" para agregar</td></tr>
               ) : planes.map(p => {
                 const mb = METODO_BADGE[p.metodo] || METODO_BADGE.manual
                 return (
@@ -807,8 +1124,16 @@ function RiegoTab({ dark, campanaId }) {
                           </span>
                         : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
                     </td>
+                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
+                      {p.fertilizante_precio && p.dosis_fertilizante && campana?.area
+                        ? fmt(parseFloat(p.dosis_fertilizante) * parseFloat(campana.area) * parseFloat(p.fertilizante_precio))
+                        : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={() => setViewPlan(p)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={13} /></button>
                         <button onClick={() => { setForm({ ...p, fertilizante: p.fertilizante || '' }); setModal('edit') }}
                           className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
                           onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
@@ -837,7 +1162,7 @@ function RiegoTab({ dark, campanaId }) {
             {regs.length > 0 && (
               <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
                 style={{ backgroundColor: dark ? 'rgba(59,130,246,0.12)' : '#eff6ff', color: dark ? '#60a5fa' : '#2563eb' }}>
-                {total_litros.toFixed(0)} L · {fmt(total_agua)}
+                {total_litros.toFixed(0)} L · {fmt(total_costo)}
               </span>
             )}
           </div>
@@ -851,7 +1176,7 @@ function RiegoTab({ dark, campanaId }) {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                {['Fecha', 'Plan', 'Litros', 'Área', 'Fertirrigación', 'Costo agua', ''].map((col, i) => (
+                {['Fecha', 'Plan', 'Litros', 'Área', 'Fertirrigación', 'Costo total', ''].map((col, i) => (
                   <th key={i} className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide"
                     style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{col}</th>
                 ))}
@@ -869,11 +1194,16 @@ function RiegoTab({ dark, campanaId }) {
                   <td className="px-4 py-2.5 text-sm" style={{ color: dark ? '#4ade80' : '#15803d' }}>
                     {r.fertilizante_nombre ? `${r.fertilizante_nombre} ${r.dosis_fertilizante}` : '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{fmt(r.costo_agua)}</td>
+                  <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{fmt(r.costo_total)}</td>
                   <td className="px-4 py-2.5">
-                    <button onClick={() => delReg(r.id)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button onClick={() => setViewReg(r)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={12} /></button>
+                      <button onClick={() => delReg(r.id)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -961,6 +1291,33 @@ function RiegoTab({ dark, campanaId }) {
           <div><label style={lst}>Operario</label><input name="operario" value={regForm.operario} onChange={hr} style={ist} /></div>
         </MiniModal>
       )}
+      {viewPlan && (
+        <InfoModal dark={dark} title="Detalle del plan de riego" onClose={() => setViewPlan(null)}>
+          <IR dark={dark} label="Nombre"         value={viewPlan.nombre} />
+          <IR dark={dark} label="Método"         value={viewPlan.metodo_display} />
+          <IR dark={dark} label="Litros/m²"      value={`${viewPlan.litros_por_m2} L`} />
+          <IR dark={dark} label="Frecuencia"     value={`c/ ${viewPlan.frecuencia_dias} días`} />
+          <IR dark={dark} label="Duración"       value={viewPlan.duracion_minutos ? `${viewPlan.duracion_minutos} min` : null} />
+          <IR dark={dark} label="Fertirrigación" value={viewPlan.fertilizante_nombre} color={dark ? '#4ade80' : '#15803d'} />
+          <IR dark={dark} label="Dosis fert."    value={viewPlan.dosis_fertilizante ? `${viewPlan.dosis_fertilizante} kg/m²` : null} />
+          <IR dark={dark} label="Fecha inicio"   value={viewPlan.fecha_inicio} />
+          <IR dark={dark} label="Fecha fin"      value={viewPlan.fecha_fin} />
+        </InfoModal>
+      )}
+      {viewReg && (
+        <InfoModal dark={dark} title="Detalle de riego ejecutado" onClose={() => setViewReg(null)}>
+          <IR dark={dark} label="Fecha"          value={viewReg.fecha} />
+          <IR dark={dark} label="Plan"           value={viewReg.plan_nombre} />
+          <IR dark={dark} label="Litros aplic."  value={`${viewReg.litros_aplicados} L`} />
+          <IR dark={dark} label="Área regada"    value={`${viewReg.area_regada} m²`} />
+          <IR dark={dark} label="Costo agua"     value={fmt(viewReg.costo_agua)} color={dark ? '#60a5fa' : '#2563eb'} />
+          <IR dark={dark} label="Costo total"    value={fmt(viewReg.costo_total)} color={dark ? '#4ade80' : '#15803d'} />
+          <IR dark={dark} label="Fertirrigación" value={viewReg.fertilizante_nombre} color={dark ? '#4ade80' : '#15803d'} />
+          <IR dark={dark} label="Dosis fert."    value={viewReg.dosis_fertilizante ? `${viewReg.dosis_fertilizante} kg/m²` : null} />
+          <IR dark={dark} label="Operario"       value={viewReg.operario} />
+          <IR dark={dark} label="Observaciones"  value={viewReg.observaciones} />
+        </InfoModal>
+      )}
       {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
     </div>
   )
@@ -974,6 +1331,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
   const [modal, setModal]           = useState(null)
   const [delConfirm, setDelConfirm] = useState(null)
   const [form, setForm]             = useState({ categoria: 'insumo', descripcion: '', cantidad: '', unidad: '', precio_unitario: '', monto_ejecutado: '0' })
+  const [porM2, setPorM2]           = useState('')
   const [loading, setLoading]       = useState(false)
   const CATS = [['insumo','Insumo'],['agua','Agua'],['mano_obra','Mano de obra'],['otro','Otro']]
 
@@ -988,7 +1346,16 @@ function PresupuestoTab({ dark, campanaId, campana }) {
       if (modal === 'edit') { await api.patch(`/campanas/presupuesto/${form.id}/`, form); toast.success('Actualizado.') }
       else { await api.post(`/campanas/${campanaId}/presupuesto/`, form); toast.success('Ítem agregado.') }
       setModal(null); fetch()
-    } catch { toast.error('Error.') } finally { setLoading(false) }
+    } catch (err) {
+      console.error('Presupuesto save error:', err?.response?.data ?? err)
+      const detail = err?.response?.data
+      if (detail && typeof detail === 'object') {
+        const msgs = Object.entries(detail).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ')
+        toast.error(msgs, { duration: 6000 })
+      } else {
+        toast.error(err?.message ?? 'Error al guardar.')
+      }
+    } finally { setLoading(false) }
   }
   const del = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/presupuesto/${id}/`); fetch() }, msg: '¿Eliminar este ítem del presupuesto?' })
 
@@ -1029,7 +1396,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
         <p className="text-xs font-bold uppercase tracking-wide" style={{ color: dark ? D.sub : '#9ca3af' }}>
           {items.length} ítem{items.length !== 1 ? 's' : ''}
         </p>
-        <button onClick={() => { setForm({ categoria: 'insumo', descripcion: '', cantidad: '', unidad: '', precio_unitario: '', monto_ejecutado: '0' }); setModal('new') }}
+        <button onClick={() => { setForm({ categoria: 'insumo', descripcion: '', cantidad: '', unidad: '', precio_unitario: '', monto_ejecutado: '0' }); setPorM2(''); setModal('new') }}
           className="flex items-center gap-1.5 btn-primary text-sm">
           <Plus size={13} /> Agregar ítem
         </button>
@@ -1076,7 +1443,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => { setForm({ ...item }); setModal('edit') }}
+                      <button onClick={() => { setForm({ ...item }); setPorM2(''); setModal('edit') }}
                         className="p-2 rounded-lg transition-all duration-150"
                         style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: 'transparent' }}
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
@@ -1104,13 +1471,70 @@ function PresupuestoTab({ dark, campanaId, campana }) {
           </div>
           <div><label style={lst}>Descripción *</label><input name="descripcion" value={form.descripcion} onChange={h} style={ist} required /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label style={lst}>Cantidad *</label><input name="cantidad" type="number" step="0.01" value={form.cantidad} onChange={h} style={ist} required /></div>
-            <div><label style={lst}>Unidad</label><input name="unidad" value={form.unidad} onChange={h} style={ist} placeholder="kg, L, hora..." /></div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label style={lst}>Cantidad *</label>
+                {campana?.area && (
+                  <span className="text-[11px] font-bold" style={{ color: dark ? '#a78bfa' : '#7c3aed' }}>
+                    Área: {campana.area} {campana.unidad_area}
+                  </span>
+                )}
+              </div>
+              <input name="cantidad" type="number" step="0.01" value={form.cantidad} onChange={h} style={ist} required />
+            </div>
+            <div><label style={lst}>Unidad</label>
+              <input name="unidad" value={form.unidad} onChange={h} style={ist} list="unidades-pres" placeholder="kg, m, hora…" />
+              <datalist id="unidades-pres">
+                {['hora','jornal','m','m²','m³','ml','kg','g','t','L','mL','unid.','saco','rollo','caja','bolsa'].map(u => <option key={u} value={u} />)}
+              </datalist>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label style={lst}>Precio unitario (S/.) *</label><input name="precio_unitario" type="number" step="0.01" value={form.precio_unitario} onChange={h} style={ist} required /></div>
-            <div><label style={lst}>Monto ejecutado (S/.)</label><input name="monto_ejecutado" type="number" step="0.01" value={form.monto_ejecutado} onChange={h} style={ist} /></div>
+          {campana?.area && (
+            <div className="rounded-xl px-3 py-2.5 space-y-2"
+              style={{ backgroundColor: dark ? 'rgba(139,92,246,0.08)' : '#f5f3ff', border: `1px solid ${dark ? 'rgba(139,92,246,0.25)' : '#e9d5ff'}` }}>
+              <p className="text-[11px] font-extrabold uppercase tracking-wide" style={{ color: dark ? '#a78bfa' : '#7c3aed' }}>
+                Calcular por área de terreno
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number" step="0.001" value={porM2} placeholder={`cantidad por ${campana.unidad_area}`}
+                  onChange={e => {
+                    const v = e.target.value
+                    setPorM2(v)
+                    if (v && campana?.area) {
+                      const total = parseFloat((parseFloat(v) * parseFloat(campana.area)).toFixed(2))
+                      setForm(f => ({ ...f, cantidad: String(total) }))
+                    }
+                  }}
+                  style={{ ...ist, flex: 1 }}
+                />
+                <span className="text-xs font-bold shrink-0" style={{ color: dark ? D.sub : '#6b7280' }}>
+                  × {campana.area} {campana.unidad_area}
+                </span>
+                {porM2 && campana?.area && (
+                  <span className="text-xs font-extrabold shrink-0" style={{ color: dark ? '#a78bfa' : '#7c3aed' }}>
+                    = {(parseFloat(porM2) * parseFloat(campana.area)).toFixed(2)} {form.unidad}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px]" style={{ color: dark ? 'rgba(167,139,250,0.6)' : '#a78bfa' }}>
+                Ingresa cuánto necesitas por {campana.unidad_area} y se calcula la cantidad total automáticamente.
+              </p>
+            </div>
+          )}
+          <div>
+            <label style={lst}>Precio unitario (S/.) *</label>
+            <input name="precio_unitario" type="number" step="0.01" value={form.precio_unitario} onChange={h} style={ist} required />
           </div>
+          {modal === 'edit' && (
+            <div>
+              <label style={lst}>Monto ejecutado (S/.)</label>
+              <input name="monto_ejecutado" type="number" step="0.01" value={form.monto_ejecutado} onChange={h} style={ist} placeholder="Lo que realmente gastaste" />
+              <p className="text-[11px] mt-1" style={{ color: dark ? D.sub : '#9ca3af' }}>
+                Presupuestado: S/. {form.cantidad && form.precio_unitario ? (parseFloat(form.cantidad) * parseFloat(form.precio_unitario)).toFixed(2) : '0.00'}
+              </p>
+            </div>
+          )}
         </MiniModal>
       )}
       {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
@@ -1296,7 +1720,12 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
           <div><label style={lst}>Descripción *</label><textarea name="descripcion" value={form.descripcion} onChange={h} rows={2} style={{ ...ist, resize: 'none' }} required /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><label style={lst}>Cantidad</label><input name="cantidad" type="number" step="0.01" value={form.cantidad} onChange={h} style={ist} /></div>
-            <div><label style={lst}>Unidad</label><input name="unidad" value={form.unidad} onChange={h} style={ist} placeholder="kg, L, m²…" /></div>
+            <div><label style={lst}>Unidad</label>
+              <input name="unidad" value={form.unidad} onChange={h} style={ist} list="unidades-prac" placeholder="kg, m², L…" />
+              <datalist id="unidades-prac">
+                {['kg','L','m²','m³','hora','jornal','saco','unid.'].map(u => <option key={u} value={u} />)}
+              </datalist>
+            </div>
           </div>
         </MiniModal>
       )}
@@ -1377,17 +1806,11 @@ export default function CampanaDetailPage() {
 
   return (
     <div className="space-y-5">
+      <Breadcrumb items={[{ label: 'Campañas', to: '/campanas' }, { label: campana.variedad_str }]} />
 
-      {/* ── Encabezado ── mismo patrón que UsuariosPage */}
+      {/* ── Encabezado ── */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex items-start gap-3">
-          <button onClick={() => navigate('/campanas')}
-            className="p-2 rounded-xl shrink-0 mt-0.5 transition-all"
-            style={{ color: dark ? D.sub : '#6b7280', backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f0fdf4' }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.07)' : '#f0fdf4'}>
-            <ArrowLeft size={18} />
-          </button>
           <div>
             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
               <span className="font-mono text-xs font-bold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{campana.codigo}</span>
@@ -1510,8 +1933,8 @@ export default function CampanaDetailPage() {
       <div style={{ ...cardStyle, overflow: 'hidden' }}>
         <div className="p-5">
           {tab === 'labores'       && <LaboresTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} campana={campana} />}
-          {tab === 'fitosanitario' && <FitosanitarioTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} />}
-          {tab === 'riego'         && <RiegoTab dark={dark} campanaId={id} />}
+          {tab === 'fitosanitario' && <FitosanitarioTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} campana={campana} />}
+          {tab === 'riego'         && <RiegoTab dark={dark} campanaId={id} campana={campana} />}
           {tab === 'presupuesto'   && <PresupuestoTab dark={dark} campanaId={id} campana={campana} />}
           {tab === 'trazabilidad'  && <TrazabilidadTab dark={dark} campanaId={id} campana={campana} />}
         </div>
