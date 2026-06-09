@@ -1,4 +1,6 @@
 from rest_framework import generics, permissions
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 import datetime
 from .models import (
@@ -7,7 +9,7 @@ from .models import (
     Campana, LaborCampana, ItemFitosanitario,
     RegistroAplicacion, PlanRiego, RegistroRiego,
     PresupuestoItem, PracticaSostenible, PlantillaProducto, PlantillaLabor,
-    PlantillaRiego,
+    PlantillaRiego, CampanaAlerta,
 )
 from .serializers import (
     VariedadSerializer, ProductoAgricolaSerializer, TipoLaborSerializer,
@@ -16,6 +18,7 @@ from .serializers import (
     RegistroAplicacionSerializer, PlanRiegoSerializer, RegistroRiegoSerializer,
     PresupuestoItemSerializer, PracticaSostenibleSerializer,
     PlantillaProductoSerializer, PlantillaLaborSerializer, PlantillaRiegoSerializer,
+    CampanaAlertaSerializer,
 )
 
 
@@ -381,3 +384,127 @@ class PlantillaRiegoDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class   = PlantillaRiegoSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset           = PlantillaRiego.objects.all()
+
+
+# ── Alertas de campaña ────────────────────────────────────────────
+
+class CampanaAlertaListCreate(generics.ListCreateAPIView):
+    serializer_class   = CampanaAlertaSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        campana = get_object_or_404(Campana, pk=self.kwargs['campana_pk'], biohuerto__productor=self.request.user)
+        return CampanaAlerta.objects.filter(campana=campana)
+
+    def perform_create(self, serializer):
+        campana = get_object_or_404(Campana, pk=self.kwargs['campana_pk'], biohuerto__productor=self.request.user)
+        serializer.save(campana=campana)
+
+
+class CampanaAlertaDetail(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class   = CampanaAlertaSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return CampanaAlerta.objects.filter(campana__biohuerto__productor=self.request.user)
+
+
+class GenerarAlertasView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, campana_pk):
+        campana = get_object_or_404(Campana, pk=campana_pk, biohuerto__productor=request.user)
+        today = datetime.date.today()
+        fecha_ref = campana.fecha_inicio or today
+        nuevas = []
+
+        # Borrar alertas no completadas y regenerar
+        campana.alertas.filter(completada=False).delete()
+
+        # 1. Cosecha
+        if campana.fecha_fin:
+            dias = (campana.fecha_fin - today).days
+            prioridad = 'alta' if dias <= 7 else ('media' if dias <= 21 else 'baja')
+            CampanaAlerta.objects.create(
+                campana=campana, tipo='cosecha',
+                titulo='Cosecha programada',
+                descripcion=f'La campaña finaliza el {campana.fecha_fin.strftime("%d/%m/%Y")}. Preparar herramientas y empaques.',
+                fecha_programada=campana.fecha_fin,
+                prioridad=prioridad,
+            )
+            nuevas.append('cosecha')
+
+            # Rotación de cultivos si la campaña termina dentro de ±30 días
+            if -30 <= dias <= 30:
+                CampanaAlerta.objects.create(
+                    campana=campana, tipo='rotacion',
+                    titulo='Planificar rotación de cultivos',
+                    descripcion='La campaña finaliza pronto. Considerar rotación con leguminosas o raíces para recuperar el suelo.',
+                    fecha_programada=campana.fecha_fin + datetime.timedelta(days=7),
+                    prioridad='baja',
+                )
+                nuevas.append('rotacion')
+
+        # 2. Intervalos de seguridad fitosanitarios
+        for item in campana.plan_fitosanitario.filter(dias_antes_cosecha__isnull=False, activo=True):
+            if campana.fecha_fin:
+                fecha_limite = campana.fecha_fin - datetime.timedelta(days=item.dias_antes_cosecha)
+                CampanaAlerta.objects.create(
+                    campana=campana, tipo='seguridad',
+                    titulo=f'Límite de aplicación: {item.producto.nombre}',
+                    descripcion=f'Intervalo de seguridad de {item.dias_antes_cosecha} días antes de cosecha. '
+                                f'No aplicar después del {fecha_limite.strftime("%d/%m/%Y")}.',
+                    fecha_programada=fecha_limite,
+                    prioridad='alta',
+                )
+                nuevas.append('seguridad')
+
+        # 3. Próximo riego por plan
+        for plan in campana.plan_riego.filter(activo=True):
+            base = plan.fecha_inicio or fecha_ref
+            while base < today:
+                base += datetime.timedelta(days=plan.frecuencia_dias)
+            fert_txt = f' con {plan.fertilizante.nombre}' if plan.fertilizante else ''
+            CampanaAlerta.objects.create(
+                campana=campana, tipo='riego',
+                titulo=f'Riego: {plan.nombre}',
+                descripcion=f'Método {plan.get_metodo_display()}{fert_txt}. '
+                            f'{plan.litros_por_m2} L/m². Frecuencia: cada {plan.frecuencia_dias} días.',
+                fecha_programada=base,
+                prioridad='media',
+            )
+            nuevas.append('riego')
+
+        # 4. Aplicaciones fitosanitarias/fertilización con frecuencia
+        for item in campana.plan_fitosanitario.filter(frecuencia_dias__isnull=False, activo=True):
+            base = item.fecha_inicio or fecha_ref
+            while base < today:
+                base += datetime.timedelta(days=item.frecuencia_dias)
+            objetivo_txt = item.objetivo.nombre if item.objetivo else ''
+            tipo = 'fertilizacion' if 'fertili' in objetivo_txt.lower() or 'biol' in item.producto.nombre.lower() else 'control'
+            CampanaAlerta.objects.create(
+                campana=campana, tipo=tipo,
+                titulo=f'Aplicación: {item.producto.nombre}',
+                descripcion=f'Etapa: {item.get_etapa_display()}. Aplicar cada {item.frecuencia_dias} días.',
+                fecha_programada=base,
+                prioridad='media',
+            )
+            nuevas.append(tipo)
+
+        # 5. Labores programadas próximas (hasta 5)
+        for labor in campana.labores.filter(estado='programada', fecha_programada__gte=today).order_by('fecha_programada')[:5]:
+            CampanaAlerta.objects.create(
+                campana=campana, tipo='labor',
+                titulo=f'Labor: {labor.tipo_labor.nombre}',
+                descripcion=f'Etapa: {labor.etapa or "sin etapa"}. {labor.descripcion or ""}',
+                fecha_programada=labor.fecha_programada,
+                prioridad='baja',
+            )
+            nuevas.append('labor')
+
+        alertas = CampanaAlerta.objects.filter(campana=campana)
+        return Response({
+            'generadas': len(nuevas),
+            'tipos': list(set(nuevas)),
+            'alertas': CampanaAlertaSerializer(alertas, many=True).data,
+        })

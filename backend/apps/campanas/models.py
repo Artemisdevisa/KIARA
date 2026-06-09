@@ -293,6 +293,7 @@ class RegistroRiego(models.Model):
     dosis_fertilizante = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     operario           = models.CharField(max_length=100, blank=True)
     observaciones      = models.TextField(blank=True)
+    completado         = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-fecha']
@@ -395,3 +396,32 @@ class PracticaSostenible(models.Model):
 
     class Meta:
         ordering = ['-fecha']
+
+
+class CampanaAlerta(models.Model):
+    TIPO = [
+        ('riego',         'Riego'),
+        ('fertilizacion', 'Fertilización orgánica'),
+        ('control',       'Control preventivo'),
+        ('cosecha',       'Cosecha'),
+        ('seguridad',     'Intervalo de seguridad'),
+        ('labor',         'Labor programada'),
+        ('rotacion',      'Rotación de cultivos'),
+        ('otro',          'Otro'),
+    ]
+    PRIORIDAD = [
+        ('alta',  'Alta'),
+        ('media', 'Media'),
+        ('baja',  'Baja'),
+    ]
+    campana          = models.ForeignKey(Campana, on_delete=models.CASCADE, related_name='alertas')
+    tipo             = models.CharField(max_length=20, choices=TIPO)
+    titulo           = models.CharField(max_length=200)
+    descripcion      = models.TextField(blank=True)
+    fecha_programada = models.DateField()
+    prioridad        = models.CharField(max_length=5, choices=PRIORIDAD, default='media')
+    completada       = models.BooleanField(default=False)
+    created_at       = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['completada', 'fecha_programada', '-prioridad']

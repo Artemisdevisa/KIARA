@@ -7,6 +7,7 @@ import {
   CalendarRange, Calendar, ClipboardList, FlaskConical, Droplets,
   Wallet, Leaf, Plus, Pencil, Trash2, X, CheckCircle2, Circle,
   AlertTriangle, Printer, TrendingUp, TrendingDown, Minus, Eye, ChevronDown, ArrowLeft,
+  Bell, BellRing, RefreshCw, ShieldAlert, Droplet, Sprout, Scissors, RotateCcw, Wrench,
 } from 'lucide-react'
 import Breadcrumb from '../../components/ui/Breadcrumb'
 
@@ -162,6 +163,7 @@ const TABS = [
   { key: 'riego',         icon: Droplets,      label: 'Riego & Fertirrigación' },
   { key: 'presupuesto',   icon: Wallet,        label: 'Presupuesto'  },
   { key: 'trazabilidad',  icon: Leaf,          label: 'Trazabilidad' },
+  { key: 'alertas',       icon: Bell,          label: 'Alertas'      },
 ]
 
 function OperarioSelect({ dark, value, onChange, miembros, ist }) {
@@ -1053,8 +1055,14 @@ function RiegoTab({ dark, campanaId, campana }) {
     } catch { toast.error('Error.') } finally { setLoading(false) }
   }
 
-  const delPlan = (id)   => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`);       fetch() }, msg: '¿Eliminar este plan de riego?' })
-  const delReg  = (id)   => setDelConfirm({ fn: async () => { await api.delete(`/campanas/registros-riego/${id}/`); fetch() }, msg: '¿Eliminar este registro de riego?' })
+  const delPlan   = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`);       fetch() }, msg: '¿Eliminar este plan de riego?' })
+  const delReg    = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/registros-riego/${id}/`); fetch() }, msg: '¿Eliminar este registro de riego?' })
+  const toggleReg = async (r) => {
+    try {
+      const res = await api.patch(`/campanas/registros-riego/${r.id}/`, { completado: !r.completado })
+      setRegs(prev => prev.map(x => x.id === r.id ? { ...x, completado: res.data.completado } : x))
+    } catch { toast.error('Error al actualizar.') }
+  }
 
   const ist = ist_(dark); const lst = lst_(dark)
   const total_litros = regs.reduce((s, r) => s + parseFloat(r.litros_aplicados || 0), 0)
@@ -1188,10 +1196,15 @@ function RiegoTab({ dark, campanaId, campana }) {
             </thead>
             <tbody>
               {regs.map(r => (
-                <tr key={r.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}
+                <tr key={r.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}`, opacity: r.completado ? 0.55 : 1, transition: 'opacity 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{r.fecha}</td>
+                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>
+                    <div className="flex items-center gap-1.5">
+                      {r.completado && <CheckCircle2 size={11} style={{ color: dark ? '#4ade80' : '#16a34a', flexShrink: 0 }} />}
+                      {r.fecha}
+                    </div>
+                  </td>
                   <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: dark ? D.sub : '#6b7280' }}>{r.plan_nombre || '—'}</td>
                   <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.text : '#374151' }}>{r.litros_aplicados} L</td>
                   <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{r.area_regada} m²</td>
@@ -1201,6 +1214,13 @@ function RiegoTab({ dark, campanaId, campana }) {
                   <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{fmt(r.costo_total)}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center justify-end gap-1.5">
+                      <button onClick={() => toggleReg(r)} title={r.completado ? 'Desmarcar' : 'Marcar como hecho'}
+                        className="p-1.5 rounded-lg transition-colors"
+                        style={{ color: r.completado ? (dark ? '#4ade80' : '#16a34a') : (dark ? D.sub : '#9ca3af') }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(74,222,128,0.12)' : '#f0fdf4'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                        {r.completado ? <CheckCircle2 size={13} /> : <Circle size={13} />}
+                      </button>
                       <button onClick={() => setViewReg(r)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={12} /></button>
@@ -1333,6 +1353,8 @@ function RiegoTab({ dark, campanaId, campana }) {
 function PresupuestoTab({ dark, campanaId, campana }) {
   const [items, setItems]           = useState([])
   const [laboresEj, setLaboresEj]   = useState(0)
+  const [fitoEj, setFitoEj]         = useState(0)
+  const [riegoEj, setRiegoEj]       = useState(0)
   const [modal, setModal]           = useState(null)
   const [delConfirm, setDelConfirm] = useState(null)
   const [form, setForm]             = useState({ categoria: 'insumo', descripcion: '', cantidad: '', unidad: '', precio_unitario: '', monto_ejecutado: '0' })
@@ -1341,16 +1363,30 @@ function PresupuestoTab({ dark, campanaId, campana }) {
   const CATS = [['insumo','Insumo'],['agua','Agua'],['mano_obra','Mano de obra'],['otro','Otro']]
 
   const fetch = useCallback(async () => {
-    const [r, l] = await Promise.all([
+    const [r, l, f, rr] = await Promise.all([
       api.get(`/campanas/${campanaId}/presupuesto/`),
       api.get(`/campanas/${campanaId}/labores/`),
+      api.get(`/campanas/${campanaId}/fitosanitario/`),
+      api.get(`/campanas/${campanaId}/registros-riego/`),
     ])
     setItems(r.data)
     const totalLaboresEj = l.data
       .filter(lb => lb.estado === 'ejecutada')
       .reduce((s, lb) => s + (lb.costo_ejecutado || 0), 0)
     setLaboresEj(totalLaboresEj)
-  }, [campanaId])
+    const area = parseFloat(campana?.area || 0)
+    const totalFitoEj = f.data
+      .filter(it => it.estado === 'aplicado')
+      .reduce((s, it) => {
+        const costo = parseFloat(it.dosis || 0) * area * parseFloat(it.producto_precio || 0) * fitoCostFactor(it.unidad_codigo)
+        return s + costo
+      }, 0)
+    setFitoEj(totalFitoEj)
+    const totalRiegoEj = rr.data
+      .filter(reg => reg.completado)
+      .reduce((s, reg) => s + parseFloat(reg.costo_total || 0), 0)
+    setRiegoEj(totalRiegoEj)
+  }, [campanaId, campana?.area])
   useEffect(() => { fetch() }, [fetch])
 
   const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -1376,7 +1412,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
 
   const total_pres   = items.reduce((s, i) => s + i.monto_presupuestado, 0)
   const total_ej_man = items.reduce((s, i) => s + parseFloat(i.monto_ejecutado || 0), 0)
-  const total_ej     = total_ej_man + laboresEj
+  const total_ej     = total_ej_man + laboresEj + fitoEj + riegoEj
   const varianza     = total_pres - total_ej
   const ingreso_est = campana?.objetivo_cosecha && campana?.precio_venta_estimado
     ? parseFloat(campana.objetivo_cosecha) * parseFloat(campana.precio_venta_estimado) : null
@@ -1390,7 +1426,11 @@ function PresupuestoTab({ dark, campanaId, campana }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Presupuestado', value: fmt(total_pres), color: dark ? '#60a5fa' : '#2563eb' },
-          { label: 'Ejecutado', value: fmt(total_ej), sub: laboresEj > 0 ? `inc. ${fmt(laboresEj)} labores` : null, color: dark ? '#4ade80' : '#15803d' },
+          { label: 'Ejecutado', value: fmt(total_ej),
+            sub: (laboresEj > 0 || fitoEj > 0 || riegoEj > 0)
+              ? [laboresEj > 0 && `${fmt(laboresEj)} labores`, fitoEj > 0 && `${fmt(fitoEj)} fitosanit.`, riegoEj > 0 && `${fmt(riegoEj)} riego`].filter(Boolean).join(' + ')
+              : null,
+            color: dark ? '#4ade80' : '#15803d' },
           { label: varianza >= 0 ? 'Ahorro' : 'Exceso', value: fmt(Math.abs(varianza)),
             color: varianza >= 0 ? (dark ? '#4ade80' : '#15803d') : (dark ? '#f87171' : '#dc2626'),
             icon: varianza >= 0 ? <TrendingDown size={13} /> : <TrendingUp size={13} /> },
@@ -1752,6 +1792,233 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
 }
 
 /* ══════════════════════════════════════════════════════
+   ALERTAS TAB
+══════════════════════════════════════════════════════ */
+const ALERTA_META = {
+  riego:         { label: 'Riego',               icon: Droplet,     dc: '#38bdf8', lc: '#0284c7', dbg: 'rgba(56,189,248,0.15)',  lbg: '#e0f2fe' },
+  fertilizacion: { label: 'Fertilización',       icon: Sprout,      dc: '#4ade80', lc: '#16a34a', dbg: 'rgba(74,222,128,0.15)',  lbg: '#dcfce7' },
+  control:       { label: 'Control preventivo',  icon: ShieldAlert, dc: '#fb923c', lc: '#ea580c', dbg: 'rgba(251,146,60,0.15)',  lbg: '#ffedd5' },
+  cosecha:       { label: 'Cosecha',             icon: Scissors,    dc: '#facc15', lc: '#ca8a04', dbg: 'rgba(250,204,21,0.15)',  lbg: '#fef9c3' },
+  seguridad:     { label: 'Intervalo seguridad', icon: ShieldAlert, dc: '#f87171', lc: '#dc2626', dbg: 'rgba(248,113,113,0.15)', lbg: '#fee2e2' },
+  labor:         { label: 'Labor',               icon: Wrench,      dc: '#a78bfa', lc: '#7c3aed', dbg: 'rgba(167,139,250,0.15)', lbg: '#ede9fe' },
+  rotacion:      { label: 'Rotación',            icon: RotateCcw,   dc: '#34d399', lc: '#059669', dbg: 'rgba(52,211,153,0.15)',  lbg: '#d1fae5' },
+  otro:          { label: 'Otro',                icon: Bell,        dc: '#94a3b8', lc: '#64748b', dbg: 'rgba(148,163,184,0.15)', lbg: '#f1f5f9' },
+}
+
+const PRIORIDAD_META = {
+  alta:  { label: 'Alta',  dc: '#f87171', lc: '#dc2626', dbg: 'rgba(248,113,113,0.18)', lbg: '#fee2e2' },
+  media: { label: 'Media', dc: '#fbbf24', lc: '#d97706', dbg: 'rgba(251,191,36,0.18)',  lbg: '#fef3c7' },
+  baja:  { label: 'Baja',  dc: '#4ade80', lc: '#16a34a', dbg: 'rgba(74,222,128,0.18)',  lbg: '#dcfce7' },
+}
+
+function AlertasTab({ dark, campanaId }) {
+  const [alertas, setAlertas]       = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [sortBy, setSortBy]         = useState('fecha')   // 'fecha' | 'prioridad'
+  const [filterTipo, setFilterTipo] = useState('')
+  const [filterPrio, setFilterPrio] = useState('')
+  const [showDone, setShowDone]     = useState(false)
+
+  const load = useCallback(async () => {
+    try {
+      const r = await api.get(`/campanas/${campanaId}/alertas/`)
+      setAlertas(r.data)
+    } catch { toast.error('Error cargando alertas') }
+    finally { setLoading(false) }
+  }, [campanaId])
+
+  useEffect(() => { load() }, [load])
+
+  const generar = async () => {
+    setGenerating(true)
+    try {
+      const r = await api.post(`/campanas/${campanaId}/alertas/generar/`)
+      setAlertas(r.data.alertas)
+      toast.success(`${r.data.generadas} alerta${r.data.generadas !== 1 ? 's' : ''} generada${r.data.generadas !== 1 ? 's' : ''}`)
+    } catch { toast.error('Error generando alertas') }
+    finally { setGenerating(false) }
+  }
+
+  const toggleCompletada = async (a) => {
+    try {
+      const r = await api.patch(`/campanas/alertas/${a.id}/`, { completada: !a.completada })
+      setAlertas(prev => prev.map(x => x.id === a.id ? r.data : x))
+    } catch { toast.error('Error actualizando alerta') }
+  }
+
+  const eliminar = async (id) => {
+    try {
+      await api.delete(`/campanas/alertas/${id}/`)
+      setAlertas(prev => prev.filter(x => x.id !== id))
+    } catch { toast.error('Error eliminando alerta') }
+  }
+
+  const PRIO_ORDER = { alta: 0, media: 1, baja: 2 }
+
+  const visible = alertas
+    .filter(a => showDone ? true : !a.completada)
+    .filter(a => filterTipo ? a.tipo === filterTipo : true)
+    .filter(a => filterPrio ? a.prioridad === filterPrio : true)
+    .sort((a, b) => {
+      if (sortBy === 'prioridad') return (PRIO_ORDER[a.prioridad] ?? 9) - (PRIO_ORDER[b.prioridad] ?? 9)
+      return new Date(a.fecha_programada) - new Date(b.fecha_programada)
+    })
+
+  const pendientes = alertas.filter(a => !a.completada).length
+  const ist = {
+    backgroundColor: dark ? D.inputBg : '#f9fafb',
+    border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
+    borderRadius: '10px', color: dark ? D.text : '#111827', fontSize: '13px',
+    cursor: 'pointer', padding: '6px 10px',
+  }
+
+  if (loading) return <div className="py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Cargando alertas…</div>
+
+  return (
+    <div className="space-y-4">
+      {/* ── Encabezado + botón generar ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <BellRing size={18} style={{ color: dark ? '#fbbf24' : '#d97706' }} />
+          <span className="font-bold text-sm" style={{ color: dark ? D.text : '#111827' }}>
+            Alertas y recordatorios
+          </span>
+          {pendientes > 0 && (
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: dark ? 'rgba(248,113,113,0.20)' : '#fee2e2', color: dark ? '#f87171' : '#dc2626' }}>
+              {pendientes} pendiente{pendientes !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        <button onClick={generar} disabled={generating}
+          className="flex items-center gap-2 btn-primary text-xs px-3 py-2 rounded-xl disabled:opacity-50">
+          <RefreshCw size={13} className={generating ? 'animate-spin' : ''} />
+          {generating ? 'Generando…' : 'Generar alertas'}
+        </button>
+      </div>
+
+      {/* ── Filtros y ordenamiento ── */}
+      <div className="flex flex-wrap gap-2">
+        <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={ist}>
+          <option value="fecha">Ordenar: por fecha</option>
+          <option value="prioridad">Ordenar: por prioridad</option>
+        </select>
+        <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)} style={ist}>
+          <option value="">Todos los tipos</option>
+          {Object.entries(ALERTA_META).map(([k, v]) => (
+            <option key={k} value={k}>{v.label}</option>
+          ))}
+        </select>
+        <select value={filterPrio} onChange={e => setFilterPrio(e.target.value)} style={ist}>
+          <option value="">Todas las prioridades</option>
+          {Object.entries(PRIORIDAD_META).map(([k, v]) => (
+            <option key={k} value={k}>{v.label}</option>
+          ))}
+        </select>
+        <button onClick={() => setShowDone(s => !s)} style={{
+          ...ist,
+          backgroundColor: showDone ? (dark ? 'rgba(99,102,241,0.20)' : '#ede9fe') : (dark ? D.inputBg : '#f9fafb'),
+          color: showDone ? (dark ? '#818cf8' : '#4f46e5') : (dark ? D.sub : '#6b7280'),
+        }}>
+          {showDone ? 'Ocultar completadas' : 'Ver completadas'}
+        </button>
+      </div>
+
+      {/* ── Lista de alertas ── */}
+      {visible.length === 0 ? (
+        <div className="py-12 text-center space-y-2">
+          <Bell size={32} className="mx-auto mb-2" style={{ color: dark ? D.sub : '#d1d5db' }} />
+          <p className="text-sm font-semibold" style={{ color: dark ? D.sub : '#9ca3af' }}>
+            {alertas.length === 0 ? 'No hay alertas aún. Usa "Generar alertas" para crearlas automáticamente.' : 'Sin alertas para los filtros seleccionados.'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {visible.map(a => {
+            const meta  = ALERTA_META[a.tipo]  || ALERTA_META.otro
+            const pMeta = PRIORIDAD_META[a.prioridad] || PRIORIDAD_META.media
+            const Icon  = meta.icon
+            const vencida = !a.completada && a.dias_restantes < 0
+            const hoy     = !a.completada && a.dias_restantes === 0
+            const pronto  = !a.completada && a.dias_restantes > 0 && a.dias_restantes <= 3
+            return (
+              <div key={a.id} style={{
+                backgroundColor: a.completada
+                  ? (dark ? 'rgba(255,255,255,0.02)' : '#f9fafb')
+                  : (dark ? meta.dbg : meta.lbg),
+                border: `1.5px solid ${a.completada
+                  ? (dark ? 'rgba(255,255,255,0.06)' : '#e5e7eb')
+                  : (dark ? meta.dc + '55' : meta.lc + '44')}`,
+                borderRadius: '14px', padding: '12px 14px',
+                opacity: a.completada ? 0.55 : 1,
+                transition: 'opacity 0.2s',
+              }}>
+                <div className="flex items-start gap-3">
+                  {/* Icono tipo */}
+                  <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center mt-0.5"
+                    style={{ backgroundColor: dark ? meta.dbg : meta.lbg, border: `1px solid ${dark ? meta.dc + '44' : meta.lc + '33'}` }}>
+                    <Icon size={15} style={{ color: dark ? meta.dc : meta.lc }} />
+                  </div>
+
+                  {/* Contenido */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                      <span className="text-sm font-bold" style={{
+                        color: a.completada ? (dark ? D.sub : '#9ca3af') : (dark ? D.text : '#111827'),
+                        textDecoration: a.completada ? 'line-through' : 'none',
+                      }}>{a.titulo}</span>
+                      {/* Badge prioridad */}
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ backgroundColor: dark ? pMeta.dbg : pMeta.lbg, color: dark ? pMeta.dc : pMeta.lc }}>
+                        {pMeta.label}
+                      </span>
+                      {/* Badge urgencia */}
+                      {vencida && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">Vencida</span>}
+                      {hoy     && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600">Hoy</span>}
+                      {pronto  && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">En {a.dias_restantes}d</span>}
+                    </div>
+                    {a.descripcion && (
+                      <p className="text-xs leading-relaxed" style={{ color: dark ? D.sub : '#6b7280' }}>{a.descripcion}</p>
+                    )}
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <span className="text-[11px] font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.45)' : '#9ca3af' }}>
+                        📅 {a.fecha_programada}
+                        {!a.completada && a.dias_restantes !== undefined && (
+                          <span style={{ color: vencida ? (dark ? '#f87171' : '#dc2626') : hoy ? (dark ? '#fb923c' : '#ea580c') : (dark ? D.sub : '#9ca3af') }}>
+                            {' '}({a.dias_restantes === 0 ? 'hoy' : a.dias_restantes > 0 ? `en ${a.dias_restantes}d` : `hace ${Math.abs(a.dias_restantes)}d`})
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Acciones */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={() => toggleCompletada(a)} title={a.completada ? 'Reabrir' : 'Marcar completada'}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                      style={{ backgroundColor: dark ? 'rgba(255,255,255,0.06)' : '#fff', border: `1px solid ${dark ? 'rgba(255,255,255,0.10)' : '#e5e7eb'}` }}>
+                      {a.completada
+                        ? <Circle size={13} style={{ color: dark ? D.sub : '#9ca3af' }} />
+                        : <CheckCircle2 size={13} style={{ color: dark ? '#4ade80' : '#16a34a' }} />}
+                    </button>
+                    <button onClick={() => eliminar(a.id)} title="Eliminar"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                      style={{ backgroundColor: dark ? 'rgba(255,255,255,0.06)' : '#fff', border: `1px solid ${dark ? 'rgba(255,255,255,0.10)' : '#e5e7eb'}` }}>
+                      <X size={13} style={{ color: dark ? '#f87171' : '#dc2626' }} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════
    PÁGINA PRINCIPAL
 ══════════════════════════════════════════════════════ */
 export default function CampanaDetailPage() {
@@ -1954,6 +2221,7 @@ export default function CampanaDetailPage() {
           {tab === 'riego'         && <RiegoTab dark={dark} campanaId={id} campana={campana} />}
           {tab === 'presupuesto'   && <PresupuestoTab dark={dark} campanaId={id} campana={campana} />}
           {tab === 'trazabilidad'  && <TrazabilidadTab dark={dark} campanaId={id} campana={campana} />}
+          {tab === 'alertas'       && <AlertasTab dark={dark} campanaId={id} />}
         </div>
       </div>
 

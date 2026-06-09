@@ -18,6 +18,7 @@ from .views import (
     PlantillaProductoListCreate, PlantillaProductoDetail,
     PlantillaLaborListCreate, PlantillaLaborDetail,
     PlantillaRiegoListCreate, PlantillaRiegoDetail,
+    CampanaAlertaListCreate, CampanaAlertaDetail, GenerarAlertasView,
 )
 
 urlpatterns = [
@@ -76,4 +77,9 @@ urlpatterns = [
     # Nested: prácticas sostenibles
     path('<int:campana_pk>/practicas/',      PracticaListCreate.as_view()),
     path('practicas/<int:pk>/',             PracticaDetail.as_view()),
+
+    # Nested: alertas de campaña
+    path('<int:campana_pk>/alertas/',          CampanaAlertaListCreate.as_view()),
+    path('alertas/<int:pk>/',                  CampanaAlertaDetail.as_view()),
+    path('<int:campana_pk>/alertas/generar/',   GenerarAlertasView.as_view()),
 ]

@@ -1,3 +1,4 @@
+import datetime
 from rest_framework import serializers
 from .models import (
     Variedad, ProductoAgricola, TipoLabor,
@@ -5,7 +6,7 @@ from .models import (
     Campana, LaborCampana, ItemFitosanitario,
     RegistroAplicacion, PlanRiego, RegistroRiego,
     PresupuestoItem, PracticaSostenible, PlantillaProducto, PlantillaLabor,
-    PlantillaRiego,
+    PlantillaRiego, CampanaAlerta,
 )
 
 
@@ -200,6 +201,20 @@ class PlantillaRiegoSerializer(serializers.ModelSerializer):
         model  = PlantillaRiego
         fields = '__all__'
         read_only_fields = ['variedad']
+
+
+class CampanaAlertaSerializer(serializers.ModelSerializer):
+    tipo_display      = serializers.CharField(source='get_tipo_display', read_only=True)
+    prioridad_display = serializers.CharField(source='get_prioridad_display', read_only=True)
+    dias_restantes    = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = CampanaAlerta
+        fields = '__all__'
+        read_only_fields = ['campana', 'created_at']
+
+    def get_dias_restantes(self, obj):
+        return (obj.fecha_programada - datetime.date.today()).days
 
 
 class CampanaSerializer(serializers.ModelSerializer):
