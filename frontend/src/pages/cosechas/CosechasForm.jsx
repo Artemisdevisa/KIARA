@@ -4,7 +4,7 @@ import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Upload } from 'lucide-react'
+import { ArrowLeft, Upload, Leaf } from 'lucide-react'
 
 const INIT = {
   campana: '', nombre_producto: '', cantidad: '',
@@ -22,23 +22,25 @@ export default function CosechasForm() {
   const [searchParams] = useSearchParams()
   const { dark } = useTheme()
   const { user } = useAuth()
-  const [form, setForm]         = useState({ ...INIT, campana: searchParams.get('campana') || '', contacto: '' })
+
+  const campanaIdParam = searchParams.get('campana') || ''
+
+  const [form, setForm]         = useState({ ...INIT, campana: campanaIdParam, contacto: '' })
   const [foto, setFoto]         = useState(null)
   const [preview, setPreview]   = useState(null)
   const [campanas, setCampanas] = useState([])
   const [loading, setLoading]   = useState(false)
 
+  // Campaña fija (vino desde el detalle de campaña)
+  const campanaFija = campanaIdParam
+    ? campanas.find(c => String(c.id) === campanaIdParam)
+    : null
+
   useEffect(() => {
     api.get('/campanas/').then(res => setCampanas(res.data)).catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if (user?.telefono) {
-      setForm(f => ({ ...f, contacto: f.contacto || user.telefono }))
-    }
-  }, [user])
-
-  // Cuando se selecciona una campaña, pre-rellenar nombre del producto
+  // Pre-rellenar nombre del producto desde la variedad de la campaña
   useEffect(() => {
     if (form.campana) {
       const c = campanas.find(c => String(c.id) === String(form.campana))
@@ -47,6 +49,13 @@ export default function CosechasForm() {
       }
     }
   }, [form.campana, campanas])
+
+  // Pre-rellenar contacto con el teléfono del usuario
+  useEffect(() => {
+    if (user?.telefono) {
+      setForm(f => ({ ...f, contacto: f.contacto || user.telefono }))
+    }
+  }, [user])
 
   const handleFoto = e => {
     const file = e.target.files[0]
@@ -57,15 +66,14 @@ export default function CosechasForm() {
     e.preventDefault()
     setLoading(true)
     try {
-      // Obtener biohuerto de la campaña seleccionada
-      const campana = campanas.find(c => String(c.id) === String(form.campana))
+      const campanaObj = campanas.find(c => String(c.id) === String(form.campana))
       const data = new FormData()
       Object.entries(form).forEach(([k, v]) => { if (v) data.append(k, v) })
-      if (campana?.biohuerto) data.append('biohuerto', campana.biohuerto)
+      if (campanaObj?.biohuerto) data.append('biohuerto', campanaObj.biohuerto)
       if (foto) data.append('foto', foto)
       await api.post('/cosechas/', data, { headers: { 'Content-Type': 'multipart/form-data' } })
       toast.success('Cosecha publicada.')
-      navigate('/cosechas')
+      navigate(campanaIdParam ? `/campanas/${campanaIdParam}` : '/cosechas')
     } catch (err) {
       const errors = err.response?.data
       if (errors) Object.values(errors).flat().forEach(m => toast.error(String(m)))
@@ -93,7 +101,8 @@ export default function CosechasForm() {
     <div className="max-w-xl mx-auto space-y-5">
       {/* Encabezado */}
       <div className="flex items-center gap-3">
-        <Link to="/cosechas" style={{ color: dark ? D.sub : '#9ca3af' }}>
+        <Link to={campanaIdParam ? `/campanas/${campanaIdParam}` : '/cosechas'}
+          style={{ color: dark ? D.sub : '#9ca3af' }}>
           <ArrowLeft size={20} />
         </Link>
         <div>
@@ -105,18 +114,37 @@ export default function CosechasForm() {
       <div style={panelStyle}>
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Campaña */}
-          <div>
-            <label style={lst}>Campaña *</label>
-            <select style={ist} {...h('campana')} required>
-              <option value="">Seleccionar campaña...</option>
-              {campanas.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.variedad_str} — {c.biohuerto_nombre} ({c.estado_display})
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Campaña — fija si viene del detalle, selector si es libre */}
+          {campanaFija ? (
+            <div>
+              <label style={lst}>Campaña</label>
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+                style={{ backgroundColor: dark ? 'rgba(22,163,74,0.08)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(22,163,74,0.2)' : '#bbf7d0'}` }}>
+                <Leaf size={14} style={{ color: dark ? '#4ade80' : '#16a34a', flexShrink: 0 }} />
+                <div>
+                  <p className="text-sm font-bold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
+                    {campanaFija.variedad_str}
+                  </p>
+                  <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>
+                    {campanaFija.biohuerto_nombre} · {campanaFija.codigo} · {campanaFija.anio}
+                  </p>
+                </div>
+              </div>
+              <input type="hidden" name="campana" value={campanaFija.id} />
+            </div>
+          ) : (
+            <div>
+              <label style={lst}>Campaña *</label>
+              <select style={ist} {...h('campana')} required>
+                <option value="">Seleccionar campaña...</option>
+                {campanas.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.variedad_str} — {c.biohuerto_nombre} ({c.estado_display})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Nombre producto */}
           <div>
@@ -187,7 +215,8 @@ export default function CosechasForm() {
             <button type="submit" disabled={loading} className="btn-primary flex-1">
               {loading ? 'Publicando...' : 'Publicar cosecha'}
             </button>
-            <Link to="/cosechas" className="btn-secondary">Cancelar</Link>
+            <Link to={campanaIdParam ? `/campanas/${campanaIdParam}` : '/cosechas'}
+              className="btn-secondary">Cancelar</Link>
           </div>
         </form>
       </div>

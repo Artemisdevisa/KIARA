@@ -2168,12 +2168,21 @@ export default function CampanaDetailPage() {
               )}
             </div>
           )}
-          <Link to={`/cosechas/nueva?campana=${id}`}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all"
-            style={{ backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d', border: `1px solid ${dark ? 'rgba(22,163,74,0.3)' : '#86efac'}` }}>
-            <Scissors size={14} />
-            Registrar cosecha
-          </Link>
+          {campana.lista_para_cosechar ? (
+            <Link to={`/cosechas/nueva?campana=${id}`}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all"
+              style={{ backgroundColor: dark ? 'rgba(22,163,74,0.20)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d', border: `1px solid ${dark ? 'rgba(22,163,74,0.4)' : '#86efac'}` }}>
+              <Scissors size={14} />
+              Registrar cosecha
+            </Link>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold"
+              title={`Pendiente: ${[campana.labores_pendientes > 0 && `${campana.labores_pendientes} labor(es)`, campana.fito_pendientes > 0 && `${campana.fito_pendientes} fitosanitario(s)`, campana.riego_pendientes > 0 && `${campana.riego_pendientes} plan(es) de riego`].filter(Boolean).join(', ')}`}
+              style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f3f4f6', color: dark ? 'rgba(255,255,255,0.25)' : '#d1d5db', border: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#e5e7eb'}`, cursor: 'not-allowed' }}>
+              <Scissors size={14} />
+              Registrar cosecha
+            </div>
+          )}
         </div>
       </div>
 
