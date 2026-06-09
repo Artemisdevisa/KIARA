@@ -77,7 +77,7 @@ export default function MiCuentaPage() {
   const hc = key => ({ value: pass[key],   onChange: e => setPass({ ...pass, [key]: e.target.value }) })
 
   return (
-    <div className="max-w-xl mx-auto space-y-5">
+    <div className="max-w-xl mx-auto px-4 py-8 space-y-5">
       <Breadcrumb items={[{ label: 'Mi cuenta' }]} />
 
       {/* Avatar + nombre */}

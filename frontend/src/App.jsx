@@ -75,6 +75,7 @@ export default function App() {
         <Route path="pago-exitoso" element={<PagoExitosoPage />} />
         <Route path="pago-pendiente" element={<PagoPendientePage />} />
         <Route path="pago-fallido" element={<PagoFallidoPage />} />
+        <Route path="mi-cuenta" element={<ProtectedRoute><MiCuentaPage /></ProtectedRoute>} />
       </Route>
 
       {/* ── Auth (sin layout) ── */}
@@ -103,7 +104,6 @@ export default function App() {
         <Route path="administrativo/biohuert-miembros" element={<BiohuertMiembrosPage />} />
         <Route path="usuarios" element={<UsuariosPage />} />
         <Route path="mi-huerto" element={<MiHuertoPage />} />
-        <Route path="mi-cuenta" element={<MiCuentaPage />} />
         <Route path="campanas" element={<CampanasPage />} />
         <Route path="campanas/:id" element={<CampanaDetailPage />} />
         <Route path="catalogos" element={<CatalogosPage />} />
