@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Menu, Search, Heart, ShoppingCart, X, ChevronRight, Leaf, ChevronDown, LayoutDashboard, ShoppingBag, User, LogOut } from 'lucide-react'
+import {
+  Menu, Search, Heart, ShoppingCart, X, ChevronRight, Leaf, ChevronDown,
+  LayoutDashboard, ShoppingBag, User, LogOut,
+  Home, Store, UsersRound, BookOpen, Mail,
+} from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import api from '../../api/axios'
@@ -59,11 +63,11 @@ function BtnSecondary({ to, children, onClick }) {
    NAV LINKS
 ──────────────────────────────────────────── */
 const NAV = [
-  { to: '/',              label: 'Inicio',        end: true,  emoji: '🏠' },
-  { to: '/marketplace',   label: 'Marketplace',   end: false, emoji: '🛍️' },
-  { to: '/quienes-somos', label: 'Quiénes Somos', end: false, emoji: '🌿' },
-  { to: '/como-funciona', label: 'Cómo Funciona', end: false, emoji: '📖' },
-  { to: '/contacto',      label: 'Contacto',      end: false, emoji: '✉️' },
+  { to: '/',              label: 'Inicio',        end: true,  Icon: Home        },
+  { to: '/marketplace',   label: 'Marketplace',   end: false, Icon: Store       },
+  { to: '/quienes-somos', label: 'Quiénes Somos', end: false, Icon: UsersRound  },
+  { to: '/como-funciona', label: 'Cómo Funciona', end: false, Icon: BookOpen    },
+  { to: '/contacto',      label: 'Contacto',      end: false, Icon: Mail        },
 ]
 
 /* ────────────────────────────────────────────
@@ -191,12 +195,12 @@ function MenuDrawer({ open, onClose, token, categorias }) {
 
             {/* Nav links */}
             <nav className="py-3 px-3 space-y-0.5">
-              {NAV.map(({ to, label, end, emoji }) => (
+              {NAV.map(({ to, label, end, Icon }) => (
                 <NavLink key={to} to={to} end={end} onClick={onClose}
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${isActive ? 'text-bio-dark' : 'text-bio-muted hover:text-bio-dark hover:bg-gray-50'}`}
                   style={({ isActive }) => isActive ? { backgroundColor: '#D8F3DC' } : {}}>
-                  <span className="text-base">{emoji}</span>
+                  <Icon size={15} className="shrink-0" />
                   <span className="flex-1 text-[13px]">{label}</span>
                 </NavLink>
               ))}

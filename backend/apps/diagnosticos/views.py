@@ -1,5 +1,7 @@
 import json
+import logging
 import re
+import traceback
 from pathlib import Path
 
 from rest_framework import generics, permissions, status
@@ -8,6 +10,8 @@ from rest_framework.response import Response
 
 from .models import Diagnostico
 from .serializers import DiagnosticoSerializer
+
+logger = logging.getLogger('diagnosticos')
 
 
 def _cargar_base_diagnosticos():
@@ -151,7 +155,7 @@ def _prompt_imagen(planta_desc, descripcion):
     )
 
 
-def _analizar_con_gemini(metodo, cultivo_nombre, parte='', sintomas=None, imagen_b64='', media_type='image/jpeg', descripcion=''):
+def _analizar_con_gemini(metodo, planta_desc, parte='', sintomas=None, imagen_b64='', media_type='image/jpeg', descripcion=''):
     """Análisis usando Google Gemini (fallback gratuito)."""
     import os, base64, time
     from google import genai
@@ -159,32 +163,28 @@ def _analizar_con_gemini(metodo, cultivo_nombre, parte='', sintomas=None, imagen
 
     gemini_key = os.environ.get('GEMINI_API_KEY', '')
     if not gemini_key:
+        logger.warning('[Gemini] GEMINI_API_KEY no configurada en el entorno.')
         return None
 
     client = genai.Client(api_key=gemini_key)
 
     if metodo == 'imagen':
-        prompt = _prompt_imagen(cultivo_nombre, descripcion)
+        prompt    = _prompt_imagen(planta_desc, descripcion)
         img_bytes = base64.b64decode(imagen_b64)
-        contents = [
-            types.Part.from_bytes(data=img_bytes, mime_type=media_type),
-            prompt,
-        ]
+        contents  = [types.Part.from_bytes(data=img_bytes, mime_type=media_type), prompt]
     else:
-        prompt = _prompt_formulario(cultivo_nombre, parte, sintomas or [])
+        prompt   = _prompt_formulario(planta_desc, parte, sintomas or [])
         contents = prompt
 
     last_exc = None
     for intento in range(3):
         try:
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=contents,
-            )
+            response = client.models.generate_content(model='gemini-2.5-flash', contents=contents)
             return _parsear_respuesta_claude(response.text.strip())
         except Exception as e:
             last_exc = e
             if '503' in str(e) or 'UNAVAILABLE' in str(e):
+                logger.warning('[Gemini] 503 en intento %d, reintentando...', intento + 1)
                 time.sleep(3)
                 continue
             raise
@@ -192,63 +192,75 @@ def _analizar_con_gemini(metodo, cultivo_nombre, parte='', sintomas=None, imagen
 
 
 class DiagnosticoClaudeView(APIView):
-    """Diagnóstico asistido por IA: intenta Claude, cae a Gemini, luego a análisis estático."""
+    """Diagnóstico asistido por IA: intenta Claude → Gemini → fallback estático."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        metodo          = request.data.get('metodo', 'formulario')
-        # Acepta variedad_desc (nuevo) o cultivo_nombre (compatibilidad)
-        variedad_desc   = request.data.get('variedad_desc') or request.data.get('cultivo_nombre', 'cultivo')
-        parte           = request.data.get('parte_afectada', '')
-        sintomas        = request.data.get('sintomas', [])
-        imagen_b64      = request.data.get('imagen', '')
-        media_type      = request.data.get('media_type', 'image/jpeg')
-        descripcion     = request.data.get('descripcion', '')
+        metodo        = request.data.get('metodo', 'formulario')
+        variedad_desc = request.data.get('variedad_desc') or request.data.get('cultivo_nombre', 'cultivo')
+        parte         = request.data.get('parte_afectada', '')
+        sintomas      = request.data.get('sintomas', [])
+        imagen_b64    = request.data.get('imagen', '')
+        media_type    = request.data.get('media_type', 'image/jpeg')
+        descripcion   = request.data.get('descripcion', '')
 
         if metodo == 'imagen' and not imagen_b64:
             return Response({'detail': 'Imagen requerida.'}, status=400)
         if metodo == 'formulario' and (not parte or not sintomas):
             return Response({'detail': 'Parte afectada y síntomas son requeridos.'}, status=400)
 
-        # ── 1. Intentar con Claude ──────────────────────────────────
+        logger.info('[IA] Solicitud metodo=%s planta=%s', metodo, variedad_desc)
+
+        # ── 1. Claude ──────────────────────────────────────────────
         resultado = self._intentar_claude(metodo, variedad_desc, parte, sintomas, imagen_b64, media_type, descripcion)
         if resultado:
+            logger.info('[IA] Respondido por Claude.')
             return Response(resultado)
 
-        # ── 2. Intentar con Gemini ──────────────────────────────────
+        # ── 2. Gemini ──────────────────────────────────────────────
         try:
             from google import genai  # noqa
             resultado = _analizar_con_gemini(metodo, variedad_desc, parte, sintomas, imagen_b64, media_type, descripcion)
             if resultado:
+                logger.info('[IA] Respondido por Gemini.')
                 return Response(resultado)
         except Exception as e:
-            print(f'[Gemini] Error: {e}')
+            logger.error('[Gemini] Falló con excepción:\n%s', traceback.format_exc())
 
-        # ── 3. Fallback estático ────────────────────────────────────
+        # ── 3. Fallback estático ───────────────────────────────────
+        logger.warning('[IA] Ambas IAs fallaron. Usando fallback estático. metodo=%s', metodo)
         if metodo == 'formulario':
             return Response(_analizar_sintomas(parte, sintomas))
         return Response({
             'diagnostico_probable': 'No determinado',
-            'causa_probable': 'No se pudo procesar la imagen con IA.',
+            'causa_probable': 'No se pudo procesar la imagen con IA. Revisa los logs del servidor.',
             'recomendacion': 'Consulta con un técnico agroecológico.',
             'severidad': 'moderado',
             'acciones_preventivas': [],
         })
 
-    def _intentar_claude(self, metodo, cultivo_nombre, parte, sintomas, imagen_b64, media_type, descripcion):
+    def _intentar_claude(self, metodo, planta_desc, parte, sintomas, imagen_b64, media_type, descripcion):
+        import os
         try:
             import anthropic
         except ImportError:
+            logger.warning('[Claude] Paquete anthropic no instalado.')
+            return None
+
+        api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+        if not api_key:
+            logger.warning('[Claude] ANTHROPIC_API_KEY no configurada en el entorno.')
             return None
 
         try:
-            client = anthropic.Anthropic()
+            client = anthropic.Anthropic(api_key=api_key)
         except Exception:
+            logger.error('[Claude] No se pudo inicializar el cliente:\n%s', traceback.format_exc())
             return None
 
         try:
             if metodo == 'imagen':
-                prompt = _prompt_imagen(cultivo_nombre, descripcion)
+                prompt  = _prompt_imagen(planta_desc, descripcion)
                 message = client.messages.create(
                     model='claude-sonnet-4-6',
                     max_tokens=1024,
@@ -261,7 +273,7 @@ class DiagnosticoClaudeView(APIView):
                     }],
                 )
             else:
-                prompt = _prompt_formulario(cultivo_nombre, parte, sintomas)
+                prompt  = _prompt_formulario(planta_desc, parte, sintomas)
                 message = client.messages.create(
                     model='claude-sonnet-4-6',
                     max_tokens=1024,
@@ -269,7 +281,7 @@ class DiagnosticoClaudeView(APIView):
                 )
             return _parsear_respuesta_claude(message.content[0].text.strip())
         except Exception as e:
-            print(f'[Claude] Error: {e}')
+            logger.error('[Claude] Error al llamar la API:\n%s', traceback.format_exc())
             return None
 
 

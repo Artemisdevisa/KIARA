@@ -148,3 +148,39 @@ MERCADOPAGO_SANDBOX      = config('MERCADOPAGO_SANDBOX', default=True, cast=bool
 # URLs base usadas en los back_urls de MercadoPago
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 BACKEND_URL  = config('BACKEND_URL',  default='http://localhost:8000')
+
+# ── Logging ────────────────────────────────────────────────────────────────
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name}: {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file_ia': {
+            'class': 'logging.FileHandler',
+            'filename': str(BASE_DIR / 'logs' / 'diagnosticos_ia.log'),
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
+    },
+    'loggers': {
+        'diagnosticos': {
+            'handlers': ['console', 'file_ia'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+        },
+    },
+}
