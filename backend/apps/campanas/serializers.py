@@ -226,6 +226,9 @@ class CampanaSerializer(serializers.ModelSerializer):
     estado_display      = serializers.CharField(source='get_estado_display', read_only=True)
     labores_count       = serializers.SerializerMethodField()
     labores_pendientes  = serializers.SerializerMethodField()
+    fito_pendientes     = serializers.SerializerMethodField()
+    riego_pendientes    = serializers.SerializerMethodField()
+    lista_para_cosechar = serializers.SerializerMethodField()
 
     class Meta:
         model  = Campana
@@ -240,3 +243,15 @@ class CampanaSerializer(serializers.ModelSerializer):
 
     def get_labores_pendientes(self, obj):
         return obj.labores.filter(estado='programada').count()
+
+    def get_fito_pendientes(self, obj):
+        return obj.plan_fitosanitario.filter(estado='programado', activo=True).count()
+
+    def get_riego_pendientes(self, obj):
+        return obj.plan_riego.filter(completado=False).count()
+
+    def get_lista_para_cosechar(self, obj):
+        labores_ok = obj.labores.filter(estado='programada').count() == 0
+        fito_ok    = obj.plan_fitosanitario.filter(estado='programado', activo=True).count() == 0
+        riego_ok   = obj.plan_riego.filter(completado=False).count() == 0
+        return labores_ok and fito_ok and riego_ok

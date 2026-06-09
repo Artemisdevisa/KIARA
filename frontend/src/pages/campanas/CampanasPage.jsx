@@ -150,6 +150,7 @@ export default function CampanasPage() {
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
   const [estadoF, setEstadoF]       = useState('')
+  const [anioF, setAnioF]           = useState('')
   const [modal, setModal]           = useState(false)
   const [editItem, setEditItem]     = useState(null)
   const [delConfirm, setDelConfirm] = useState(null)
@@ -170,11 +171,14 @@ export default function CampanasPage() {
     }
   })
 
+  const anios = [...new Set(campanas.map(c => c.anio))].sort((a, b) => b - a)
+
   const filtered = campanas.filter(c => {
     const q = search.toLowerCase()
     const ms = !search || `${c.codigo} ${c.variedad_str} ${c.biohuerto_nombre}`.toLowerCase().includes(q)
     const me = !estadoF || c.estado === estadoF
-    return ms && me
+    const ma = !anioF || String(c.anio) === String(anioF)
+    return ms && me && ma
   })
 
   const cardStyle = { backgroundColor: dark ? D.cardBg : '#fff', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, borderRadius: '16px' }
@@ -212,6 +216,20 @@ export default function CampanasPage() {
             </button>
           ))}
         </div>
+        {anios.length > 1 && (
+          <div className="flex gap-1.5 flex-wrap">
+            <button onClick={() => setAnioF('')} className="px-3 rounded-lg text-xs font-bold transition-all"
+              style={{ height: '36px', backgroundColor: anioF === '' ? '#2563eb' : dark ? D.btnIdle : '#f3f4f6', border: `1px solid ${anioF === '' ? '#2563eb' : dark ? D.btnBorder : '#e5e7eb'}`, color: anioF === '' ? '#fff' : dark ? D.sub : '#6b7280' }}>
+              Todos los años
+            </button>
+            {anios.map(a => (
+              <button key={a} onClick={() => setAnioF(String(a))} className="px-3 rounded-lg text-xs font-bold transition-all"
+                style={{ height: '36px', backgroundColor: String(anioF) === String(a) ? '#2563eb' : dark ? D.btnIdle : '#f3f4f6', border: `1px solid ${String(anioF) === String(a) ? '#2563eb' : dark ? D.btnBorder : '#e5e7eb'}`, color: String(anioF) === String(a) ? '#fff' : dark ? D.sub : '#6b7280' }}>
+                {a}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Lista de campañas */}

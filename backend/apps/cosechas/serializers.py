@@ -19,13 +19,15 @@ class CategoriaCosechaSerializer(serializers.ModelSerializer):
 class CosechaSerializer(serializers.ModelSerializer):
     biohuerto_nombre = serializers.CharField(source='biohuerto.nombre', read_only=True)
     productor_nombre = serializers.CharField(source='biohuerto.productor.get_full_name', read_only=True)
-    unidad_display = serializers.CharField(source='get_unidad_display', read_only=True)
-    foto_url = serializers.SerializerMethodField()
+    unidad_display   = serializers.CharField(source='get_unidad_display', read_only=True)
+    campana_nombre   = serializers.CharField(source='campana.variedad_str', read_only=True, allow_null=True)
+    foto_url         = serializers.SerializerMethodField()
 
     class Meta:
         model = Cosecha
         fields = [
-            'id', 'biohuerto', 'biohuerto_nombre', 'productor_nombre', 'cultivo',
+            'id', 'biohuerto', 'biohuerto_nombre', 'productor_nombre',
+            'cultivo', 'campana', 'campana_nombre',
             'nombre_producto', 'foto', 'foto_url', 'cantidad', 'unidad', 'unidad_display',
             'precio', 'fecha_cosecha', 'contacto', 'estado', 'created_at', 'updated_at'
         ]
