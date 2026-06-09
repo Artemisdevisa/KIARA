@@ -1383,11 +1383,12 @@ function PresupuestoTab({ dark, campanaId, campana }) {
   const CATS = [['insumo','Insumo'],['agua','Agua'],['mano_obra','Mano de obra'],['otro','Otro']]
 
   const fetch = useCallback(async () => {
-    const [r, l, f, rr] = await Promise.all([
+    const [r, l, f, rr, pr] = await Promise.all([
       api.get(`/campanas/${campanaId}/presupuesto/`),
       api.get(`/campanas/${campanaId}/labores/`),
       api.get(`/campanas/${campanaId}/fitosanitario/`),
       api.get(`/campanas/${campanaId}/registros-riego/`),
+      api.get(`/campanas/${campanaId}/plan-riego/`),
     ])
     setItems(r.data)
     const totalLaboresEj = l.data
@@ -1402,11 +1403,10 @@ function PresupuestoTab({ dark, campanaId, campana }) {
         return s + costo
       }, 0)
     setFitoEj(totalFitoEj)
-    const areaM2 = parseFloat(campana?.area || 0)
     const totalRiegoEj = [
       ...rr.data.filter(reg => reg.completado).map(reg => parseFloat(reg.costo_total || 0)),
-      ...p.data.filter(pl => pl.completado && pl.fertilizante_precio && pl.dosis_fertilizante && pl.litros_por_m2)
-        .map(pl => parseFloat(pl.dosis_fertilizante) * parseFloat(pl.litros_por_m2) * areaM2 * parseFloat(pl.fertilizante_precio) / 1000),
+      ...pr.data.filter(pl => pl.completado && pl.fertilizante_precio && pl.dosis_fertilizante && pl.litros_por_m2)
+        .map(pl => parseFloat(pl.dosis_fertilizante) * parseFloat(pl.litros_por_m2) * area * parseFloat(pl.fertilizante_precio) / 1000),
     ].reduce((s, v) => s + v, 0)
     setRiegoEj(totalRiegoEj)
   }, [campanaId, campana?.area])
