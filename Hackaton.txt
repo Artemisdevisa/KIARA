@@ -175,3 +175,103 @@ IX. Contacto
 Para cualquier consulta, pueden comunicarse con la Ing. Karla C. Reyes Burgos escribiendo al email: 
 kreyes@usat.edu.pe 
 ¡Esperamos contar con tu participación en este emocionante evento!
+  Resumen general del proyecto — BioHuerto USAT
+
+  Qué es
+
+  Sistema web de gestión agroecológica para productores de biohuertos urbanos en Lambayeque, Perú. Permite registrar, monitorear y optimizar la
+  producción desde la siembra hasta la venta, con apoyo de inteligencia artificial.
+
+  ---
+  Stack técnico
+
+  ┌───────────────┬─────────────────────────────────────────────────────────────┐
+  │     Capa      │                         Tecnología                          │
+  ├───────────────┼─────────────────────────────────────────────────────────────┤
+  │ Frontend      │ React + Vite, Tailwind CSS, React Router                    │
+  ├───────────────┼─────────────────────────────────────────────────────────────┤
+  │ Backend       │ Django REST Framework, JWT auth                             │
+  ├───────────────┼─────────────────────────────────────────────────────────────┤
+  │ Base de datos │ SQLite (demo) / PostgreSQL (producción)                     │
+  ├───────────────┼─────────────────────────────────────────────────────────────┤
+  │ IA            │ Claude Sonnet 4.6 (Anthropic) / Gemini 2.5 Flash (fallback) │
+  ├───────────────┼─────────────────────────────────────────────────────────────┤
+  │ PDF           │ jsPDF + autoTable                                           │
+  ├───────────────┼─────────────────────────────────────────────────────────────┤
+  │ Pagos         │ MercadoPago (marketplace extendido)                         │
+  └───────────────┴─────────────────────────────────────────────────────────────┘
+
+  ---
+  Cómo funciona — flujo completo
+
+  Productor se registra
+         ↓
+  Crea su Biohuerto (nombre, ubicación, área)
+         ↓
+  Registra Cultivos activos en ese biohuerto
+  (nombre, tipo de ciclo, fecha siembra, etapa actual)
+         ↓
+         ├── Planifica Campañas (variedad, fechas, área, objetivos)
+         │   └── Usa plantillas precargadas (riego, labores, fitosanitarios)
+         │
+         ├── Monitorea (temperatura, humedad, pH, EC — manual o IoT)
+         │
+         ├── Gestiona Alertas (riego, fertilización, cosecha, etc.)
+         │
+         ├── Diagnostica problemas fitosanitarios
+         │   ├── Formulario guiado (4 pasos: cultivo → parte → síntomas → IA)
+         │   └── Análisis por imagen (foto → Claude/Gemini identifica plaga)
+         │
+         ├── Consulta Recomendaciones agroecológicas
+         │   (catálogo por cultivo, adaptado a Lambayeque)
+         │
+         ├── Registra Trazabilidad
+         │   ├── Prácticas sostenibles (compost, biol, sin agroquímicos...)
+         │   └── Costos de producción (insumos, agua, mano de obra)
+         │
+         └── Publica Cosechas en el Marketplace
+             └── Consumidores las ven sin login y contactan por WhatsApp
+
+  ---
+  Los 9 módulos obligatorios
+
+  ┌─────┬──────────────────────────────────────┬───────────────────────────────┐
+  │  #  │                Módulo                │            Estado             │
+  ├─────┼──────────────────────────────────────┼───────────────────────────────┤
+  │ 1   │ Gestión de usuarios y biohuertos     │ ✅                            │
+  ├─────┼──────────────────────────────────────┼───────────────────────────────┤
+  │ 2   │ Registro de cultivos y planificación │ ✅                            │
+  ├─────┼──────────────────────────────────────┼───────────────────────────────┤
+  │ 3   │ Monitoreo básico del biohuerto       │ ✅                            │
+  ├─────┼──────────────────────────────────────┼───────────────────────────────┤
+  │ 4   │ Alertas y recordatorios de manejo    │ ✅                            │
+  ├─────┼──────────────────────────────────────┼───────────────────────────────┤
+  │ 5   │ Diagnóstico fitosanitario IA         │ ✅ Claude + Gemini + fallback │
+  ├─────┼──────────────────────────────────────┼───────────────────────────────┤
+  │ 6   │ Recomendaciones agroecológicas       │ ✅                            │
+  ├─────┼──────────────────────────────────────┼───────────────────────────────┤
+  │ 7   │ Marketplace de cosechas              │ ✅                            │
+  ├─────┼──────────────────────────────────────┼───────────────────────────────┤
+  │ 8   │ Trazabilidad y costeo                │ ✅                            │
+  ├─────┼──────────────────────────────────────┼───────────────────────────────┤
+  │ 9   │ Dashboard e indicadores + PDF        │ ✅ ampliado hoy               │
+  └─────┴──────────────────────────────────────┴───────────────────────────────┘
+
+  ---
+  Valor agregado implementado
+
+  - Diagnóstico por imagen con IA real (Claude Vision / Gemini) — cubre el bonus de "diagnóstico por imagen con modelo de IA"
+  - Reporte PDF extendido con 5 secciones: indicadores, cosechas, costos por concepto, prácticas sostenibles, diagnósticos
+  - Semáforo ambiental en el dashboard
+  - Marketplace público sin login con contacto directo por WhatsApp
+  - Plantillas de campaña precargadas (riego, labores, fitosanitarios) para 51 variedades
+  - Modo dual IA: si Claude no tiene créditos → Gemini automáticamente → fallback estático
+
+  ---
+  Para la demo — puntos de impacto
+
+  1. Crear un biohuerto → registrar cultivo → ver dashboard con semáforo
+  2. Ir a Diagnóstico → subir foto de planta → ver análisis de Gemini con severidad y acciones
+  3. Descargar el PDF → mostrar el reporte con las 5 secciones
+  4. Abrir el Marketplace sin login → mostrar tarjeta con botón WhatsApp
+  5. Mostrar Campañas → la plantilla precargada de lechuga con plan de riego completo
