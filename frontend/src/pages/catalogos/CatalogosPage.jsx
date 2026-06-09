@@ -1,59 +1,31 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Leaf, FlaskConical, Wrench, Ruler, Bug, Target, SlidersHorizontal } from 'lucide-react'
+import { ArrowRight, Ruler, Bug, Target, SlidersHorizontal } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
 
-const SECTIONS = [
+const CARDS = [
   {
-    title: 'Cultivos y productos',
-    cards: [
-      {
-        icon: Leaf, label: 'Variedades',
-        desc: 'Cultivos y sus variedades: tipo de ciclo, días estimados y plantillas.',
-        to: '/catalogos/variedades',
-        color: { dark: '#4ade80', light: '#15803d', bg: { dark: 'rgba(22,163,74,0.12)', light: '#f0fdf4' } },
-      },
-      {
-        icon: FlaskConical, label: 'Productos agrícolas',
-        desc: 'Fitosanitarios, fertilizantes y bioestimulantes con precio unitario.',
-        to: '/catalogos/productos',
-        color: { dark: '#f87171', light: '#dc2626', bg: { dark: 'rgba(239,68,68,0.12)', light: '#fef2f2' } },
-      },
-      {
-        icon: Wrench, label: 'Tipos de labor',
-        desc: 'Actividades agrícolas con código, unidad y costo por unidad.',
-        to: '/catalogos/labores',
-        color: { dark: '#fbbf24', light: '#d97706', bg: { dark: 'rgba(251,191,36,0.12)', light: '#fffbeb' } },
-      },
-    ],
+    icon: Ruler, label: 'Unidades de medida',
+    desc: 'mL/L, g/L, kg/ha, L/ha — unidades controladas para registrar dosis.',
+    to: '/catalogos/unidades',
+    color: { dark: '#60a5fa', light: '#2563eb', bg: { dark: 'rgba(59,130,246,0.12)', light: '#eff6ff' } },
   },
   {
-    title: 'Catálogos de apoyo',
-    cards: [
-      {
-        icon: Ruler, label: 'Unidades de medida',
-        desc: 'mL/L, g/L, kg/ha, L/ha — unidades controladas para dosis.',
-        to: '/catalogos/unidades',
-        color: { dark: '#60a5fa', light: '#2563eb', bg: { dark: 'rgba(59,130,246,0.12)', light: '#eff6ff' } },
-      },
-      {
-        icon: Bug, label: 'Plagas y enfermedades',
-        desc: 'Catálogo de insectos, ácaros, hongos, bacterias y virus que atacan cultivos.',
-        to: '/catalogos/plagas',
-        color: { dark: '#f87171', light: '#dc2626', bg: { dark: 'rgba(239,68,68,0.12)', light: '#fef2f2' } },
-      },
-      {
-        icon: Target, label: 'Objetivos',
-        desc: 'Para qué se aplica cada producto: control, prevención, fertilización, bioestimulación.',
-        to: '/catalogos/objetivos',
-        color: { dark: '#fb923c', light: '#ea580c', bg: { dark: 'rgba(249,115,22,0.12)', light: '#fff7ed' } },
-      },
-      {
-        icon: SlidersHorizontal, label: 'Condiciones',
-        desc: 'Cuándo aplicar: en floración, con lluvia, preventivo, al trasplante, etc.',
-        to: '/catalogos/condiciones',
-        color: { dark: '#a78bfa', light: '#7c3aed', bg: { dark: 'rgba(139,92,246,0.12)', light: '#f5f3ff' } },
-      },
-    ],
+    icon: Bug, label: 'Plagas y enfermedades',
+    desc: 'Catálogo de insectos, ácaros, hongos, bacterias y virus que atacan cultivos.',
+    to: '/catalogos/plagas',
+    color: { dark: '#f87171', light: '#dc2626', bg: { dark: 'rgba(239,68,68,0.12)', light: '#fef2f2' } },
+  },
+  {
+    icon: Target, label: 'Objetivos',
+    desc: 'Para qué se aplica cada producto: control, prevención, fertilización, bioestimulación.',
+    to: '/catalogos/objetivos',
+    color: { dark: '#fb923c', light: '#ea580c', bg: { dark: 'rgba(249,115,22,0.12)', light: '#fff7ed' } },
+  },
+  {
+    icon: SlidersHorizontal, label: 'Condiciones',
+    desc: 'Cuándo aplicar: en floración, con lluvia, preventivo, al trasplante, etc.',
+    to: '/catalogos/condiciones',
+    color: { dark: '#a78bfa', light: '#7c3aed', bg: { dark: 'rgba(139,92,246,0.12)', light: '#f5f3ff' } },
   },
 ]
 
@@ -91,28 +63,21 @@ export default function CatalogosPage() {
   const { dark } = useTheme()
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold" style={{ color: dark ? 'rgba(255,255,255,0.92)' : '#111827' }}>
-          Catálogos
+          Catálogos de apoyo
         </h1>
         <p className="text-sm mt-1" style={{ color: dark ? 'rgba(255,255,255,0.40)' : '#9ca3af' }}>
-          Datos base del sistema agrícola — administrados por el equipo
+          Datos de referencia del sistema — unidades, plagas, objetivos y condiciones de aplicación
         </p>
       </div>
 
-      {SECTIONS.map(section => (
-        <div key={section.title} className="space-y-4">
-          <h2 className="text-sm font-extrabold uppercase tracking-wide" style={{ color: dark ? 'rgba(255,255,255,0.35)' : '#9ca3af' }}>
-            {section.title}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {section.cards.map(card => (
-              <Card key={card.to} {...card} dark={dark} navigate={navigate} />
-            ))}
-          </div>
-        </div>
-      ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl">
+        {CARDS.map(card => (
+          <Card key={card.to} {...card} dark={dark} navigate={navigate} />
+        ))}
+      </div>
     </div>
   )
 }

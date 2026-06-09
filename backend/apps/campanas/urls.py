@@ -17,6 +17,7 @@ from .views import (
     PracticaListCreate, PracticaDetail,
     PlantillaProductoListCreate, PlantillaProductoDetail,
     PlantillaLaborListCreate, PlantillaLaborDetail,
+    PlantillaRiegoListCreate, PlantillaRiegoDetail,
 )
 
 urlpatterns = [
@@ -27,6 +28,8 @@ urlpatterns = [
     path('plantilla-productos/<int:pk>/',                     PlantillaProductoDetail.as_view()),
     path('variedades/<int:variedad_pk>/plantilla-labores/',   PlantillaLaborListCreate.as_view()),
     path('plantilla-labores/<int:pk>/',                       PlantillaLaborDetail.as_view()),
+    path('variedades/<int:variedad_pk>/plantilla-riego/',     PlantillaRiegoListCreate.as_view()),
+    path('plantilla-riego/<int:pk>/',                         PlantillaRiegoDetail.as_view()),
     path('productos/',         ProductoListCreate.as_view()),
     path('productos/<int:pk>/', ProductoDetail.as_view()),
     path('tipos-labor/',       TipoLaborListCreate.as_view()),

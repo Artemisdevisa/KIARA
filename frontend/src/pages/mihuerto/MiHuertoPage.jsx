@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, TreePine, CalendarRange, Sprout, Layers, Ruler, Bug, Target, SlidersHorizontal } from 'lucide-react'
+import { ArrowRight, TreePine, CalendarRange, Sprout, Leaf, FlaskConical, Wrench } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
 
 const SECTIONS = [
@@ -24,40 +24,28 @@ const SECTIONS = [
         to: '/campanas',
         color: { dark: '#60a5fa', light: '#2563eb', bg: { dark: 'rgba(59,130,246,0.12)', light: '#eff6ff' } },
       },
-      {
-        icon: Layers, label: 'Catálogos',
-        desc: 'Variedades, productos agrícolas y tipos de labor disponibles en el sistema.',
-        to: '/catalogos',
-        color: { dark: '#fbbf24', light: '#d97706', bg: { dark: 'rgba(251,191,36,0.12)', light: '#fffbeb' } },
-      },
     ],
   },
   {
-    title: 'Catálogos de apoyo',
+    title: 'Catálogos',
     cards: [
       {
-        icon: Ruler, label: 'Unidades',
-        desc: 'mL/L, g/L, kg/ha — unidades de medida para dosis.',
-        to: '/catalogos/unidades',
-        color: { dark: '#60a5fa', light: '#2563eb', bg: { dark: 'rgba(59,130,246,0.12)', light: '#eff6ff' } },
+        icon: Leaf, label: 'Variedades',
+        desc: 'Cultivos y sus variedades: tipo de ciclo, días estimados y plantillas de riego y fitosanitario.',
+        to: '/catalogos/variedades',
+        color: { dark: '#4ade80', light: '#15803d', bg: { dark: 'rgba(22,163,74,0.12)', light: '#f0fdf4' } },
       },
       {
-        icon: Bug, label: 'Plagas',
-        desc: 'Insectos, hongos, bacterias y virus que afectan tus cultivos.',
-        to: '/catalogos/plagas',
+        icon: FlaskConical, label: 'Productos agrícolas',
+        desc: 'Fitosanitarios, fertilizantes y bioestimulantes con precio unitario.',
+        to: '/catalogos/productos',
         color: { dark: '#f87171', light: '#dc2626', bg: { dark: 'rgba(239,68,68,0.12)', light: '#fef2f2' } },
       },
       {
-        icon: Target, label: 'Objetivos',
-        desc: 'Para qué se aplica cada producto: control, prevención, fertilización.',
-        to: '/catalogos/objetivos',
-        color: { dark: '#fb923c', light: '#ea580c', bg: { dark: 'rgba(249,115,22,0.12)', light: '#fff7ed' } },
-      },
-      {
-        icon: SlidersHorizontal, label: 'Condiciones',
-        desc: 'Cuándo aplicar: en floración, con lluvia, preventivo, al trasplante.',
-        to: '/catalogos/condiciones',
-        color: { dark: '#a78bfa', light: '#7c3aed', bg: { dark: 'rgba(139,92,246,0.12)', light: '#f5f3ff' } },
+        icon: Wrench, label: 'Tipos de labor',
+        desc: 'Actividades agrícolas con código, unidad y costo por unidad.',
+        to: '/catalogos/labores',
+        color: { dark: '#fbbf24', light: '#d97706', bg: { dark: 'rgba(251,191,36,0.12)', light: '#fffbeb' } },
       },
     ],
   },

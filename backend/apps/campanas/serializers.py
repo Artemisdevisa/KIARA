@@ -5,6 +5,7 @@ from .models import (
     Campana, LaborCampana, ItemFitosanitario,
     RegistroAplicacion, PlanRiego, RegistroRiego,
     PresupuestoItem, PracticaSostenible, PlantillaProducto, PlantillaLabor,
+    PlantillaRiego,
 )
 
 
@@ -184,8 +185,21 @@ class PlantillaLaborSerializer(serializers.ModelSerializer):
         read_only_fields = ['variedad']
 
 
+class PlantillaRiegoSerializer(serializers.ModelSerializer):
+    metodo_display      = serializers.CharField(source='get_metodo_display',       read_only=True)
+    fertilizante_nombre = serializers.CharField(source='fertilizante.nombre',     read_only=True, allow_null=True)
+    fertilizante_unidad = serializers.CharField(source='fertilizante.unidad',     read_only=True, allow_null=True)
+    etapa_display       = serializers.CharField(source='get_etapa_display',        read_only=True)
+
+    class Meta:
+        model  = PlantillaRiego
+        fields = '__all__'
+        read_only_fields = ['variedad']
+
+
 class CampanaSerializer(serializers.ModelSerializer):
     variedad_str       = serializers.CharField(source='variedad.__str__', read_only=True)
+    variedad_tipo_ciclo = serializers.CharField(source='variedad.tipo_ciclo', read_only=True)
     biohuerto_nombre   = serializers.CharField(source='biohuerto.nombre', read_only=True)
     estado_display     = serializers.CharField(source='get_estado_display', read_only=True)
     labores_count      = serializers.SerializerMethodField()

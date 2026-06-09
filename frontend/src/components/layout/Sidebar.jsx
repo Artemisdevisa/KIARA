@@ -4,13 +4,14 @@ import { useTheme } from '../../context/ThemeContext'
 import {
   LayoutDashboard, Thermometer, BellRing,
   Microscope, PackageCheck, ShoppingCart, LogOut, Menu, X, ShieldCheck, BookOpen,
-  TreePine
+  TreePine, Database
 } from 'lucide-react'
 import { useState } from 'react'
 
 const modules = [
   { to: '/administrativo', icon: ShieldCheck,   label: 'Administrativo',  desc: 'Usuarios y roles'      },
   { to: '/mi-huerto',      icon: TreePine,       label: 'Mi Huerto',       desc: 'Parcelas y campañas'   },
+  { to: '/catalogos',      icon: Database,       label: 'Catálogos',       desc: 'Datos de apoyo'        },
   { to: '/monitoreo',      icon: Thermometer,    label: 'Monitoreo',       desc: 'Clima y ambiente'      },
   { to: '/alertas',        icon: BellRing,       label: 'Alertas',         desc: 'Recordatorios'         },
   { to: '/diagnostico',    icon: Microscope,     label: 'Diagnóstico',     desc: 'Fitosanitario'         },

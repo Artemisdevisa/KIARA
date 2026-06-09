@@ -336,6 +336,30 @@ class PlantillaLabor(models.Model):
         ordering = ['etapa', 'semana_relativa', 'tipo_labor__nombre']
 
 
+class PlantillaRiego(models.Model):
+    METODO = [
+        ('goteo',     'Goteo'),
+        ('aspersion', 'Aspersión'),
+        ('gravedad',  'Gravedad'),
+        ('manual',    'Manual'),
+    ]
+    variedad           = models.ForeignKey(Variedad, on_delete=models.CASCADE, related_name='plantilla_riegos')
+    nombre             = models.CharField(max_length=200)
+    metodo             = models.CharField(max_length=15, choices=METODO, default='goteo')
+    litros_por_m2      = models.DecimalField(max_digits=8, decimal_places=2)
+    frecuencia_dias    = models.IntegerField()
+    duracion_minutos   = models.IntegerField(null=True, blank=True)
+    fertilizante       = models.ForeignKey(ProductoAgricola, on_delete=models.SET_NULL, null=True, blank=True, related_name='plantilla_riegos')
+    dosis_fertilizante = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    etapa              = models.CharField(max_length=15, choices=ETAPA_CHOICES, blank=True, default='')
+    semana_relativa    = models.IntegerField(null=True, blank=True, verbose_name='Semana del ciclo')
+
+    class Meta:
+        ordering     = ['etapa', 'semana_relativa', 'nombre']
+        verbose_name = 'Plantilla de riego'
+        verbose_name_plural = 'Plantillas de riego'
+
+
 class PracticaSostenible(models.Model):
     TIPO = [
         ('compost',           'Uso de compost'),

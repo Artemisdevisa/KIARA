@@ -26,6 +26,13 @@ const ETAPAS = [
   { key: 'floracion',   label: 'Floración',   dc: '#f9a8d4', lc: '#db2777', dbg: 'rgba(249,168,212,0.15)',lbg: '#fdf2f8' },
   { key: 'cosecha',     label: 'Cosecha',     dc: '#fb923c', lc: '#ea580c', dbg: 'rgba(251,146,60,0.15)', lbg: '#fff7ed' },
 ]
+// Etapas válidas según el ciclo de la variedad
+const ETAPAS_POR_CICLO = {
+  anual:    ['preparacion', 'germinacion', 'crecimiento', 'floracion', 'cosecha'],
+  perenne:  ['preparacion', 'establecido', 'poda', 'brotacion', 'floracion', 'cosecha'],
+}
+const etapasPorCiclo = tipoCiclo =>
+  ETAPAS.filter(e => (ETAPAS_POR_CICLO[tipoCiclo] ?? ETAPAS.map(x => x.key)).includes(e.key))
 const etapaOf = key => ETAPAS.find(e => e.key === key) || { label: 'General', dc: '#94a3b8', lc: '#6b7280', dbg: 'rgba(148,163,184,0.10)', lbg: '#f9fafb' }
 const groupByEtapa = items => {
   const order = ETAPAS.map(e => e.key)
@@ -87,7 +94,7 @@ const TABS = [
 /* ══════════════════════════════════════════════════════
    TAB: LABORES
 ══════════════════════════════════════════════════════ */
-function LaboresTab({ dark, campanaId, etapaFilter }) {
+function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas }) {
   const [data, setData]       = useState([])
   const [tipos, setTipos]     = useState([])
   const [modal, setModal]     = useState(null)
@@ -231,7 +238,7 @@ function LaboresTab({ dark, campanaId, etapaFilter }) {
           <div><label style={lst}>Etapa fenológica</label>
             <select name="etapa" value={form.etapa} onChange={h} style={ist}>
               <option value="">Sin etapa</option>
-              {ETAPAS.map(e => <option key={e.key} value={e.key}>{e.label}</option>)}
+              {(etapasValidas ?? ETAPAS).map(e => <option key={e.key} value={e.key}>{e.label}</option>)}
             </select>
           </div>
           <div><label style={lst}>Descripción adicional</label><input name="descripcion" value={form.descripcion} onChange={h} style={ist} /></div>
@@ -253,7 +260,7 @@ function LaboresTab({ dark, campanaId, etapaFilter }) {
 /* ══════════════════════════════════════════════════════
    TAB: FITOSANITARIO
 ══════════════════════════════════════════════════════ */
-function FitosanitarioTab({ dark, campanaId, etapaFilter }) {
+function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
   const [plan, setPlan]       = useState([])
   const [regs, setRegs]       = useState([])
   const [prods, setProds]     = useState([])
@@ -431,7 +438,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter }) {
           <div><label style={lst}>Etapa fenológica</label>
             <select name="etapa" value={form.etapa} onChange={h} style={ist}>
               <option value="">Sin etapa</option>
-              {ETAPAS.map(e => <option key={e.key} value={e.key}>{e.label}</option>)}
+              {(etapasValidas ?? ETAPAS).map(e => <option key={e.key} value={e.key}>{e.label}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -706,18 +713,13 @@ function PresupuestoTab({ dark, campanaId, campana }) {
 
   const ist = ist_(dark); const lst = lst_(dark)
 
-  const grouped = CATS.reduce((acc, [k]) => {
-    acc[k] = items.filter(i => i.categoria === k)
-    return acc
-  }, {})
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Presupuestado', value: fmt(total_pres), color: dark ? '#60a5fa' : '#2563eb' },
-          { label: 'Ejecutado', value: fmt(total_ej), color: dark ? '#4ade80' : '#15803d' },
+          { label: 'Ejecutado',     value: fmt(total_ej),   color: dark ? '#4ade80' : '#15803d' },
           { label: varianza >= 0 ? 'Ahorro' : 'Exceso', value: fmt(Math.abs(varianza)),
             color: varianza >= 0 ? (dark ? '#4ade80' : '#15803d') : (dark ? '#f87171' : '#dc2626'),
             icon: varianza >= 0 ? <TrendingDown size={13} /> : <TrendingUp size={13} /> },
@@ -734,62 +736,76 @@ function PresupuestoTab({ dark, campanaId, campana }) {
         ))}
       </div>
 
-      {/* Tabla por categoría */}
-      <div className="flex justify-end">
+      {/* Encabezado tabla + botón agregar */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: dark ? D.sub : '#9ca3af' }}>
+          {items.length} ítem{items.length !== 1 ? 's' : ''}
+        </p>
         <button onClick={() => { setForm({ categoria: 'insumo', descripcion: '', cantidad: '', unidad: '', precio_unitario: '', monto_ejecutado: '0' }); setModal('new') }}
-          className="flex items-center gap-1.5 btn-primary text-sm"><Plus size={13} /> Agregar ítem</button>
+          className="flex items-center gap-1.5 btn-primary text-sm">
+          <Plus size={13} /> Agregar ítem
+        </button>
       </div>
 
-      {CATS.map(([cat, catLabel]) => grouped[cat]?.length > 0 && (
-        <div key={cat}>
-          <p className="text-[13px] font-bold uppercase tracking-widest mb-2" style={{ color: dark ? D.sub : '#9ca3af' }}>{catLabel}</p>
-          <div style={{ borderRadius: '14px', overflow: 'hidden', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, backgroundColor: dark ? D.cardBg : '#fff' }}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                  {['Descripción', 'Cantidad', 'Precio/u.', 'Presupuestado', 'Ejecutado', 'Varianza', ''].map((h, i) => (
-                    <th key={i} className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide" style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{h}</th>
-                  ))}
+      {/* Tabla única */}
+      <div style={{ borderRadius: '16px', overflow: 'hidden', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, backgroundColor: dark ? D.cardBg : '#fff' }}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
+              {['Categoría', 'Descripción', 'Cantidad', 'Precio/u.', 'Presupuestado', 'Ejecutado', 'Varianza', ''].map((col, i) => (
+                <th key={i} className={`px-5 py-3 text-left text-xs font-bold uppercase tracking-wide${i === 7 ? ' text-right' : ''}`}
+                  style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{col}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr><td colSpan={8} className="px-5 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin ítems presupuestados</td></tr>
+            ) : items.map(item => {
+              const v = item.varianza
+              const catLabel = CATS.find(([k]) => k === item.categoria)?.[1] || item.categoria
+              return (
+                <tr key={item.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                  <td className="px-5 py-3.5">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>
+                      {catLabel}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5 font-semibold" style={{ color: dark ? D.text : '#111827' }}>{item.descripcion}</td>
+                  <td className="px-5 py-3.5" style={{ color: dark ? D.sub : '#6b7280' }}>{item.cantidad} {item.unidad}</td>
+                  <td className="px-5 py-3.5" style={{ color: dark ? D.sub : '#6b7280' }}>S/. {parseFloat(item.precio_unitario).toFixed(2)}</td>
+                  <td className="px-5 py-3.5 font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{fmt(item.monto_presupuestado)}</td>
+                  <td className="px-5 py-3.5 font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{fmt(item.monto_ejecutado)}</td>
+                  <td className="px-5 py-3.5">
+                    <span className="flex items-center gap-1 text-xs font-bold"
+                      style={{ color: v >= 0 ? (dark ? '#4ade80' : '#15803d') : (dark ? '#f87171' : '#dc2626') }}>
+                      {v > 0 ? <TrendingDown size={11} /> : v < 0 ? <TrendingUp size={11} /> : <Minus size={11} />}
+                      {fmt(Math.abs(v))}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => { setForm({ ...item }); setModal('edit') }}
+                        className="p-2 rounded-lg transition-all duration-150"
+                        style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: 'transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={16} /></button>
+                      <button onClick={() => del(item.id)}
+                        className="p-2 rounded-lg transition-all duration-150"
+                        style={{ color: dark ? '#f87171' : '#dc2626', backgroundColor: 'transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={16} /></button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {grouped[cat].map(item => {
-                  const v = item.varianza
-                  return (
-                    <tr key={item.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                      <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? D.text : '#111827' }}>{item.descripcion}</td>
-                      <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{item.cantidad} {item.unidad}</td>
-                      <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>S/. {parseFloat(item.precio_unitario).toFixed(2)}</td>
-                      <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{fmt(item.monto_presupuestado)}</td>
-                      <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{fmt(item.monto_ejecutado)}</td>
-                      <td className="px-4 py-2.5">
-                        <span className="flex items-center gap-1 text-xs font-bold"
-                          style={{ color: v >= 0 ? (dark ? '#4ade80' : '#15803d') : (dark ? '#f87171' : '#dc2626') }}>
-                          {v > 0 ? <TrendingDown size={11} /> : v < 0 ? <TrendingUp size={11} /> : <Minus size={11} />}
-                          {fmt(Math.abs(v))}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex gap-1">
-                          <button onClick={() => { setForm({ ...item }); setModal('edit') }} className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
-                            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
-                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={12} /></button>
-                          <button onClick={() => del(item.id)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
-                            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
-                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
-      {items.length === 0 && <p className="text-sm text-center py-8" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin ítems presupuestados</p>}
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {modal && (
         <MiniModal dark={dark} title={modal === 'edit' ? 'Editar ítem' : 'Nuevo ítem'} onClose={() => setModal(null)} onSubmit={submit} loading={loading}>
@@ -1007,8 +1023,9 @@ export default function CampanaDetailPage() {
   const { dark } = useTheme()
   const [campana, setCampana] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab]         = useState('labores')
+  const [tab, setTab]             = useState('labores')
   const [etapaFilter, setEtapaFilter] = useState('')
+  const [showEtapaBar, setShowEtapaBar] = useState(false)
 
   const fetch = useCallback(async () => {
     try { const r = await api.get(`/campanas/${id}/`); setCampana(r.data) }
@@ -1024,90 +1041,117 @@ export default function CampanaDetailPage() {
   )
   if (!campana) return null
 
+  const etapasValidas = etapasPorCiclo(campana.variedad_tipo_ciclo)
   const ec = dark ? ESTADO_COLOR[campana.estado]?.dark : ESTADO_COLOR[campana.estado]?.light
   const cardStyle = { backgroundColor: dark ? D.cardBg : '#fff', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, borderRadius: '16px' }
+  const handleTabChange = key => {
+    setTab(key); setEtapaFilter('')
+    if (key !== 'labores' && key !== 'fitosanitario') setShowEtapaBar(false)
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Header card */}
-      <div className="rounded-2xl p-5" style={{ backgroundColor: dark ? D.cardBg : '#fff', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}` }}>
-        <div className="flex items-start gap-4">
-          <button onClick={() => navigate('/campanas')} className="p-2 rounded-xl shrink-0 mt-0.5 transition-all"
-            style={{ color: dark ? D.sub : '#6b7280', backgroundColor: dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6' }}
+    <div className="space-y-5">
+
+      {/* ── Encabezado ── mismo patrón que UsuariosPage */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <button onClick={() => navigate('/campanas')}
+            className="p-2 rounded-xl shrink-0 mt-0.5 transition-all"
+            style={{ color: dark ? D.sub : '#6b7280', backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f0fdf4' }}
             onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'}>
-            <ArrowLeft size={16} />
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.07)' : '#f0fdf4'}>
+            <ArrowLeft size={18} />
           </button>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
               <span className="font-mono text-xs font-bold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{campana.codigo}</span>
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: ec?.bg, color: ec?.c }}>{campana.estado_display}</span>
             </div>
-            <h1 className="text-xl font-extrabold leading-tight" style={{ color: dark ? D.text : '#111827' }}>{campana.variedad_str}</h1>
-          </div>
-          {campana.objetivo_cosecha && (
-            <div className="shrink-0 text-right px-4 py-2.5 rounded-xl"
-              style={{ backgroundColor: dark ? 'rgba(22,163,74,0.08)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(22,163,74,0.2)' : '#bbf7d0'}` }}>
-              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: dark ? '#4ade80' : '#16a34a' }}>Meta cosecha</p>
-              <p className="text-base font-extrabold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{campana.objetivo_cosecha} {campana.unidad_cosecha}</p>
-              {campana.precio_venta_estimado && (
-                <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>S/. {parseFloat(campana.precio_venta_estimado).toFixed(2)}/{campana.unidad_cosecha}</p>
-              )}
+            <h1 className="text-xl font-extrabold" style={{ color: dark ? D.text : '#111827' }}>{campana.variedad_str}</h1>
+            <div className="flex flex-wrap items-center gap-3 mt-1.5">
+              <div className="flex items-center gap-1.5 text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>
+                <Leaf size={12} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
+                <span className="font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.75)' : '#374151' }}>{campana.biohuerto_nombre}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>
+                <Calendar size={12} />
+                {campana.fecha_inicio}{campana.fecha_fin ? ` → ${campana.fecha_fin}` : ''}
+              </div>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-lg"
+                style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? 'rgba(255,255,255,0.65)' : '#374151' }}>
+                {campana.area} {campana.unidad_area}
+              </span>
             </div>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-4 mt-4 pt-3" style={{ borderTop: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-          <div className="flex items-center gap-1.5 text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
-            <Leaf size={12} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
-            <span className="font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.75)' : '#374151' }}>{campana.biohuerto_nombre}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
-            <Calendar size={12} />
-            {campana.fecha_inicio}{campana.fecha_fin ? ` → ${campana.fecha_fin}` : ''}
-          </div>
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? 'rgba(255,255,255,0.65)' : '#374151' }}>
-              {campana.area} {campana.unidad_area}
-            </span>
           </div>
         </div>
+        {campana.objetivo_cosecha && (
+          <div className="shrink-0 text-right px-4 py-2.5 rounded-xl"
+            style={{ backgroundColor: dark ? 'rgba(22,163,74,0.08)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(22,163,74,0.2)' : '#bbf7d0'}` }}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: dark ? '#4ade80' : '#16a34a' }}>Meta cosecha</p>
+            <p className="text-base font-extrabold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{campana.objetivo_cosecha} {campana.unidad_cosecha}</p>
+            {campana.precio_venta_estimado && (
+              <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>S/. {parseFloat(campana.precio_venta_estimado).toFixed(2)}/{campana.unidad_cosecha}</p>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Filtros unificados — sección + etapa */}
-      <div className="flex flex-col gap-3" style={{ backgroundColor: dark ? D.cardBg : '#fff', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, borderRadius: '16px', padding: '14px 16px' }}>
-        {/* Fila 1: secciones */}
-        <div className="flex gap-1.5 flex-wrap">
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => { setTab(t.key); setEtapaFilter('') }}
-              className="flex items-center gap-1.5 px-3 rounded-lg text-xs font-bold transition-all"
+      {/* ── Barra de filtros — una sola fila, doble vista ── */}
+      <div className="flex gap-2 items-center flex-wrap" style={{ ...cardStyle, padding: '12px 16px' }}>
+        {!showEtapaBar ? (
+          <>
+            {TABS.map(t => (
+              <button key={t.key} onClick={() => handleTabChange(t.key)}
+                className="flex items-center gap-1.5 px-3 rounded-lg text-xs font-bold transition-all"
+                style={{
+                  height: '36px',
+                  backgroundColor: tab === t.key ? '#16a34a' : dark ? D.btnIdle : '#f3f4f6',
+                  border: `1px solid ${tab === t.key ? '#16a34a' : dark ? D.btnBorder : '#e5e7eb'}`,
+                  color: tab === t.key ? '#fff' : dark ? D.sub : '#6b7280',
+                }}>
+                <t.icon size={12} /> {t.label}
+              </button>
+            ))}
+            {(tab === 'labores' || tab === 'fitosanitario') && (
+              <button onClick={() => setShowEtapaBar(true)}
+                className="flex items-center gap-1.5 px-3 rounded-lg text-xs font-bold transition-all ml-auto"
+                style={{
+                  height: '36px',
+                  backgroundColor: etapaFilter ? (dark ? 'rgba(255,255,255,0.10)' : '#f3f4f6') : dark ? D.btnIdle : '#f3f4f6',
+                  border: `1px solid ${etapaFilter ? (dark ? 'rgba(255,255,255,0.18)' : '#d1d5db') : dark ? D.btnBorder : '#e5e7eb'}`,
+                  color: etapaFilter ? (dark ? D.text : '#374151') : dark ? D.sub : '#6b7280',
+                }}>
+                {etapaFilter ? etapaOf(etapaFilter).label : 'Etapa'} ›
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <button onClick={() => setShowEtapaBar(false)}
+              className="flex items-center justify-center rounded-lg shrink-0 transition-all"
               style={{
-                height: '36px',
-                backgroundColor: tab === t.key ? '#16a34a' : dark ? D.btnIdle : '#f3f4f6',
-                border: `1px solid ${tab === t.key ? '#16a34a' : dark ? D.btnBorder : '#e5e7eb'}`,
-                color: tab === t.key ? '#fff' : dark ? D.sub : '#6b7280',
+                height: '36px', width: '36px',
+                color: dark ? D.sub : '#6b7280',
+                backgroundColor: dark ? D.btnIdle : '#f3f4f6',
+                border: `1px solid ${dark ? D.btnBorder : '#e5e7eb'}`,
               }}>
-              <t.icon size={12} /> {t.label}
+              <ArrowLeft size={14} />
             </button>
-          ))}
-        </div>
-        {/* Fila 2: etapas (solo labores y fitosanitario) */}
-        {(tab === 'labores' || tab === 'fitosanitario') && (
-          <div className="flex gap-1.5 flex-wrap" style={{ paddingTop: '10px', borderTop: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
             <button onClick={() => setEtapaFilter('')}
               className="px-3 rounded-lg text-xs font-bold transition-all"
               style={{
-                height: '32px',
-                backgroundColor: etapaFilter === '' ? (dark ? 'rgba(255,255,255,0.12)' : '#111827') : dark ? D.btnIdle : '#f3f4f6',
-                border: `1px solid ${etapaFilter === '' ? (dark ? 'rgba(255,255,255,0.2)' : '#111827') : dark ? D.btnBorder : '#e5e7eb'}`,
+                height: '36px',
+                backgroundColor: etapaFilter === '' ? '#16a34a' : dark ? D.btnIdle : '#f3f4f6',
+                border: `1px solid ${etapaFilter === '' ? '#16a34a' : dark ? D.btnBorder : '#e5e7eb'}`,
                 color: etapaFilter === '' ? '#fff' : dark ? D.sub : '#6b7280',
               }}>
               Todas
             </button>
-            {ETAPAS.map(et => (
+            {etapasValidas.map(et => (
               <button key={et.key} onClick={() => setEtapaFilter(et.key === etapaFilter ? '' : et.key)}
                 className="px-3 rounded-lg text-xs font-bold transition-all"
                 style={{
-                  height: '32px',
+                  height: '36px',
                   backgroundColor: etapaFilter === et.key ? (dark ? et.dbg : et.lbg) : dark ? D.btnIdle : '#f3f4f6',
                   border: `1px solid ${etapaFilter === et.key ? (dark ? et.dc : et.lc) : dark ? D.btnBorder : '#e5e7eb'}`,
                   color: etapaFilter === et.key ? (dark ? et.dc : et.lc) : dark ? D.sub : '#6b7280',
@@ -1115,17 +1159,19 @@ export default function CampanaDetailPage() {
                 {et.label}
               </button>
             ))}
-          </div>
+          </>
         )}
       </div>
 
-      {/* Contenido de sección */}
-      <div className="rounded-2xl p-5" style={{ backgroundColor: dark ? D.cardBg : '#fff', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}` }}>
-        {tab === 'labores'       && <LaboresTab dark={dark} campanaId={id} etapaFilter={etapaFilter} />}
-        {tab === 'fitosanitario' && <FitosanitarioTab dark={dark} campanaId={id} etapaFilter={etapaFilter} />}
-        {tab === 'riego'         && <RiegoTab dark={dark} campanaId={id} />}
-        {tab === 'presupuesto'   && <PresupuestoTab dark={dark} campanaId={id} campana={campana} />}
-        {tab === 'trazabilidad'  && <TrazabilidadTab dark={dark} campanaId={id} campana={campana} />}
+      {/* ── Contenido de sección ── */}
+      <div style={{ ...cardStyle, overflow: 'hidden' }}>
+        <div className="p-5">
+          {tab === 'labores'       && <LaboresTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} />}
+          {tab === 'fitosanitario' && <FitosanitarioTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} />}
+          {tab === 'riego'         && <RiegoTab dark={dark} campanaId={id} />}
+          {tab === 'presupuesto'   && <PresupuestoTab dark={dark} campanaId={id} campana={campana} />}
+          {tab === 'trazabilidad'  && <TrazabilidadTab dark={dark} campanaId={id} campana={campana} />}
+        </div>
       </div>
     </div>
   )

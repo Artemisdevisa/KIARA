@@ -110,25 +110,30 @@ function SearchSelect({ dark, options, value, onChange, placeholder }) {
 }
 
 function PlantillaModal({ dark, variedad, onClose }) {
-  const [productos, setProductos]   = useState([])
-  const [labores, setLabores]       = useState([])
-  const [allProds, setAllProds]     = useState([])
-  const [allLabors, setAllLabors]   = useState([])
-  const [allObjetivos, setAllObj]   = useState([])
-  const [allUnidades, setAllUnid]   = useState([])
-  const [allCondiciones, setAllCond]= useState([])
-  const [allPlagas, setAllPlagas]   = useState([])
-  const [tab, setTab]               = useState('productos')
-  const [formP, setFormP]           = useState({ producto: '', objetivo: '', plaga: '', dosis: '', unidad: '', dias_antes_cosecha: '', frecuencia_dias: '', condicion: '', etapa: '' })
-  const [formL, setFormL]           = useState({ tipo_labor: '', cantidad: '1', semana_relativa: '', etapa: '', notas: '' })
-  const [showFormP, setShowFormP]   = useState(false)
-  const [showFormL, setShowFormL]   = useState(false)
-  const [loading, setLoading]       = useState(false)
+  const [productos, setProductos]     = useState([])
+  const [labores, setLabores]         = useState([])
+  const [riegos, setRiegos]           = useState([])
+  const [allProds, setAllProds]       = useState([])
+  const [allLabors, setAllLabors]     = useState([])
+  const [allObjetivos, setAllObj]     = useState([])
+  const [allUnidades, setAllUnid]     = useState([])
+  const [allCondiciones, setAllCond]  = useState([])
+  const [allPlagas, setAllPlagas]     = useState([])
+  const [allFertilizantes, setAllFert]= useState([])
+  const [tab, setTab]                 = useState('productos')
+  const [formP, setFormP]             = useState({ producto: '', objetivo: '', plaga: '', dosis: '', unidad: '', dias_antes_cosecha: '', frecuencia_dias: '', condicion: '', etapa: '' })
+  const [formL, setFormL]             = useState({ tipo_labor: '', cantidad: '1', semana_relativa: '', etapa: '', notas: '' })
+  const [formR, setFormR]             = useState({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', etapa: '', semana_relativa: '' })
+  const [showFormP, setShowFormP]     = useState(false)
+  const [showFormL, setShowFormL]     = useState(false)
+  const [showFormR, setShowFormR]     = useState(false)
+  const [loading, setLoading]         = useState(false)
 
   const fetchAll = useCallback(async () => {
-    const [p, l, ap, al, ao, au, ac, apg] = await Promise.all([
+    const [p, l, r, ap, al, ao, au, ac, apg] = await Promise.all([
       api.get(`/campanas/variedades/${variedad.id}/plantilla-productos/`),
       api.get(`/campanas/variedades/${variedad.id}/plantilla-labores/`),
+      api.get(`/campanas/variedades/${variedad.id}/plantilla-riego/`),
       api.get('/campanas/productos/'),
       api.get('/campanas/tipos-labor/'),
       api.get('/campanas/objetivos/'),
@@ -136,10 +141,11 @@ function PlantillaModal({ dark, variedad, onClose }) {
       api.get('/campanas/condiciones/'),
       api.get('/campanas/plagas/'),
     ])
-    setProductos(p.data); setLabores(l.data)
+    setProductos(p.data); setLabores(l.data); setRiegos(r.data)
     setAllProds(ap.data); setAllLabors(al.data)
     setAllObj(ao.data); setAllUnid(au.data)
     setAllCond(ac.data); setAllPlagas(apg.data)
+    setAllFert(ap.data.filter(x => x.tipo === 'fertilizante'))
   }, [variedad.id])
   useEffect(() => { fetchAll() }, [fetchAll])
 
@@ -177,8 +183,28 @@ function PlantillaModal({ dark, variedad, onClose }) {
     } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
   }
 
+  const addRiego = async e => {
+    e.preventDefault(); setLoading(true)
+    try {
+      await api.post(`/campanas/variedades/${variedad.id}/plantilla-riego/`, {
+        nombre:             formR.nombre,
+        metodo:             formR.metodo,
+        litros_por_m2:      formR.litros_por_m2,
+        frecuencia_dias:    formR.frecuencia_dias,
+        duracion_minutos:   formR.duracion_minutos   || null,
+        fertilizante:       formR.fertilizante       || null,
+        dosis_fertilizante: formR.dosis_fertilizante || null,
+        etapa:              formR.etapa              || '',
+        semana_relativa:    formR.semana_relativa    || null,
+      })
+      setFormR({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', etapa: '', semana_relativa: '' })
+      setShowFormR(false); fetchAll(); toast.success('Riego agregado a la plantilla.')
+    } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
+  }
+
   const delP = async id => { await api.delete(`/campanas/plantilla-productos/${id}/`); fetchAll() }
   const delL = async id => { await api.delete(`/campanas/plantilla-labores/${id}/`);   fetchAll() }
+  const delR = async id => { await api.delete(`/campanas/plantilla-riego/${id}/`);     fetchAll() }
 
   const ps = { backgroundColor: dark ? '#1a2535' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb' }
 
@@ -188,6 +214,7 @@ function PlantillaModal({ dark, variedad, onClose }) {
   const unidOpts   = allUnidades.map(u => ({ value: u.id, label: u.codigo }))
   const condOpts   = allCondiciones.map(c => ({ value: c.id, label: c.nombre }))
   const plagaOpts  = allPlagas.map(p => ({ value: p.id, label: `${p.nombre} (${p.tipo_display})` }))
+  const fertOpts   = allFertilizantes.map(f => ({ value: f.id, label: f.nombre }))
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -208,7 +235,7 @@ function PlantillaModal({ dark, variedad, onClose }) {
 
         {/* Tabs */}
         <div className="flex gap-1 px-6 pb-2 shrink-0">
-          {[['productos', 'Productos fitosanitarios'], ['labores', 'Labores']].map(([k, l]) => (
+          {[['productos', 'Productos fitosanitarios'], ['labores', 'Labores'], ['riego', 'Riego y fertirrigación']].map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)}
               className="px-4 py-1.5 rounded-lg text-sm font-bold transition-all"
               style={{
@@ -380,6 +407,111 @@ function PlantillaModal({ dark, variedad, onClose }) {
                 : <button onClick={() => setShowFormL(true)} className="flex items-center gap-2 text-sm font-bold px-3 py-2 rounded-lg w-full mt-2"
                     style={{ color: dark ? '#fbbf24' : '#d97706', backgroundColor: dark ? 'rgba(251,191,36,0.08)' : '#fffbeb', border: `1px dashed ${dark ? 'rgba(251,191,36,0.3)' : '#fde68a'}` }}>
                     <Plus size={14} /> Agregar labor a plantilla
+                  </button>
+              }
+            </>
+          )}
+
+          {/* TAB RIEGO */}
+          {tab === 'riego' && (
+            <>
+              {riegos.length === 0 && !showFormR && <p className="text-sm text-center py-4" style={{ color: dark ? 'rgba(255,255,255,0.35)' : '#9ca3af' }}>Sin riegos en la plantilla</p>}
+              {groupByEtapa(riegos).map(([etapaKey, items]) => {
+                const et = etapaInfo(etapaKey)
+                const ec = dark ? et.dc : et.lc
+                const ebg = dark ? et.dbg : et.lbg
+                return (
+                  <div key={etapaKey} className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-lg"
+                        style={{ backgroundColor: ebg, color: ec }}>{et.label}</span>
+                      <span className="text-[11px]" style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{items.length} riego{items.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    {items.map(r => (
+                      <div key={r.id} className="flex items-start justify-between p-3 rounded-xl ml-1"
+                        style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6'}`, borderLeft: `3px solid ${ec}` }}>
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.90)' : '#111827' }}>{r.nombre}</p>
+                          <p className="text-xs mt-0.5" style={{ color: dark ? 'rgba(255,255,255,0.45)' : '#6b7280' }}>
+                            {r.metodo_display} · {r.litros_por_m2} L/m² · cada {r.frecuencia_dias} días
+                            {r.duracion_minutos ? ` · ${r.duracion_minutos} min` : ''}
+                            {r.fertilizante_nombre ? ` · + ${r.fertilizante_nombre} ${r.dosis_fertilizante || ''}` : ''}
+                            {r.semana_relativa != null ? ` · semana ${r.semana_relativa}` : ''}
+                          </p>
+                        </div>
+                        <button onClick={() => delR(r.id)} className="p-1.5 rounded-lg shrink-0" style={{ color: dark ? '#f87171' : '#dc2626' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={13} /></button>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+
+              {showFormR
+                ? <form onSubmit={addRiego} className="p-3 rounded-xl space-y-3 mt-2" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.10)' : '#e5e7eb'}` }}>
+                    <div><label style={lst}>Nombre *</label>
+                      <input value={formR.nombre} onChange={e => setFormR(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Riego diario germinación"
+                        style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><label style={lst}>Método</label>
+                        <select value={formR.metodo} onChange={e => setFormR(f => ({ ...f, metodo: e.target.value }))}
+                          style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }}>
+                          <option value="goteo">Goteo</option>
+                          <option value="aspersion">Aspersión</option>
+                          <option value="gravedad">Gravedad</option>
+                          <option value="manual">Manual</option>
+                        </select>
+                      </div>
+                      <div><label style={lst}>Etapa fenológica</label>
+                        <select value={formR.etapa} onChange={e => setFormR(f => ({ ...f, etapa: e.target.value }))}
+                          style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }}>
+                          <option value="">Sin etapa</option>
+                          {etapasFor(variedad.tipo_ciclo).map(k => {
+                            const e = etapaInfo(k); return <option key={k} value={k}>{e.label}</option>
+                          })}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><label style={lst}>Litros/m² *</label>
+                        <input type="number" step="0.01" value={formR.litros_por_m2} onChange={e => setFormR(f => ({ ...f, litros_por_m2: e.target.value }))}
+                          style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }} placeholder="2.5" />
+                      </div>
+                      <div><label style={lst}>Frecuencia (días) *</label>
+                        <input type="number" value={formR.frecuencia_dias} onChange={e => setFormR(f => ({ ...f, frecuencia_dias: e.target.value }))}
+                          style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }} placeholder="1" />
+                      </div>
+                      <div><label style={lst}>Duración (min)</label>
+                        <input type="number" value={formR.duracion_minutos} onChange={e => setFormR(f => ({ ...f, duracion_minutos: e.target.value }))}
+                          style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }} placeholder="30" />
+                      </div>
+                    </div>
+                    <div><label style={lst}>Semana del ciclo</label>
+                      <input type="number" value={formR.semana_relativa} onChange={e => setFormR(f => ({ ...f, semana_relativa: e.target.value }))}
+                        style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }} placeholder="1, 2, 3…" />
+                    </div>
+                    <div className="pt-1" style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6'}` }}>
+                      <p className="text-[11px] font-extrabold uppercase tracking-widest mb-2" style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>Fertirrigación (opcional)</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><label style={lst}>Fertilizante</label>
+                          <SearchSelect dark={dark} options={fertOpts} value={formR.fertilizante} onChange={v => setFormR(f => ({ ...f, fertilizante: v }))} placeholder="Buscar fertilizante..." />
+                        </div>
+                        <div><label style={lst}>Dosis (kg o L/m²)</label>
+                          <input type="number" step="0.001" value={formR.dosis_fertilizante} onChange={e => setFormR(f => ({ ...f, dosis_fertilizante: e.target.value }))}
+                            style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }} placeholder="0.005" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setShowFormR(false)} className="flex-1 btn-secondary text-sm">Cancelar</button>
+                      <button type="submit" disabled={loading || !formR.nombre || !formR.litros_por_m2 || !formR.frecuencia_dias} className="flex-1 btn-primary text-sm">Agregar</button>
+                    </div>
+                  </form>
+                : <button onClick={() => setShowFormR(true)} className="flex items-center gap-2 text-sm font-bold px-3 py-2 rounded-lg w-full mt-2"
+                    style={{ color: dark ? '#fbbf24' : '#d97706', backgroundColor: dark ? 'rgba(251,191,36,0.08)' : '#fffbeb', border: `1px dashed ${dark ? 'rgba(251,191,36,0.3)' : '#fde68a'}` }}>
+                    <Plus size={14} /> Agregar riego a plantilla
                   </button>
               }
             </>

@@ -7,6 +7,7 @@ from .models import (
     Campana, LaborCampana, ItemFitosanitario,
     RegistroAplicacion, PlanRiego, RegistroRiego,
     PresupuestoItem, PracticaSostenible, PlantillaProducto, PlantillaLabor,
+    PlantillaRiego,
 )
 from .serializers import (
     VariedadSerializer, ProductoAgricolaSerializer, TipoLaborSerializer,
@@ -14,7 +15,7 @@ from .serializers import (
     CampanaSerializer, LaborCampanaSerializer, ItemFitosanitarioSerializer,
     RegistroAplicacionSerializer, PlanRiegoSerializer, RegistroRiegoSerializer,
     PresupuestoItemSerializer, PracticaSostenibleSerializer,
-    PlantillaProductoSerializer, PlantillaLaborSerializer,
+    PlantillaProductoSerializer, PlantillaLaborSerializer, PlantillaRiegoSerializer,
 )
 
 
@@ -144,6 +145,18 @@ class CampanaListCreate(generics.ListCreateAPIView):
                 fecha_programada=fecha_prog,
                 etapa=pl.etapa,
                 notas=pl.notas,
+            )
+
+        for pr in PlantillaRiego.objects.filter(variedad=variedad).select_related('fertilizante'):
+            PlanRiego.objects.create(
+                campana=campana,
+                nombre=pr.nombre,
+                metodo=pr.metodo,
+                litros_por_m2=pr.litros_por_m2,
+                frecuencia_dias=pr.frecuencia_dias,
+                duracion_minutos=pr.duracion_minutos,
+                fertilizante=pr.fertilizante,
+                dosis_fertilizante=pr.dosis_fertilizante,
             )
 
 
@@ -350,3 +363,21 @@ class PlantillaLaborDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class   = PlantillaLaborSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset           = PlantillaLabor.objects.all()
+
+
+class PlantillaRiegoListCreate(generics.ListCreateAPIView):
+    serializer_class   = PlantillaRiegoSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return PlantillaRiego.objects.filter(variedad_id=self.kwargs['variedad_pk']).select_related('fertilizante')
+
+    def perform_create(self, serializer):
+        variedad = get_object_or_404(Variedad, pk=self.kwargs['variedad_pk'])
+        serializer.save(variedad=variedad)
+
+
+class PlantillaRiegoDetail(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class   = PlantillaRiegoSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    queryset           = PlantillaRiego.objects.all()
