@@ -1029,9 +1029,6 @@ function RiegoTab({ dark, campanaId, campana }) {
       api.get(`/campanas/${campanaId}/registros-riego/`),
       api.get('/campanas/productos/'),
     ])
-    console.log('[RiegoTab] registros-riego RAW:', r.data)
-    console.log('[RiegoTab] primer registro keys:', r.data[0] ? Object.keys(r.data[0]) : 'sin registros')
-    console.log('[RiegoTab] completado field existe?', r.data[0] ? 'completado' in r.data[0] : 'n/a')
     setPlanes(p.data); setRegs(r.data); setProds(pr.data)
   }, [campanaId])
   useEffect(() => { fetch() }, [fetch])
@@ -1058,8 +1055,17 @@ function RiegoTab({ dark, campanaId, campana }) {
     } catch { toast.error('Error.') } finally { setLoading(false) }
   }
 
-  const delPlan   = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`);       fetch() }, msg: '¿Eliminar este plan de riego?' })
-  const delReg    = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/registros-riego/${id}/`); fetch() }, msg: '¿Eliminar este registro de riego?' })
+  const delPlan    = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`);       fetch() }, msg: '¿Eliminar este plan de riego?' })
+  const delReg     = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/registros-riego/${id}/`); fetch() }, msg: '¿Eliminar este registro de riego?' })
+  const togglePlan = async (p) => {
+    try {
+      const res = await api.patch(`/campanas/plan-riego/${p.id}/`, { completado: !p.completado })
+      setPlanes(prev => prev.map(x => x.id === p.id ? { ...x, completado: res.data.completado } : x))
+    } catch (err) {
+      console.error('[togglePlan] ERROR:', err?.response?.status, err?.response?.data)
+      toast.error('Error al actualizar.')
+    }
+  }
   const toggleReg = async (r) => {
     console.log('[toggleReg] click en registro id:', r.id, '| completado actual:', r.completado)
     try {
@@ -1109,34 +1115,42 @@ function RiegoTab({ dark, campanaId, campana }) {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                {['Nombre', 'Método', 'L/m²', 'Frecuencia', 'Duración', 'Fertirrigación', 'Costo fert. est.', ''].map((col, i) => (
-                  <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide${i === 7 ? ' text-right' : ''}`}
+                {['', 'Nombre', 'Método', 'L/m²', 'Frecuencia', 'Duración', 'Fertirrigación', 'Costo fert. est.', ''].map((col, i) => (
+                  <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide${i === 8 ? ' text-right' : ''}`}
                     style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{col}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {planes.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin planes — usa "Nuevo plan" para agregar</td></tr>
+                <tr><td colSpan={9} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin planes — usa "Nuevo plan" para agregar</td></tr>
               ) : planes.map(p => {
                 const mb = METODO_BADGE[p.metodo] || METODO_BADGE.manual
                 return (
                   <tr key={p.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                    <td className="px-4 py-3 font-semibold text-sm" style={{ color: dark ? D.text : '#111827' }}>{p.nombre}</td>
                     <td className="px-4 py-3">
+                      <button onClick={() => togglePlan(p)} title={p.completado ? 'Revertir a pendiente' : 'Marcar como hecho'}>
+                        {p.completado
+                          ? <CheckCircle2 size={18} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
+                          : <Circle size={18} style={{ color: dark ? D.sub : '#d1d5db' }} />}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-sm"
+                      style={{ color: dark ? D.text : '#111827', textDecoration: p.completado ? 'line-through' : 'none', opacity: p.completado ? 0.6 : 1 }}>{p.nombre}</td>
+                    <td className="px-4 py-3" style={{ opacity: p.completado ? 0.6 : 1 }}>
                       <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                         style={{ backgroundColor: dark ? mb.dbg : mb.lbg, color: dark ? mb.dc : mb.lc }}>
                         {p.metodo_display}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm" style={{ color: dark ? D.text : '#374151' }}>{p.litros_por_m2} L</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>c/ {p.frecuencia_dias}d</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>
+                    <td className="px-4 py-3 text-sm" style={{ color: dark ? D.text : '#374151', opacity: p.completado ? 0.6 : 1 }}>{p.litros_por_m2} L</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: dark ? D.sub : '#6b7280', opacity: p.completado ? 0.6 : 1 }}>c/ {p.frecuencia_dias}d</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: dark ? D.sub : '#6b7280', opacity: p.completado ? 0.6 : 1 }}>
                       {p.duracion_minutos ? `${p.duracion_minutos} min` : '—'}
                     </td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-4 py-3 text-sm" style={{ opacity: p.completado ? 0.6 : 1 }}>
                       {p.fertilizante_nombre
                         ? <span style={{ color: dark ? '#4ade80' : '#15803d' }}>
                             {p.fertilizante_nombre}
@@ -1144,7 +1158,7 @@ function RiegoTab({ dark, campanaId, campana }) {
                           </span>
                         : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
                     </td>
-                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
+                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? '#4ade80' : '#15803d', opacity: p.completado ? 0.6 : 1 }}>
                       {p.fertilizante_precio && p.dosis_fertilizante && p.litros_por_m2 && campana?.area
                         ? fmt(parseFloat(p.dosis_fertilizante) * parseFloat(p.litros_por_m2) * parseFloat(campana.area) * parseFloat(p.fertilizante_precio) / 1000)
                         : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
@@ -1388,9 +1402,12 @@ function PresupuestoTab({ dark, campanaId, campana }) {
         return s + costo
       }, 0)
     setFitoEj(totalFitoEj)
-    const totalRiegoEj = rr.data
-      .filter(reg => reg.completado)
-      .reduce((s, reg) => s + parseFloat(reg.costo_total || 0), 0)
+    const areaM2 = parseFloat(campana?.area || 0)
+    const totalRiegoEj = [
+      ...rr.data.filter(reg => reg.completado).map(reg => parseFloat(reg.costo_total || 0)),
+      ...p.data.filter(pl => pl.completado && pl.fertilizante_precio && pl.dosis_fertilizante && pl.litros_por_m2)
+        .map(pl => parseFloat(pl.dosis_fertilizante) * parseFloat(pl.litros_por_m2) * areaM2 * parseFloat(pl.fertilizante_precio) / 1000),
+    ].reduce((s, v) => s + v, 0)
     setRiegoEj(totalRiegoEj)
   }, [campanaId, campana?.area])
   useEffect(() => { fetch() }, [fetch])

@@ -277,6 +277,7 @@ class PlanRiego(models.Model):
     fecha_inicio       = models.DateField(null=True, blank=True)
     fecha_fin          = models.DateField(null=True, blank=True)
     activo             = models.BooleanField(default=True)
+    completado         = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['fecha_inicio', 'nombre']
