@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
@@ -2157,16 +2157,24 @@ export default function CampanaDetailPage() {
             </div>
           </div>
         </div>
-        {campana.objetivo_cosecha && (
-          <div className="shrink-0 text-right px-4 py-2.5 rounded-xl"
-            style={{ backgroundColor: dark ? 'rgba(22,163,74,0.08)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(22,163,74,0.2)' : '#bbf7d0'}` }}>
-            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: dark ? '#4ade80' : '#16a34a' }}>Meta cosecha</p>
-            <p className="text-base font-extrabold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{campana.objetivo_cosecha} {campana.unidad_cosecha}</p>
-            {campana.precio_venta_estimado && (
-              <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>S/. {parseFloat(campana.precio_venta_estimado).toFixed(2)}/{campana.unidad_cosecha}</p>
-            )}
-          </div>
-        )}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          {campana.objetivo_cosecha && (
+            <div className="text-right px-4 py-2.5 rounded-xl"
+              style={{ backgroundColor: dark ? 'rgba(22,163,74,0.08)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(22,163,74,0.2)' : '#bbf7d0'}` }}>
+              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: dark ? '#4ade80' : '#16a34a' }}>Meta cosecha</p>
+              <p className="text-base font-extrabold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{campana.objetivo_cosecha} {campana.unidad_cosecha}</p>
+              {campana.precio_venta_estimado && (
+                <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>S/. {parseFloat(campana.precio_venta_estimado).toFixed(2)}/{campana.unidad_cosecha}</p>
+              )}
+            </div>
+          )}
+          <Link to={`/cosechas/nueva?campana=${id}`}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all"
+            style={{ backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d', border: `1px solid ${dark ? 'rgba(22,163,74,0.3)' : '#86efac'}` }}>
+            <Scissors size={14} />
+            Registrar cosecha
+          </Link>
+        </div>
       </div>
 
       {/* ── Barra de filtros — una sola fila, doble vista ── */}
