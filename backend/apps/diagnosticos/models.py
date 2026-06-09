@@ -11,6 +11,13 @@ class Diagnostico(models.Model):
         related_name='diagnosticos',
         verbose_name='Cultivo'
     )
+    campana = models.ForeignKey(
+        'campanas.Campana',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='diagnosticos',
+        verbose_name='Campaña'
+    )
     parte_afectada = models.CharField(max_length=100, verbose_name='Parte afectada')
     sintomas = models.JSONField(default=list, blank=True, verbose_name='Síntomas seleccionados')
     diagnostico_probable = models.CharField(max_length=300, verbose_name='Diagnóstico probable')

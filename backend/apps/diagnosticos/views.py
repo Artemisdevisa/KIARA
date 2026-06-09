@@ -68,23 +68,36 @@ def _parsear_respuesta_claude(texto):
 
 
 class DiagnosticosListCreate(generics.ListCreateAPIView):
-    serializer_class = DiagnosticoSerializer
+    serializer_class   = DiagnosticoSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_serializer_context(self):
+        return {**super().get_serializer_context(), 'request': self.request}
+
     def get_queryset(self):
-        qs = Diagnostico.objects.filter(cultivo__biohuerto__productor=self.request.user)
+        qs = Diagnostico.objects.select_related(
+            'cultivo__biohuerto', 'campana__variedad'
+        ).filter(cultivo__biohuerto__productor=self.request.user)
         cultivo_id = self.request.query_params.get('cultivo')
+        campana_id = self.request.query_params.get('campana')
         if cultivo_id:
             qs = qs.filter(cultivo_id=cultivo_id)
+        if campana_id:
+            qs = qs.filter(campana_id=campana_id)
         return qs
 
 
 class DiagnosticoDetail(generics.RetrieveDestroyAPIView):
-    serializer_class = DiagnosticoSerializer
+    serializer_class   = DiagnosticoSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_serializer_context(self):
+        return {**super().get_serializer_context(), 'request': self.request}
+
     def get_queryset(self):
-        return Diagnostico.objects.filter(cultivo__biohuerto__productor=self.request.user)
+        return Diagnostico.objects.select_related(
+            'cultivo__biohuerto', 'campana__variedad'
+        ).filter(cultivo__biohuerto__productor=self.request.user)
 
 
 class DiagnosticoAnalizarView(APIView):
