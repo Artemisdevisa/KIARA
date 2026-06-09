@@ -1029,6 +1029,9 @@ function RiegoTab({ dark, campanaId, campana }) {
       api.get(`/campanas/${campanaId}/registros-riego/`),
       api.get('/campanas/productos/'),
     ])
+    console.log('[RiegoTab] registros-riego RAW:', r.data)
+    console.log('[RiegoTab] primer registro keys:', r.data[0] ? Object.keys(r.data[0]) : 'sin registros')
+    console.log('[RiegoTab] completado field existe?', r.data[0] ? 'completado' in r.data[0] : 'n/a')
     setPlanes(p.data); setRegs(r.data); setProds(pr.data)
   }, [campanaId])
   useEffect(() => { fetch() }, [fetch])
@@ -1058,10 +1061,15 @@ function RiegoTab({ dark, campanaId, campana }) {
   const delPlan   = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`);       fetch() }, msg: '¿Eliminar este plan de riego?' })
   const delReg    = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/registros-riego/${id}/`); fetch() }, msg: '¿Eliminar este registro de riego?' })
   const toggleReg = async (r) => {
+    console.log('[toggleReg] click en registro id:', r.id, '| completado actual:', r.completado)
     try {
       const res = await api.patch(`/campanas/registros-riego/${r.id}/`, { completado: !r.completado })
+      console.log('[toggleReg] respuesta backend:', res.data)
       setRegs(prev => prev.map(x => x.id === r.id ? { ...x, completado: res.data.completado } : x))
-    } catch { toast.error('Error al actualizar.') }
+    } catch (err) {
+      console.error('[toggleReg] ERROR:', err?.response?.status, err?.response?.data)
+      toast.error('Error al actualizar.')
+    }
   }
 
   const ist = ist_(dark); const lst = lst_(dark)
