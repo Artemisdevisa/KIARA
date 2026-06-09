@@ -113,6 +113,7 @@ class PlanRiegoSerializer(serializers.ModelSerializer):
     metodo_display       = serializers.CharField(source='get_metodo_display',   read_only=True)
     fertilizante_nombre  = serializers.CharField(source='fertilizante.nombre', read_only=True, allow_null=True)
     fertilizante_precio  = serializers.DecimalField(source='fertilizante.precio_unitario', max_digits=10, decimal_places=2, read_only=True, allow_null=True)
+    fertilizante_unidad  = serializers.CharField(source='fertilizante.unidad', read_only=True, allow_null=True)
 
     class Meta:
         model  = PlanRiego

@@ -73,6 +73,8 @@ const sugerirFecha = (etapa, fechaInicio, diasCiclo) => {
 
 /* ── helpers ── */
 const fmt = n => `S/. ${parseFloat(n || 0).toFixed(2)}`
+// Convierte dosis acumulada a la unidad de precio: mL→L y g→kg dividen por 1000
+const fitoCostFactor = u => { const s = (u || '').toLowerCase(); return (s.startsWith('ml') || s.startsWith('cc') || s.startsWith('g/') || s === 'g') ? 0.001 : 1 }
 const ist_ = dark => ({
   backgroundColor: dark ? D.inputBg : '#f9fafb', border: `1px solid ${dark ? D.inputBorder : '#e5e7eb'}`,
   color: dark ? D.text : '#111827', width: '100%', borderRadius: '10px', padding: '9px 13px', fontSize: '15px', outline: 'none',
@@ -691,7 +693,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
           {plan.length > 0 && campana?.area && (
             <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
               style={{ backgroundColor: dark ? 'rgba(74,222,128,0.12)' : '#f0fdf4', color: dark ? '#4ade80' : '#15803d' }}>
-              {fmt(plan.reduce((s, i) => s + (i.dosis && i.producto_precio ? parseFloat(i.dosis) * parseFloat(campana.area) * parseFloat(i.producto_precio) : 0), 0))} est.
+              {fmt(plan.reduce((s, i) => s + (i.dosis && i.producto_precio ? parseFloat(i.dosis) * parseFloat(campana.area) * parseFloat(i.producto_precio) * fitoCostFactor(i.unidad_codigo) : 0), 0))} est.
             </span>
           )}
         </div>
@@ -767,7 +769,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
                     </td>
                     <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
                       {totalCampo && item.producto_precio
-                        ? fmt(parseFloat(totalCampo) * parseFloat(item.producto_precio))
+                        ? fmt(parseFloat(totalCampo) * parseFloat(item.producto_precio) * fitoCostFactor(item.unidad_codigo || item.unidad))
                         : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
                     </td>
                     <td className="px-4 py-3">
@@ -975,7 +977,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
           <IR dark={dark} label="Tipo"           value={viewItem.producto_tipo} />
           <IR dark={dark} label="Etapa"          value={etapaOf(viewItem.etapa)?.label} />
           <IR dark={dark} label="Dosis/m²"       value={`${viewItem.dosis} ${viewItem.unidad_codigo || viewItem.unidad}`} />
-          {campana?.area && viewItem.producto_precio && <IR dark={dark} label="Costo est."   value={fmt(parseFloat(viewItem.dosis) * parseFloat(campana.area) * parseFloat(viewItem.producto_precio))} color={dark ? '#4ade80' : '#15803d'} />}
+          {campana?.area && viewItem.producto_precio && <IR dark={dark} label="Costo est."   value={fmt(parseFloat(viewItem.dosis) * parseFloat(campana.area) * parseFloat(viewItem.producto_precio) * fitoCostFactor(viewItem.unidad_codigo || viewItem.unidad))} color={dark ? '#4ade80' : '#15803d'} />}
           <IR dark={dark} label="Objetivo"       value={viewItem.objetivo_nombre} />
           <IR dark={dark} label="Plaga"          value={viewItem.plaga_nombre} />
           <IR dark={dark} label="Condición"      value={viewItem.condicion_nombre} />
@@ -1076,7 +1078,7 @@ function RiegoTab({ dark, campanaId, campana }) {
             {planes.length > 0 && campana?.area && (
               <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
                 style={{ backgroundColor: dark ? 'rgba(74,222,128,0.12)' : '#f0fdf4', color: dark ? '#4ade80' : '#15803d' }}>
-                fert. {fmt(planes.reduce((s, p) => s + (p.fertilizante_precio && p.dosis_fertilizante ? parseFloat(p.dosis_fertilizante) * parseFloat(campana.area) * parseFloat(p.fertilizante_precio) : 0), 0))} est.
+                fert. {fmt(planes.reduce((s, p) => s + (p.fertilizante_precio && p.dosis_fertilizante ? parseFloat(p.dosis_fertilizante) * parseFloat(campana.area) * parseFloat(p.fertilizante_precio) * fitoCostFactor(p.fertilizante_unidad) : 0), 0))} est.
               </span>
             )}
           </div>
@@ -1120,13 +1122,13 @@ function RiegoTab({ dark, campanaId, campana }) {
                       {p.fertilizante_nombre
                         ? <span style={{ color: dark ? '#4ade80' : '#15803d' }}>
                             {p.fertilizante_nombre}
-                            {p.dosis_fertilizante && <span className="ml-1 font-bold opacity-75">{p.dosis_fertilizante} kg</span>}
+                            {p.dosis_fertilizante && <span className="ml-1 font-bold opacity-75">{p.dosis_fertilizante} {p.fertilizante_unidad || 'u.'}</span>}
                           </span>
                         : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
                     </td>
                     <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
                       {p.fertilizante_precio && p.dosis_fertilizante && campana?.area
-                        ? fmt(parseFloat(p.dosis_fertilizante) * parseFloat(campana.area) * parseFloat(p.fertilizante_precio))
+                        ? fmt(parseFloat(p.dosis_fertilizante) * parseFloat(campana.area) * parseFloat(p.fertilizante_precio) * fitoCostFactor(p.fertilizante_unidad))
                         : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
                     </td>
                     <td className="px-4 py-3">
@@ -1299,7 +1301,7 @@ function RiegoTab({ dark, campanaId, campana }) {
           <IR dark={dark} label="Frecuencia"     value={`c/ ${viewPlan.frecuencia_dias} días`} />
           <IR dark={dark} label="Duración"       value={viewPlan.duracion_minutos ? `${viewPlan.duracion_minutos} min` : null} />
           <IR dark={dark} label="Fertirrigación" value={viewPlan.fertilizante_nombre} color={dark ? '#4ade80' : '#15803d'} />
-          <IR dark={dark} label="Dosis fert."    value={viewPlan.dosis_fertilizante ? `${viewPlan.dosis_fertilizante} kg/m²` : null} />
+          <IR dark={dark} label="Dosis fert."    value={viewPlan.dosis_fertilizante ? `${viewPlan.dosis_fertilizante} ${viewPlan.fertilizante_unidad || 'u.'}/m²` : null} />
           <IR dark={dark} label="Fecha inicio"   value={viewPlan.fecha_inicio} />
           <IR dark={dark} label="Fecha fin"      value={viewPlan.fecha_fin} />
         </InfoModal>

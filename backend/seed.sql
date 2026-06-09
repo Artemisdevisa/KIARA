@@ -357,14 +357,24 @@ VALUES
 -- ============================================================
 INSERT INTO campanas_presupuestoitem (campana_id, categoria, descripcion, cantidad, unidad, precio_unitario, monto_ejecutado)
 VALUES
--- Campana 1 Lechuga
-(1,'insumo',   'Compost organico maduro',   6.0,'kg',  1.50, 9.00),
-(1,'insumo',   'Humus de lombriz',          3.6,'kg',  2.00, 7.20),
-(1,'insumo',   'Biol fermentado',           1.2,'L',   5.00, 6.00),
-(1,'insumo',   'Jabon potasico',            0.6,'L',  18.00, 0.00),
-(1,'agua',     'Agua de riego por goteo', 540.0,'L',   0.0012,0.65),
-(1,'mano_obra','Preparacion y trasplante',  2.0,'jornal',40.00,80.00),
-(1,'mano_obra','Cosecha y clasificacion',   2.0,'jornal',45.00, 0.00),
+-- Campana 1 — Lechuga Crespa Verde 12 m² — Presupuesto organico ≤ 600 sol
+-- TOTAL PLAN: 540.30 sol | EJECUTADO: 348.35 sol (dia 25/45)
+(1,'insumo',   'Compost organico maduro',  30.0,'kg',   1.50, 45.00),
+(1,'insumo',   'Humus de lombriz',         12.0,'kg',   2.00, 24.00),
+(1,'insumo',   'Plantines lechuga crespa',  1.0,'bandeja',15.00,15.00),
+(1,'insumo',   'Biol fermentado',           0.30,'L',   5.00,  1.50),
+(1,'insumo',   'Jabon potasico',            0.10,'L',  18.00,  0.90),
+(1,'insumo',   'Trichoderma harzianum',     0.02,'kg', 25.00,  0.50),
+(1,'agua',     'Agua riego aspersion',    675.0,'L',   0.0012, 0.45),
+(1,'herramienta','Palos, hilo, etiquetas',  1.0,'kit', 20.00, 20.00),
+(1,'mano_obra','Preparacion y acondicionamiento', 1.5,'jornal',40.00,60.00),
+(1,'mano_obra','Trasplante y siembra',      1.0,'jornal',40.00,40.00),
+(1,'mano_obra','Riegos manuales ciclo',    15.0,'hora',  5.00, 40.00),
+(1,'mano_obra','Fertilizaciones y aplicaciones',6.0,'hora',8.00,24.00),
+(1,'mano_obra','Deshierbo y limpieza',      1.0,'jornal',35.00,35.00),
+(1,'mano_obra','Monitoreo y labores diversas',8.0,'hora', 8.00,32.00),
+(1,'mano_obra','Cosecha y clasificacion',   1.5,'jornal',45.00, 0.00),
+(1,'otro',     'Imprevistos 5%%',           1.0,'global',26.40, 0.00),
 -- Campana 4 Pimiento
 (4,'insumo',   'Compost organico maduro',   7.5,'kg',  1.50,11.25),
 (4,'insumo',   'Humus de lombriz',          4.5,'kg',  2.00, 9.00),
@@ -488,19 +498,19 @@ INSERT INTO campanas_plantillalabor (variedad_id, tipo_labor_id, cantidad, seman
 ((SELECT id FROM campanas_variedad WHERE cultivo='Tomate' AND nombre='Sweet 100'),
  (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0007'),1,10,'cosecha','Cosecha continua de racimos, manejar con cuidado'),
 
--- ── Lechuga Crespa Verde ──────────────────────────────────────
+-- ── Lechuga Crespa Verde (presupuesto objetivo ≤ 600 sol / 12 m²) ──
 ((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
- (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0001'),1,0,'preparacion','Preparacion de bancal fino, pH 6.0-7.0'),
+ (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0001'),0.5,0,'preparacion','Preparacion de bancal fino a 15 cm, pH 6.0-7.0 — medio dia'),
 ((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
- (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0002'),1,0,'preparacion','Incorporacion compost maduro 2 kg/m2'),
+ (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0002'),0.5,0,'preparacion','Incorporacion compost 2.5 kg/m2 + humus 1 kg/m2 — medio dia'),
 ((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
  (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0003'),1,1,'siembra','Transplante o siembra directa a chorro continuo, tapar 0.5 cm'),
 ((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
- (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0004'),1,2,'crecimiento','Riego ligero diario, evitar encharcamiento'),
+ (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0004'),1,2,'crecimiento','Fertilizacion foliar biol 10% — 1 hora aplicacion'),
 ((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
- (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0006'),1,4,'crecimiento','Aplicacion biol al 10% foliar para vigor'),
+ (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0006'),0.5,4,'crecimiento','Deshierbo manual entre plantas — medio dia'),
 ((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
- (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0007'),1,6,'cosecha','Corte a nivel del suelo en horas frescas'),
+ (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0007'),1,6,'cosecha','Corte a nivel del suelo en horas frescas de la manana'),
 
 -- ── Lechuga Romana ────────────────────────────────────────────
 ((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Romana'),
@@ -602,7 +612,13 @@ INSERT INTO campanas_plantillalabor (variedad_id, tipo_labor_id, cantidad, seman
 ((SELECT id FROM campanas_variedad WHERE cultivo='Maracuya' AND nombre='Amarilla'),
  (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0007'),1,20,'cosecha','Cosecha frutos caidos al suelo o con red recolectora'),
 ((SELECT id FROM campanas_variedad WHERE cultivo='Maracuya' AND nombre='Amarilla'),
- (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0010'),1,52,'mantenimiento','Poda de renovacion anual post-cosecha mayor');
+ (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0010'),1,52,'mantenimiento','Poda de renovacion anual post-cosecha mayor'),
+
+-- ── Lechuga Crespa Verde — etapas adicionales ─────────────────
+((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
+ (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0003'),1,0,'germinacion','Riego ligero 2 veces al dia para mantener humedad de germinacion, no inundar'),
+((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
+ (SELECT id FROM campanas_tipolabor WHERE codigo='TL-0008'),1,5,'floracion','Eliminacion de tallos florales (espigado) para evitar amargor en hojas');
 
 -- ============================================================
 -- PLANTILLA PRODUCTOS FITOSANITARIOS (PlantillaProducto)
@@ -689,12 +705,12 @@ INSERT INTO campanas_plantillaproducto
  (SELECT id FROM campanas_condicion WHERE descripcion='Aplicar al inicio de floracion'),
  'floracion'),
 
--- ── Lechuga Crespa Verde ──────────────────────────────────────
+-- ── Lechuga Crespa Verde (dosis reducidas para presupuesto ≤ 600 sol) ──
 ((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
  (SELECT id FROM campanas_productoagricola WHERE nombre='Trichoderma harzianum'),
  (SELECT id FROM campanas_objetivo WHERE nombre='Prevencion de hongos del suelo'),
  (SELECT id FROM campanas_plaga WHERE nombre='Nematodo del nudo'),
- 5,(SELECT id FROM campanas_unidadmedida WHERE codigo='g/L'),
+ 3,(SELECT id FROM campanas_unidadmedida WHERE codigo='g/L'),
  14,30,
  (SELECT id FROM campanas_condicion WHERE descripcion='Aplicar antes de las 8 am'),
  'preparacion'),
@@ -703,8 +719,8 @@ INSERT INTO campanas_plantillaproducto
  (SELECT id FROM campanas_productoagricola WHERE nombre='Jabon potasico'),
  (SELECT id FROM campanas_objetivo WHERE nombre='Control de pulgon verde'),
  (SELECT id FROM campanas_plaga WHERE nombre='Pulgon verde'),
- 8,(SELECT id FROM campanas_unidadmedida WHERE codigo='mL/L'),
- 3,10,
+ 5,(SELECT id FROM campanas_unidadmedida WHERE codigo='mL/L'),
+ 3,14,
  (SELECT id FROM campanas_condicion WHERE descripcion='Mojar bien el enves de las hojas'),
  'crecimiento'),
 
@@ -712,7 +728,7 @@ INSERT INTO campanas_plantillaproducto
  (SELECT id FROM campanas_productoagricola WHERE nombre='Biol fermentado'),
  (SELECT id FROM campanas_objetivo WHERE nombre='Bioestimulacion radicular'),
  NULL,
- 15,(SELECT id FROM campanas_unidadmedida WHERE codigo='mL/L'),
+ 10,(SELECT id FROM campanas_unidadmedida WHERE codigo='mL/L'),
  7,15,
  (SELECT id FROM campanas_condicion WHERE descripcion='Aplicar cada 15 dias preventivo'),
  'crecimiento'),
@@ -997,16 +1013,16 @@ INSERT INTO campanas_plantillariego
  (SELECT id FROM campanas_productoagricola WHERE nombre='Extracto de algas Ascophyllum'),
  3,'fructificacion',8),
 
--- ── Lechuga Crespa Verde ──────────────────────────────────────
+-- ── Lechuga Crespa Verde (riego reducido para presupuesto ≤ 600 sol) ──
 ((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
- 'Riego aspersion siembra','aspersion',3.0,1,15,
+ 'Riego aspersion siembra','aspersion',2.0,1,12,
  NULL,0,'siembra',0),
 ((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
- 'Fertiriego biol crecimiento','aspersion',3.0,1,15,
+ 'Fertiriego biol crecimiento','aspersion',2.0,2,12,
  (SELECT id FROM campanas_productoagricola WHERE nombre='Biol fermentado'),
- 10,'crecimiento',2),
+ 8,'crecimiento',2),
 ((SELECT id FROM campanas_variedad WHERE cultivo='Lechuga' AND nombre='Crespa Verde'),
- 'Riego goteo pre-cosecha','goteo',2.0,2,20,
+ 'Riego goteo pre-cosecha','goteo',1.5,2,15,
  NULL,0,'cosecha',5),
 
 -- ── Lechuga Romana ────────────────────────────────────────────
