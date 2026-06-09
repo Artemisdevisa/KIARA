@@ -31,6 +31,9 @@ class DiagnosticoSerializer(serializers.ModelSerializer):
     # Productor
     productor_nombre = serializers.SerializerMethodField()
 
+    # Fecha + hora legible
+    fecha_hora = serializers.SerializerMethodField()
+
     # Imagen
     imagen_url = serializers.SerializerMethodField()
 
@@ -49,9 +52,16 @@ class DiagnosticoSerializer(serializers.ModelSerializer):
             'diagnostico_probable', 'causa_probable', 'recomendacion',
             'severidad', 'acciones_preventivas',
             'metodo', 'imagen', 'imagen_url',
-            'fecha', 'created_at',
+            'fecha', 'fecha_hora', 'created_at',
         ]
         read_only_fields = ['id', 'productor', 'fecha', 'created_at']
+
+    def get_fecha_hora(self, obj):
+        if not obj.created_at:
+            return obj.fecha
+        from django.utils import timezone
+        local = timezone.localtime(obj.created_at)
+        return local.strftime('%d/%m/%Y %H:%M')
 
     def get_variedad_nombre(self, obj):
         return obj.variedad.nombre if obj.variedad else None
