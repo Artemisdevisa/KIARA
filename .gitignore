@@ -9,7 +9,7 @@ db.sqlite3
 
 # Node
 node_modules/
-dist/
+# dist/ — included in git so VPS only needs git pull
 build/
 build/Release
 
