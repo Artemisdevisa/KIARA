@@ -150,6 +150,8 @@ FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 BACKEND_URL  = config('BACKEND_URL',  default='http://localhost:8000')
 
 # ── Logging ────────────────────────────────────────────────────────────────
+(BASE_DIR / 'logs').mkdir(exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
