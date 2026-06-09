@@ -715,7 +715,9 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
           </thead>
           <tbody>
             {(() => {
-              const visible = etapaFilter ? plan.filter(i => i.etapa === etapaFilter) : plan
+              const ETAPA_ORDER = ['preparacion','germinacion','crecimiento','establecido','poda','brotacion','floracion','cosecha']
+              const visible = (etapaFilter ? plan.filter(i => i.etapa === etapaFilter) : [...plan])
+                .sort((a, b) => (ETAPA_ORDER.indexOf(a.etapa) ?? 99) - (ETAPA_ORDER.indexOf(b.etapa) ?? 99))
               if (visible.length === 0)
                 return <tr><td colSpan={9} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin productos{etapaFilter ? ' en esta etapa' : ' en el plan'}</td></tr>
               return visible.map(item => {
@@ -1078,7 +1080,7 @@ function RiegoTab({ dark, campanaId, campana }) {
             {planes.length > 0 && campana?.area && (
               <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
                 style={{ backgroundColor: dark ? 'rgba(74,222,128,0.12)' : '#f0fdf4', color: dark ? '#4ade80' : '#15803d' }}>
-                fert. {fmt(planes.reduce((s, p) => s + (p.fertilizante_precio && p.dosis_fertilizante ? parseFloat(p.dosis_fertilizante) * parseFloat(campana.area) * parseFloat(p.fertilizante_precio) * fitoCostFactor(p.fertilizante_unidad) : 0), 0))} est.
+                fert. {fmt(planes.reduce((s, p) => s + (p.fertilizante_precio && p.dosis_fertilizante && p.litros_por_m2 ? parseFloat(p.dosis_fertilizante) * parseFloat(p.litros_por_m2) * parseFloat(campana.area) * parseFloat(p.fertilizante_precio) / 1000 : 0), 0))} est.
               </span>
             )}
           </div>
@@ -1127,8 +1129,8 @@ function RiegoTab({ dark, campanaId, campana }) {
                         : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
                     </td>
                     <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
-                      {p.fertilizante_precio && p.dosis_fertilizante && campana?.area
-                        ? fmt(parseFloat(p.dosis_fertilizante) * parseFloat(campana.area) * parseFloat(p.fertilizante_precio) * fitoCostFactor(p.fertilizante_unidad))
+                      {p.fertilizante_precio && p.dosis_fertilizante && p.litros_por_m2 && campana?.area
+                        ? fmt(parseFloat(p.dosis_fertilizante) * parseFloat(p.litros_por_m2) * parseFloat(campana.area) * parseFloat(p.fertilizante_precio) / 1000)
                         : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
                     </td>
                     <td className="px-4 py-3">
@@ -1330,6 +1332,7 @@ function RiegoTab({ dark, campanaId, campana }) {
 ══════════════════════════════════════════════════════ */
 function PresupuestoTab({ dark, campanaId, campana }) {
   const [items, setItems]           = useState([])
+  const [laboresEj, setLaboresEj]   = useState(0)
   const [modal, setModal]           = useState(null)
   const [delConfirm, setDelConfirm] = useState(null)
   const [form, setForm]             = useState({ categoria: 'insumo', descripcion: '', cantidad: '', unidad: '', precio_unitario: '', monto_ejecutado: '0' })
@@ -1337,7 +1340,17 @@ function PresupuestoTab({ dark, campanaId, campana }) {
   const [loading, setLoading]       = useState(false)
   const CATS = [['insumo','Insumo'],['agua','Agua'],['mano_obra','Mano de obra'],['otro','Otro']]
 
-  const fetch = useCallback(async () => { const r = await api.get(`/campanas/${campanaId}/presupuesto/`); setItems(r.data) }, [campanaId])
+  const fetch = useCallback(async () => {
+    const [r, l] = await Promise.all([
+      api.get(`/campanas/${campanaId}/presupuesto/`),
+      api.get(`/campanas/${campanaId}/labores/`),
+    ])
+    setItems(r.data)
+    const totalLaboresEj = l.data
+      .filter(lb => lb.estado === 'ejecutada')
+      .reduce((s, lb) => s + (lb.costo_ejecutado || 0), 0)
+    setLaboresEj(totalLaboresEj)
+  }, [campanaId])
   useEffect(() => { fetch() }, [fetch])
 
   const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -1361,9 +1374,10 @@ function PresupuestoTab({ dark, campanaId, campana }) {
   }
   const del = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/presupuesto/${id}/`); fetch() }, msg: '¿Eliminar este ítem del presupuesto?' })
 
-  const total_pres = items.reduce((s, i) => s + i.monto_presupuestado, 0)
-  const total_ej   = items.reduce((s, i) => s + parseFloat(i.monto_ejecutado || 0), 0)
-  const varianza   = total_pres - total_ej
+  const total_pres   = items.reduce((s, i) => s + i.monto_presupuestado, 0)
+  const total_ej_man = items.reduce((s, i) => s + parseFloat(i.monto_ejecutado || 0), 0)
+  const total_ej     = total_ej_man + laboresEj
+  const varianza     = total_pres - total_ej
   const ingreso_est = campana?.objetivo_cosecha && campana?.precio_venta_estimado
     ? parseFloat(campana.objetivo_cosecha) * parseFloat(campana.precio_venta_estimado) : null
   const rentabilidad = ingreso_est !== null ? ingreso_est - total_ej : null
@@ -1376,7 +1390,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Presupuestado', value: fmt(total_pres), color: dark ? '#60a5fa' : '#2563eb' },
-          { label: 'Ejecutado',     value: fmt(total_ej),   color: dark ? '#4ade80' : '#15803d' },
+          { label: 'Ejecutado', value: fmt(total_ej), sub: laboresEj > 0 ? `inc. ${fmt(laboresEj)} labores` : null, color: dark ? '#4ade80' : '#15803d' },
           { label: varianza >= 0 ? 'Ahorro' : 'Exceso', value: fmt(Math.abs(varianza)),
             color: varianza >= 0 ? (dark ? '#4ade80' : '#15803d') : (dark ? '#f87171' : '#dc2626'),
             icon: varianza >= 0 ? <TrendingDown size={13} /> : <TrendingUp size={13} /> },
@@ -1389,6 +1403,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
               {k.icon && <span style={{ color: k.color }}>{k.icon}</span>}
               <p className="text-lg font-extrabold" style={{ color: k.color }}>{k.value}</p>
             </div>
+            {k.sub && <p className="text-[10px] mt-0.5 font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.35)' : '#9ca3af' }}>{k.sub}</p>}
           </div>
         ))}
       </div>
