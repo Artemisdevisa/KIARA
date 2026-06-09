@@ -86,12 +86,14 @@ class DashboardView(APIView):
         # Últimos 5 diagnósticos
         from apps.diagnosticos.models import Diagnostico
         ultimos_diagnosticos = list(
-            Diagnostico.objects.filter(cultivo__biohuerto__in=biohuertos)
+            Diagnostico.objects.filter(productor=user)
             .order_by('-fecha')[:5]
-            .values('fecha', 'diagnostico_probable', 'severidad', 'cultivo__nombre')
+            .values('fecha', 'diagnostico_probable', 'severidad', 'variedad__nombre', 'campana__codigo')
         )
         for d in ultimos_diagnosticos:
             d['fecha'] = str(d['fecha'])
+            d['cultivo__nombre'] = d.pop('variedad__nombre') or ''
+            d['campana_codigo']  = d.pop('campana__codigo') or ''
 
         return Response({
             'cultivos_activos': cultivos_activos,
