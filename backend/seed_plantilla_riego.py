@@ -9,14 +9,37 @@ django.setup()
 
 from apps.campanas.models import Variedad, ProductoAgricola, PlantillaRiego
 
-# ── IDs de fertilizantes en la BD ──────────────────────────────────────────
-# 13: Urea 46%              14: Nitrato de amonio 33%    15: DAP
-# 16: KCl 60%               17: Sulfato de potasio 50%   18: Nitrato de calcio 15.5%
-# 19: Sulfato de magnesio   20: Ácido fosfórico 85%      21: Nitrato de potasio 13-0-46
-# 22: MAP                   23: Sulfato de zinc          24: Ácido bórico 17%
+# ── Lookup de fertilizantes por nombre (robusto ante cualquier pk) ──────────
+_FERTS = {
+    13: 'Urea 46%',
+    14: 'Nitrato de amonio 33%',
+    15: 'Fosfato diamónico DAP',
+    16: 'Cloruro de potasio 60%',
+    17: 'Sulfato de potasio 50%',
+    18: 'Nitrato de calcio 15.5%',
+    19: 'Sulfato de magnesio',
+    20: 'Ácido fosfórico 85%',
+    21: 'Nitrato de potasio 13-0-46',
+    22: 'MAP (monofosfato de amonio)',
+    23: 'Sulfato de zinc',
+    24: 'Ácido bórico 17%',
+}
 
-def f(pk): return ProductoAgricola.objects.get(pk=pk)
-def v(cultivo, nombre): return Variedad.objects.get(cultivo=cultivo, nombre=nombre)
+def f(alias):
+    """Acepta el alias numérico original o un nombre directo."""
+    nombre = _FERTS.get(alias, alias)
+    try:
+        return ProductoAgricola.objects.get(nombre=nombre)
+    except ProductoAgricola.DoesNotExist:
+        print(f'  [SKIP fertilizante] "{nombre}"')
+        return None
+
+def v(cultivo, nombre):
+    try:
+        return Variedad.objects.get(cultivo=cultivo, nombre=nombre)
+    except Variedad.DoesNotExist:
+        print(f'  [SKIP variedad] {cultivo} — {nombre}')
+        return None
 
 # Limpia los registros previos para poder re-ejecutar el script limpio
 PlantillaRiego.objects.all().delete()
@@ -27,6 +50,9 @@ def add(variedad, nombre, metodo, litros_por_m2, frecuencia_dias,
         duracion_minutos=None, etapa='', semana_relativa=None,
         fertilizante_pk=None, dosis_fertilizante=None):
     global created
+    if variedad is None:
+        return
+    fert = f(fertilizante_pk) if fertilizante_pk is not None else None
     PlantillaRiego.objects.create(
         variedad=variedad,
         nombre=nombre,
@@ -36,7 +62,7 @@ def add(variedad, nombre, metodo, litros_por_m2, frecuencia_dias,
         duracion_minutos=duracion_minutos,
         etapa=etapa,
         semana_relativa=semana_relativa,
-        fertilizante=f(fertilizante_pk) if fertilizante_pk else None,
+        fertilizante=fert,
         dosis_fertilizante=dosis_fertilizante,
     )
     created += 1

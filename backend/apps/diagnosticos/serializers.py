@@ -9,6 +9,8 @@ class DiagnosticoSerializer(serializers.ModelSerializer):
         model = Diagnostico
         fields = [
             'id', 'cultivo', 'cultivo_nombre', 'parte_afectada', 'sintomas',
-            'diagnostico_probable', 'causa_probable', 'recomendacion', 'fecha', 'created_at'
+            'diagnostico_probable', 'causa_probable', 'recomendacion',
+            'severidad', 'acciones_preventivas', 'metodo', 'imagen',
+            'fecha', 'created_at',
         ]
         read_only_fields = ['id', 'fecha', 'created_at']

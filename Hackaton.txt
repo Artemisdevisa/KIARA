@@ -1,0 +1,177 @@
+Hackathon: “Implementación 
+de un ecosistema digital inteligente para la gestión 
+sostenible de biohuertos urbanos” 
+Organizado por: Escuela de Ingeniería de Sistemas y 
+Computación de la USAT I. Presentación 
+En el marco de la celebración de los 25 años de la Escuela de Ingeniería de Sistemas y Computación 
+de la Universidad Católica Santo Toribio de Mogrovejo (USAT), se presenta la Hackathon 
+“Implementación de un Ecosistema Digital Inteligente para la Gestión Sostenible de Biohuertos 
+Urbanos”, iniciativa orientada al desarrollo de soluciones tecnológicas innovadoras que contribuyan 
+al fortalecimiento de los biohuertos urbanos promovidos por la USAT, mediante la gestión 
+productiva, el monitoreo agroecológico, la asistencia técnica inteligente, la sostenibilidad ambiental, 
+la trazabilidad de productos y la articulación digital y comercial entre productores y consumidores. 
+II. Contexto del problema 
+La USAT, a través de su proyecto de Responsabilidad Social Universitaria “Biohuertos Urbanos: 
+Cultivando Salud en Casa”, viene promoviendo el fortalecimiento de emprendimientos comunitarios 
+sostenibles en las comunidades colindantes a la Universidad, fomentando la agricultura ecológica, la 
+seguridad alimentaria y las buenas prácticas ambientales. Este proyecto ha permitido impulsar: la 
+producción de hortalizas ecológicas, la recuperación de espacios familiares y comunitarios, la 
+promoción de hábitos de alimentación saludable y el desarrollo de pequeños emprendimientos 
+socioambientales; sin embargo, pese al avance alcanzado, los productores comunitarios aún 
+enfrentan 
+diversas 
+necesidades. 
+Por ello, 
+se plantea un producto mínimo viable (PMV) 
+con funcionalidades esenciales, dejando como valor agregado las capacidades más complejas o de 
+mayor esfuerzo técnico. 
+Funcionalidades mínimas esperadas del producto  
+La solución tecnológica deberá implementar, como mínimo, un conjunto de funcionalidades que 
+responda directamente a las necesidades descritas en el contexto del problema: registro y 
+organización de información, monitoreo productivo, apoyo al diagnóstico fitosanitario, asistencia 
+agroecológica, análisis básico de sostenibilidad, trazabilidad, comercialización y generación de 
+reportes para la toma de decisiones. 
+1. Gestión de usuarios y biohuertos 
+Registro de productores y, de manera opcional, consumidores; creación de ficha del biohuerto 
+con nombre o código, ubicación de referencia, área o espacio disponible, cultivos activos, etc. Esta 
+funcionalidad permite organizar la información base del ecosistema digital y es indispensable para 
+la trazabilidad posterior 
+2. Registro digital de cultivos y planificación del ciclo productivo 
+Registro de especie o cultivo, fecha de siembra, etapa del cultivo, cantidad o área sembrada, fecha 
+estimada de cosecha y otros datos que considere necesarios. Debe permitir consultar el historial 
+por campaña o temporada. Responde a la necesidad de monitorear y gestionar adecuadamente 
+la producción agrícola.  
+3. Monitoreo básico del biohuerto:  
+Ingreso manual de variables clave como humedad, temperatura, luminosidad y/o incidencias 
+relevantes del cultivo, etc. La captura mediante sensores IoT de bajo costo podrá considerarse 
+como funcionalidad adicional, no obligatoria, por la restricción de tiempo y trabajo remoto del 
+concurso.  
+4. Alertas y recordatorios de manejo:  
+Generación de alertas o recordatorios para riego, fertilización orgánica, control preventivo, 
+cosecha, rotación de cultivos, además de otras alertas que se considere necesarias. Se recomienda 
+que las alertas se visualicen dentro del sistema y que puedan ordenarse por fecha o prioridad.  
+5. Módulo de diagnóstico fitosanitario asistido:  
+El sistema deberá ofrecer una ayuda práctica para identificar problemas frecuentes del biohuerto 
+mediante al menos una de estas opciones: (a) análisis de imagen, o (b) diagnóstico guiado por 
+formulario, síntomas o catálogo visual. El objetivo mínimo es apoyar la identificación inicial de 
+enfermedades, plagas o deficiencias comunes y registrar el resultado para su consulta posterior.  
+6. Recomendaciones agroecológicas contextualizadas:  
+A partir del cultivo registrado y/o del diagnóstico fitosanitario, el sistema deberá mostrar 
+recomendaciones de manejo sostenible priorizando alternativas orgánicas y biológicas. Se 
+valorará especialmente que las recomendaciones estén adaptadas a cultivos frecuentes en 
+biohuertos urbanos de Lambayeque o de contexto similar.  
+7. Publicación de cosechas y vinculación básica con consumidores:  
+Registro y publicación de cosechas disponibles con foto, nombre del producto, cantidad, precio 
+referencial, fecha de cosecha y medio de contacto. No se exige una pasarela de pago; basta con 
+un módulo de oferta visible para facilitar la promoción y la conexión digital entre productores y 
+consumidores.  
+8. Trazabilidad agroecológica y costeo básico:  
+Registro de prácticas sostenibles aplicadas al cultivo (por ejemplo: uso de compost, ausencia de 
+agroquímicos, riego eficiente) y cálculo básico de costos de producción considerando insumos, 
+agua y mano de obra o tiempo invertido. Esta funcionalidad permite transparentar el proceso 
+productivo y estimar la rentabilidad.  
+9. Indicadores y reporte resumido para la toma de decisiones:  
+Visualización de indicadores básicos del biohuerto: cultivos activos, próximas cosechas, alertas 
+pendientes, cosechas publicadas, costos acumulados y al menos un indicador de sostenibilidad 
+simple, por ejemplo, consumo estimado de agua o semáforo ambiental). El sistema deberá 
+permitir generar o descargar un reporte resumido. 
+Funcionalidades consideradas como valor agregado (no obligatorias)  
+• Integración real con sensores IoT y captura automática de datos.  
+• Diagnóstico por imagen con modelo de inteligencia artificial entrenado.  
+• Identificación automática de especies, malezas, insectos plaga e insectos benéficos.  
+• Modo offline completo o sincronización diferida.  
+• Geolocalización avanzada con mapa interactivo y zona de reparto.  
+• Cálculo de huella de carbono con mayor nivel de detalle.  
+• Reporte de sostenibilidad extendido o exportación avanzada de datos. III. Detalles del concurso 
+• Los equipos participantes trabajarán de manera independiente desde casa en el diseño e 
+implementación de la solución propuesta hasta las fechas de presentación establecidas. 
+• Cada equipo deberá estar compuesto por 2 o 3 estudiantes de la Escuela de Ingeniería de 
+Sistemas y Computación USAT matriculados en el semestre 2026-I. 
+• La solución tecnológica implementada deberá cubrir, como mínimo, las necesidades 
+funcionales identificadas en el contexto del problema. En ese sentido, cada equipo definirá 
+la arquitectura tecnológica, módulos, funcionalidades y componentes del sistema a 
+desarrollar. 
+• El equipo ganador será determinado por el Jurado evaluador definido por la escuela. 
+• La decisión del jurado es inapelable. 
+IV. Inscripción 
+• Los equipos interesados pueden inscribirse en el siguiente enlace: 
+https://bit.ly/eisc-usat-hackathon-2026 
+• La fecha límite para la inscripción es el martes 02 de junio del 2026 
+• Sólo se aceptarán como inscritos a los 6 primeros equipos que se registren en el formulario 
+de inscripción. 
+• La inscripción será considerada válida siempre que el equipo cumpla con los requisitos 
+establecidos en las presentes bases. 
+• Los equipos que fueron aceptados para participar en el concurso se les comunicará por email 
+hasta el miércoles 03 de junio del 2026.  
+V. Presentaciones 
+Cada equipo deberá presentar la solución implementada en su laptop durante la etapa que 
+corresponda. Asimismo, podrá utilizar otros dispositivos adicionales si lo estima conveniente. 
+5.1 Selección de finalistas: 
+• Fecha: miércoles 10 de junio del 2026 
+• Hora: 03:00 p.m. 
+• Lugar: Auditorio 801 JPII 
+5.2 Gran final y premiación: 
+• Fecha: lunes 13 de julio del 2026 
+• Hora: 09:00 a.m. 
+• Lugar: Laboratorio de software 1 
+VI. Criterios de evaluación 
+La evaluación se realizará mediante una rúbrica de 100 puntos. El jurado evaluador valorará no 
+solo la cantidad de funcionalidades implementadas, sino también su nivel de integración, 
+funcionamiento real, utilidad para el contexto de los biohuertos urbanos, calidad técnica, 
+usabilidad, sostenibilidad e innovación de la solución. 
+Rúbrica de evaluación: 
+N.º 
+Criterio 
+1 
+Alineación con el problema y propuesta integral 
+Puntaje 
+máximo 
+10 pts 
+2 
+Cumplimiento funcional mínimo del PMV 
+30 pts 
+3 
+Calidad técnica y funcionamiento demostrable 
+15 pts 
+4 
+Usabilidad y experiencia del usuario 
+10 pts 
+5 
+Innovación y diferenciación de la solución 
+15 pts 
+6 
+Sostenibilidad, trazabilidad e impacto potencial 
+10 pts 
+7 
+Presentación, defensa y claridad de la demostración 
+Total 
+10 pts 
+100 pts 
+VII. Premiación 
+• Los ganadores serán determinados por el jurado evaluador definido por la Escuela de 
+Ingeniería de Sistemas y Computación USAT. 
+• Los resultados del jurado son inapelables. 
+• El equipo que ocupe el primer puesto, se compromete a ceder el código fuente y los derechos 
+de autor del mismo a la USAT, de tal manera que pueda modificar y utilizar el código según 
+lo estime conveniente. Del mismo modo, el equipo ganador se compromete a apoyar en el 
+despliegue de la solución. 
+• Se otorgarán constancias de participación a todos los estudiantes participantes. 
+• En caso de que los participantes no logren cumplir con los requerimientos mínimos 
+establecidos para el concurso, este podrá quedar desierto, sin un ganador. 
+• Los premios son los siguientes: 
+Puesto 
+Premio pecuniario 
+1er Puesto 
+2do Puesto 
+S/ 1000.00 
+S/   500.00 
+3er Puesto 
+S/   200.00 
+VIII. Disposiciones finales 
+Los aspectos no contemplados en las presentes bases serán resueltos por la Dirección de la 
+Escuela de Ingeniería de Sistemas y Computación de la USAT, en coordinación con el jurado 
+evaluador cuando corresponda. 
+IX. Contacto 
+Para cualquier consulta, pueden comunicarse con la Ing. Karla C. Reyes Burgos escribiendo al email: 
+kreyes@usat.edu.pe 
+¡Esperamos contar con tu participación en este emocionante evento!

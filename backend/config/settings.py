@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
@@ -5,6 +6,9 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-cambiar')
+
+# Exponer ANTHROPIC_API_KEY al entorno para que el SDK lo lea automáticamente
+os.environ.setdefault('ANTHROPIC_API_KEY', config('ANTHROPIC_API_KEY', default=''))
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
