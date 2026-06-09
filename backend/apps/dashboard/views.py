@@ -58,6 +58,41 @@ class DashboardView(APIView):
         else:
             semaforo = 'rojo'
 
+        # Detalle prácticas del mes
+        practicas_detalle = list(
+            PracticaSostenible.objects.filter(
+                cultivo__biohuerto__in=biohuertos, fecha__gte=inicio_mes
+            ).select_related('cultivo').values('fecha', 'tipo', 'cultivo__nombre')
+        )
+        for p in practicas_detalle:
+            p['fecha'] = str(p['fecha'])
+
+        # Costos por concepto del mes
+        from django.db.models import Sum as DSum
+        costos_concepto_qs = (
+            Costo.objects.filter(cultivo__biohuerto__in=biohuertos, fecha__gte=inicio_mes)
+            .values('concepto')
+            .annotate(total=DSum('monto'))
+        )
+        CONCEPTO_LABELS = {
+            'insumos': 'Insumos', 'agua': 'Agua', 'semillas': 'Semillas',
+            'mano_obra': 'Mano de obra', 'herramientas': 'Herramientas', 'otro': 'Otro',
+        }
+        costos_por_concepto = [
+            {'concepto': CONCEPTO_LABELS.get(r['concepto'], r['concepto']), 'total': float(r['total'])}
+            for r in costos_concepto_qs
+        ]
+
+        # Últimos 5 diagnósticos
+        from apps.diagnosticos.models import Diagnostico
+        ultimos_diagnosticos = list(
+            Diagnostico.objects.filter(cultivo__biohuerto__in=biohuertos)
+            .order_by('-fecha')[:5]
+            .values('fecha', 'diagnostico_probable', 'severidad', 'cultivo__nombre')
+        )
+        for d in ultimos_diagnosticos:
+            d['fecha'] = str(d['fecha'])
+
         return Response({
             'cultivos_activos': cultivos_activos,
             'proximas_cosechas': list(proximas_cosechas),
@@ -67,4 +102,7 @@ class DashboardView(APIView):
             'practicas_mes': practicas_mes,
             'semaforo_ambiental': semaforo,
             'total_biohuertos': biohuertos.count(),
+            'practicas_detalle': practicas_detalle,
+            'costos_por_concepto': costos_por_concepto,
+            'ultimos_diagnosticos': ultimos_diagnosticos,
         })

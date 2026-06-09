@@ -45,34 +45,226 @@ export default function Dashboard() {
 
   const generarPDF = () => {
     if (!data) return
-    const doc = new jsPDF()
-    doc.setFontSize(18)
-    doc.text('Reporte BioHuerto USAT', 14, 20)
-    doc.setFontSize(12)
-    doc.text(`Productor: ${user?.first_name} ${user?.last_name}`, 14, 32)
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PE')}`, 14, 40)
-    autoTable(doc, {
-      startY: 50,
-      head: [['Indicador', 'Valor']],
-      body: [
-        ['Biohuertos activos', data.total_biohuertos],
-        ['Cultivos activos', data.cultivos_activos],
-        ['Alertas pendientes', data.alertas_pendientes],
-        ['Cosechas publicadas activas', data.cosechas_activas],
-        ['Costo total del mes (S/)', data.costo_total_mes?.toFixed(2)],
-        ['Prácticas sostenibles del mes', data.practicas_mes],
-        ['Semáforo ambiental', data.semaforo_ambiental?.toUpperCase()],
-      ],
-    })
-    if (data.proximas_cosechas?.length) {
-      autoTable(doc, {
-        startY: doc.lastAutoTable.finalY + 10,
-        head: [['Cultivo', 'Biohuerto', 'Fecha estimada cosecha']],
-        body: data.proximas_cosechas.map(c => [c.nombre, c['biohuerto__nombre'], c.fecha_estimada_cosecha]),
-      })
+    const doc  = new jsPDF()
+    const W    = 210
+    const MAR  = 14
+    const BODY = W - MAR * 2
+
+    // ── Paleta ────────────────────────────────────────────────────
+    const C = {
+      green:     [21,  128,  61],
+      greenLight:[220, 252, 231],
+      navy:      [30,   58, 138],
+      navyLight: [219, 234, 254],
+      purple:    [109,  40, 217],
+      purpleLight:[237,233,254],
+      amber:     [180,  83,   9],
+      amberLight:[254, 243, 199],
+      red:       [185,  28,  28],
+      redLight:  [254, 226, 226],
+      dark:      [17,   24,  39],
+      gray:      [107, 114, 128],
+      grayLight: [243, 244, 246],
+      white:     [255, 255, 255],
     }
-    doc.save('reporte-biohuerto.pdf')
-    toast.success('PDF generado correctamente.')
+
+    const fecha = new Date().toLocaleDateString('es-PE', { year:'numeric', month:'long', day:'numeric' })
+    let curY = 0
+
+    // ── Helpers ────────────────────────────────────────────────────
+    const newPage = () => { doc.addPage(); curY = 20 }
+
+    const checkBreak = (needed = 35) => {
+      if (curY + needed > 278) newPage()
+    }
+
+    const sectionHeader = (num, title, color) => {
+      checkBreak(14)
+      doc.setFillColor(...color)
+      doc.roundedRect(MAR, curY, BODY, 8, 1, 1, 'F')
+      doc.setTextColor(...C.white)
+      doc.setFontSize(8.5)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`${num}.  ${title}`, MAR + 4, curY + 5.5)
+      doc.setTextColor(...C.dark)
+      curY += 12
+    }
+
+    const emptyMsg = (msg) => {
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'italic')
+      doc.setTextColor(...C.gray)
+      doc.text(msg, MAR + 3, curY + 5)
+      doc.setTextColor(...C.dark)
+      curY += 12
+    }
+
+    const table = (head, body, headColor, opts = {}) => {
+      checkBreak(20)
+      autoTable(doc, {
+        startY: curY,
+        head: [head],
+        body,
+        headStyles: { fillColor: headColor, fontSize: 8, fontStyle: 'bold', textColor: C.white, cellPadding: 3 },
+        bodyStyles: { fontSize: 8, cellPadding: 3, textColor: C.dark },
+        alternateRowStyles: { fillColor: C.grayLight },
+        tableLineColor: [229, 231, 235],
+        tableLineWidth: 0.1,
+        margin: { left: MAR, right: MAR },
+        ...opts,
+      })
+      curY = doc.lastAutoTable.finalY + 8
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // PORTADA / ENCABEZADO
+    // ══════════════════════════════════════════════════════════════
+    doc.setFillColor(...C.green)
+    doc.rect(0, 0, W, 42, 'F')
+
+    // Franja decorativa inferior del header
+    doc.setFillColor(16, 100, 47)
+    doc.rect(0, 36, W, 6, 'F')
+
+    doc.setTextColor(...C.white)
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('REPORTE DE GESTIÓN AGROECOLÓGICA', MAR, 16)
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text('BioHuerto USAT  ·  Chiclayo, Lambayeque — Perú', MAR, 24)
+
+    doc.setFontSize(8.5)
+    doc.text(`Productor: ${user?.first_name ?? ''} ${user?.last_name ?? ''}`, MAR, 31)
+    doc.text(`Fecha de generación: ${fecha}`, MAR + 100, 31)
+
+    doc.setTextColor(...C.dark)
+    curY = 52
+
+    // ── Tarjetas de métricas (2×3) ────────────────────────────────
+    const metricas = [
+      { label: 'Biohuertos',        value: data.total_biohuertos ?? 0,                   color: C.green  },
+      { label: 'Cultivos activos',  value: data.cultivos_activos ?? 0,                   color: C.navy   },
+      { label: 'Alertas pendientes',value: data.alertas_pendientes ?? 0,                 color: C.amber  },
+      { label: 'Cosechas activas',  value: data.cosechas_activas ?? 0,                   color: C.green  },
+      { label: 'Costo del mes',     value: `S/ ${(data.costo_total_mes ?? 0).toFixed(2)}`,color: C.navy  },
+      { label: 'Semáforo ambiental',value: (data.semaforo_ambiental ?? 'rojo').toUpperCase(), color: data.semaforo_ambiental === 'verde' ? C.green : data.semaforo_ambiental === 'amarillo' ? C.amber : C.red },
+    ]
+    const cardW = (BODY - 8) / 3
+    const cardH = 18
+    metricas.forEach((m, i) => {
+      const col = i % 3
+      const row = Math.floor(i / 3)
+      const x = MAR + col * (cardW + 4)
+      const y = curY + row * (cardH + 4)
+      doc.setFillColor(...C.grayLight)
+      doc.roundedRect(x, y, cardW, cardH, 2, 2, 'F')
+      doc.setFillColor(...m.color)
+      doc.roundedRect(x, y, 3, cardH, 1, 1, 'F')
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...m.color)
+      doc.text(String(m.value), x + 7, y + 10)
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(...C.gray)
+      doc.text(m.label, x + 7, y + 15)
+    })
+    doc.setTextColor(...C.dark)
+    curY += 2 * (cardH + 4) + 10
+
+    // Línea separadora
+    doc.setDrawColor(...C.grayLight)
+    doc.setLineWidth(0.5)
+    doc.line(MAR, curY, W - MAR, curY)
+    curY += 8
+
+    // ══════════════════════════════════════════════════════════════
+    // SECCIÓN 1 — Próximas cosechas
+    // ══════════════════════════════════════════════════════════════
+    sectionHeader(1, 'Próximas cosechas — próximos 7 días', C.green)
+    if (data.proximas_cosechas?.length) {
+      table(
+        ['Cultivo', 'Biohuerto', 'Fecha estimada de cosecha'],
+        data.proximas_cosechas.map(c => [c.nombre, c['biohuerto__nombre'], c.fecha_estimada_cosecha]),
+        C.green,
+        { columnStyles: { 2: { halign: 'center' } } }
+      )
+    } else { emptyMsg('No hay cosechas programadas en los próximos 7 días.') }
+
+    // ══════════════════════════════════════════════════════════════
+    // SECCIÓN 2 — Costos por concepto
+    // ══════════════════════════════════════════════════════════════
+    sectionHeader(2, 'Costos de producción por concepto — mes actual', C.navy)
+    if (data.costos_por_concepto?.length) {
+      const totalMes = data.costos_por_concepto.reduce((s, c) => s + c.total, 0)
+      table(
+        ['Concepto', 'Monto (S/)', '% del total'],
+        data.costos_por_concepto.map(c => [
+          c.concepto,
+          c.total.toFixed(2),
+          `${((c.total / totalMes) * 100).toFixed(1)} %`,
+        ]),
+        C.navy,
+        { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'center' } } }
+      )
+    } else { emptyMsg('No se registraron costos este mes.') }
+
+    // ══════════════════════════════════════════════════════════════
+    // SECCIÓN 3 — Prácticas sostenibles
+    // ══════════════════════════════════════════════════════════════
+    sectionHeader(3, 'Prácticas sostenibles registradas — mes actual', C.purple)
+    if (data.practicas_detalle?.length) {
+      const PLABELS = {
+        compost:'Uso de compost', biol:'Uso de biol', sin_agroquimicos:'Sin agroquímicos',
+        riego_eficiente:'Riego eficiente', mulching:'Mulching',
+        control_biologico:'Control biológico', otro:'Otro',
+      }
+      table(
+        ['Práctica sostenible', 'Cultivo', 'Fecha'],
+        data.practicas_detalle.map(p => [PLABELS[p.tipo] ?? p.tipo, p['cultivo__nombre'], p.fecha]),
+        C.purple,
+        { columnStyles: { 2: { halign: 'center' } } }
+      )
+    } else { emptyMsg('No se registraron prácticas sostenibles este mes.') }
+
+    // ══════════════════════════════════════════════════════════════
+    // SECCIÓN 4 — Diagnósticos fitosanitarios
+    // ══════════════════════════════════════════════════════════════
+    sectionHeader(4, 'Últimos diagnósticos fitosanitarios', C.red)
+    if (data.ultimos_diagnosticos?.length) {
+      const SEV_LABEL = { leve:'Leve', moderado:'Moderado', grave:'Grave' }
+      table(
+        ['Diagnóstico probable', 'Cultivo', 'Severidad', 'Fecha'],
+        data.ultimos_diagnosticos.map(d => [
+          d.diagnostico_probable,
+          d['cultivo__nombre'],
+          SEV_LABEL[d.severidad] ?? 'Moderado',
+          d.fecha,
+        ]),
+        C.red,
+        { columnStyles: { 2: { halign: 'center' }, 3: { halign: 'center' } } }
+      )
+    } else { emptyMsg('No hay diagnósticos registrados.') }
+
+    // ══════════════════════════════════════════════════════════════
+    // PIE DE PÁGINA en todas las páginas
+    // ══════════════════════════════════════════════════════════════
+    const total = doc.getNumberOfPages()
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i)
+      doc.setFillColor(...C.grayLight)
+      doc.rect(0, 284, W, 13, 'F')
+      doc.setFontSize(7.5)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(...C.gray)
+      doc.text('BioHuerto USAT  ·  Gestión Agroecológica Urbana  ·  Lambayeque, Perú', MAR, 291)
+      doc.text(`Página ${i} de ${total}`, W - MAR, 291, { align: 'right' })
+    }
+
+    doc.save(`reporte-biohuerto-${new Date().toISOString().split('T')[0]}.pdf`)
+    toast.success('Reporte PDF generado.')
   }
 
   if (loading) return <Loading />

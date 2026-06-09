@@ -9,6 +9,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-cambiar')
 
 # Exponer ANTHROPIC_API_KEY al entorno para que el SDK lo lea automáticamente
 os.environ.setdefault('ANTHROPIC_API_KEY', config('ANTHROPIC_API_KEY', default=''))
+os.environ.setdefault('GEMINI_API_KEY',    config('GEMINI_API_KEY',    default=''))
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
@@ -110,6 +111,9 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Permitir imágenes grandes para el diagnóstico por imagen (base64 ~4/3 del tamaño original)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
 
 # CORS - permite peticiones desde el frontend React
 CORS_ALLOWED_ORIGINS = [

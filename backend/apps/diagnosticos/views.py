@@ -100,31 +100,7 @@ class DiagnosticoAnalizarView(APIView):
         return Response(resultado)
 
 
-class DiagnosticoClaudeView(APIView):
-    """Diagnóstico asistido por IA usando Claude (formulario e imagen)."""
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        try:
-            import anthropic
-        except ImportError:
-            # SDK no instalado — caer en análisis estático
-            parte = request.data.get('parte_afectada', '')
-            sintomas = request.data.get('sintomas', [])
-            return Response(_analizar_sintomas(parte, sintomas))
-
-        metodo = request.data.get('metodo', 'formulario')
-        cultivo_nombre = request.data.get('cultivo_nombre', 'cultivo')
-
-        try:
-            client = anthropic.Anthropic()
-        except Exception:
-            return Response(
-                {'detail': 'API key de Anthropic no configurada. Verifica ANTHROPIC_API_KEY.'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
-        JSON_SCHEMA = '''{
+JSON_SCHEMA = '''{
   "diagnostico_probable": "nombre del problema",
   "causa_probable": "descripción breve de la causa",
   "recomendacion": "recomendación de manejo orgánico adaptada a Lambayeque",
@@ -132,96 +108,149 @@ class DiagnosticoClaudeView(APIView):
   "acciones_preventivas": ["acción 1", "acción 2", "acción 3"]
 }'''
 
+
+def _prompt_formulario(cultivo_nombre, parte, sintomas):
+    sintomas_texto = ', '.join(s.replace('_', ' ') for s in sintomas)
+    return (
+        f"Eres un experto en fitopatología de biohuertos urbanos en Lambayeque, Perú.\n"
+        f"Un productor reporta el siguiente problema en su cultivo de {cultivo_nombre}:\n"
+        f"- Parte afectada: {parte.replace('_', ' ')}\n"
+        f"- Síntomas observados: {sintomas_texto}\n\n"
+        f"Identifica el problema fitosanitario más probable y proporciona recomendaciones "
+        f"de manejo orgánico adaptadas al clima cálido y húmedo de Lambayeque.\n\n"
+        f"Responde ÚNICAMENTE con el siguiente JSON (sin texto adicional):\n{JSON_SCHEMA}"
+    )
+
+
+def _prompt_imagen(cultivo_nombre, descripcion):
+    return (
+        f"Eres un experto en fitopatología de biohuertos urbanos en Lambayeque, Perú.\n"
+        f"Analiza esta imagen de un cultivo de {cultivo_nombre} e identifica "
+        f"plagas, enfermedades o deficiencias nutricionales.\n"
+        + (f"Descripción adicional del productor: {descripcion}\n" if descripcion else '')
+        + f"\nResponde ÚNICAMENTE con el siguiente JSON (sin texto adicional):\n{JSON_SCHEMA}"
+    )
+
+
+def _analizar_con_gemini(metodo, cultivo_nombre, parte='', sintomas=None, imagen_b64='', media_type='image/jpeg', descripcion=''):
+    """Análisis usando Google Gemini (fallback gratuito)."""
+    import os, base64, time
+    from google import genai
+    from google.genai import types
+
+    gemini_key = os.environ.get('GEMINI_API_KEY', '')
+    if not gemini_key:
+        return None
+
+    client = genai.Client(api_key=gemini_key)
+
+    if metodo == 'imagen':
+        prompt = _prompt_imagen(cultivo_nombre, descripcion)
+        img_bytes = base64.b64decode(imagen_b64)
+        contents = [
+            types.Part.from_bytes(data=img_bytes, mime_type=media_type),
+            prompt,
+        ]
+    else:
+        prompt = _prompt_formulario(cultivo_nombre, parte, sintomas or [])
+        contents = prompt
+
+    last_exc = None
+    for intento in range(3):
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=contents,
+            )
+            return _parsear_respuesta_claude(response.text.strip())
+        except Exception as e:
+            last_exc = e
+            if '503' in str(e) or 'UNAVAILABLE' in str(e):
+                time.sleep(3)
+                continue
+            raise
+    raise last_exc
+
+
+class DiagnosticoClaudeView(APIView):
+    """Diagnóstico asistido por IA: intenta Claude, cae a Gemini, luego a análisis estático."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        metodo        = request.data.get('metodo', 'formulario')
+        cultivo_nombre = request.data.get('cultivo_nombre', 'cultivo')
+        parte         = request.data.get('parte_afectada', '')
+        sintomas      = request.data.get('sintomas', [])
+        imagen_b64    = request.data.get('imagen', '')
+        media_type    = request.data.get('media_type', 'image/jpeg')
+        descripcion   = request.data.get('descripcion', '')
+
+        if metodo == 'imagen' and not imagen_b64:
+            return Response({'detail': 'Imagen requerida.'}, status=400)
+        if metodo == 'formulario' and (not parte or not sintomas):
+            return Response({'detail': 'Parte afectada y síntomas son requeridos.'}, status=400)
+
+        # ── 1. Intentar con Claude ──────────────────────────────────
+        resultado = self._intentar_claude(metodo, cultivo_nombre, parte, sintomas, imagen_b64, media_type, descripcion)
+        if resultado:
+            return Response(resultado)
+
+        # ── 2. Intentar con Gemini ──────────────────────────────────
+        try:
+            from google import genai  # noqa
+            resultado = _analizar_con_gemini(metodo, cultivo_nombre, parte, sintomas, imagen_b64, media_type, descripcion)
+            if resultado:
+                return Response(resultado)
+        except Exception as e:
+            print(f'[Gemini] Error: {e}')
+
+        # ── 3. Fallback estático ────────────────────────────────────
+        if metodo == 'formulario':
+            return Response(_analizar_sintomas(parte, sintomas))
+        return Response({
+            'diagnostico_probable': 'No determinado',
+            'causa_probable': 'No se pudo procesar la imagen con IA.',
+            'recomendacion': 'Consulta con un técnico agroecológico.',
+            'severidad': 'moderado',
+            'acciones_preventivas': [],
+        })
+
+    def _intentar_claude(self, metodo, cultivo_nombre, parte, sintomas, imagen_b64, media_type, descripcion):
+        try:
+            import anthropic
+        except ImportError:
+            return None
+
+        try:
+            client = anthropic.Anthropic()
+        except Exception:
+            return None
+
         try:
             if metodo == 'imagen':
-                imagen_b64 = request.data.get('imagen', '')
-                media_type = request.data.get('media_type', 'image/jpeg')
-                descripcion = request.data.get('descripcion', '')
-
-                if not imagen_b64:
-                    return Response({'detail': 'Imagen requerida.'}, status=400)
-
-                prompt = (
-                    f"Eres un experto en fitopatología de biohuertos urbanos en Lambayeque, Perú.\n"
-                    f"Analiza esta imagen de un cultivo de {cultivo_nombre} e identifica "
-                    f"plagas, enfermedades o deficiencias nutricionales.\n"
-                    + (f"Descripción adicional del productor: {descripcion}\n" if descripcion else '')
-                    + f"\nResponde ÚNICAMENTE con el siguiente JSON (sin texto adicional):\n{JSON_SCHEMA}"
-                )
-
+                prompt = _prompt_imagen(cultivo_nombre, descripcion)
                 message = client.messages.create(
-                    model="claude-sonnet-4-6",
+                    model='claude-sonnet-4-6',
                     max_tokens=1024,
                     messages=[{
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": media_type,
-                                    "data": imagen_b64,
-                                },
-                            },
-                            {"type": "text", "text": prompt},
+                        'role': 'user',
+                        'content': [
+                            {'type': 'image', 'source': {'type': 'base64', 'media_type': media_type, 'data': imagen_b64}},
+                            {'type': 'text', 'text': prompt},
                         ],
                     }],
                 )
-
-            else:  # formulario
-                parte = request.data.get('parte_afectada', '')
-                sintomas = request.data.get('sintomas', [])
-
-                if not parte or not sintomas:
-                    return Response(
-                        {'detail': 'Parte afectada y síntomas son requeridos.'}, status=400
-                    )
-
-                sintomas_texto = ', '.join(s.replace('_', ' ') for s in sintomas)
-
-                prompt = (
-                    f"Eres un experto en fitopatología de biohuertos urbanos en Lambayeque, Perú.\n"
-                    f"Un productor reporta el siguiente problema en su cultivo de {cultivo_nombre}:\n"
-                    f"- Parte afectada: {parte.replace('_', ' ')}\n"
-                    f"- Síntomas observados: {sintomas_texto}\n\n"
-                    f"Identifica el problema fitosanitario más probable y proporciona recomendaciones "
-                    f"de manejo orgánico adaptadas al clima cálido y húmedo de Lambayeque.\n\n"
-                    f"Responde ÚNICAMENTE con el siguiente JSON (sin texto adicional):\n{JSON_SCHEMA}"
-                )
-
+            else:
+                prompt = _prompt_formulario(cultivo_nombre, parte, sintomas)
                 message = client.messages.create(
-                    model="claude-sonnet-4-6",
+                    model='claude-sonnet-4-6',
                     max_tokens=1024,
-                    messages=[{"role": "user", "content": prompt}],
+                    messages=[{'role': 'user', 'content': prompt}],
                 )
-
-            texto = message.content[0].text.strip()
-            resultado = _parsear_respuesta_claude(texto)
-
-            if resultado:
-                return Response(resultado)
-
-            # Fallback al análisis estático si el parse falla
-            if metodo == 'formulario':
-                return Response(_analizar_sintomas(parte, sintomas))
-            return Response({
-                'diagnostico_probable': 'No determinado',
-                'causa_probable': 'No se pudo procesar la respuesta de IA.',
-                'recomendacion': 'Consulta con un técnico agroecológico.',
-                'severidad': 'moderado',
-                'acciones_preventivas': [],
-            })
-
+            return _parsear_respuesta_claude(message.content[0].text.strip())
         except Exception as e:
-            # Si falla la llamada a la API, usar análisis estático
-            if metodo == 'formulario':
-                parte = request.data.get('parte_afectada', '')
-                sintomas = request.data.get('sintomas', [])
-                return Response(_analizar_sintomas(parte, sintomas))
-            return Response(
-                {'detail': f'Error en el servicio de IA: {str(e)}'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+            print(f'[Claude] Error: {e}')
+            return None
 
 
 class DiagnosticosBaseView(APIView):

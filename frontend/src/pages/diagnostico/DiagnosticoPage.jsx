@@ -263,7 +263,10 @@ export default function DiagnosticoPage() {
         descripcion: imgDesc,
       })
       setImgResultado(res.data)
-    } catch { toast.error('Error al analizar la imagen.') }
+    } catch (err) {
+      const msg = err?.response?.data?.detail || 'Error al analizar la imagen.'
+      toast.error(msg, { duration: 6000 })
+    }
     finally { setImgLoading(false) }
   }
 
