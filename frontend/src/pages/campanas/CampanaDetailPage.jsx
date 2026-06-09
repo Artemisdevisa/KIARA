@@ -1188,7 +1188,7 @@ function RiegoTab({ dark, campanaId, campana }) {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                {['Fecha', 'Plan', 'Litros', 'Área', 'Fertirrigación', 'Costo total', ''].map((col, i) => (
+                {['', 'Fecha', 'Plan', 'Litros', 'Área', 'Fertirrigación', 'Costo total', ''].map((col, i) => (
                   <th key={i} className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide"
                     style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{col}</th>
                 ))}
@@ -1196,31 +1196,29 @@ function RiegoTab({ dark, campanaId, campana }) {
             </thead>
             <tbody>
               {regs.map(r => (
-                <tr key={r.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}`, opacity: r.completado ? 0.55 : 1, transition: 'opacity 0.2s' }}
+                <tr key={r.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>
-                    <div className="flex items-center gap-1.5">
-                      {r.completado && <CheckCircle2 size={11} style={{ color: dark ? '#4ade80' : '#16a34a', flexShrink: 0 }} />}
-                      {r.fecha}
-                    </div>
+                  <td className="px-4 py-2.5">
+                    <button onClick={() => toggleReg(r)} title={r.completado ? 'Revertir a pendiente' : 'Marcar como hecho'}>
+                      {r.completado
+                        ? <CheckCircle2 size={18} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
+                        : <Circle size={18} style={{ color: dark ? D.sub : '#d1d5db' }} />}
+                    </button>
                   </td>
-                  <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: dark ? D.sub : '#6b7280' }}>{r.plan_nombre || '—'}</td>
-                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.text : '#374151' }}>{r.litros_aplicados} L</td>
-                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{r.area_regada} m²</td>
-                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? '#4ade80' : '#15803d' }}>
+                  <td className="px-4 py-2.5 text-sm"
+                    style={{ color: dark ? D.sub : '#6b7280', textDecoration: r.completado ? 'line-through' : 'none', opacity: r.completado ? 0.6 : 1 }}>
+                    {r.fecha}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: dark ? D.sub : '#6b7280', opacity: r.completado ? 0.6 : 1 }}>{r.plan_nombre || '—'}</td>
+                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.text : '#374151', opacity: r.completado ? 0.6 : 1 }}>{r.litros_aplicados} L</td>
+                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280', opacity: r.completado ? 0.6 : 1 }}>{r.area_regada} m²</td>
+                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? '#4ade80' : '#15803d', opacity: r.completado ? 0.6 : 1 }}>
                     {r.fertilizante_nombre ? `${r.fertilizante_nombre} ${r.dosis_fertilizante}` : '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{fmt(r.costo_total)}</td>
+                  <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb', opacity: r.completado ? 0.6 : 1 }}>{fmt(r.costo_total)}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center justify-end gap-1.5">
-                      <button onClick={() => toggleReg(r)} title={r.completado ? 'Desmarcar' : 'Marcar como hecho'}
-                        className="p-1.5 rounded-lg transition-colors"
-                        style={{ color: r.completado ? (dark ? '#4ade80' : '#16a34a') : (dark ? D.sub : '#9ca3af') }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(74,222,128,0.12)' : '#f0fdf4'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                        {r.completado ? <CheckCircle2 size={13} /> : <Circle size={13} />}
-                      </button>
                       <button onClick={() => setViewReg(r)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={12} /></button>
@@ -1232,7 +1230,7 @@ function RiegoTab({ dark, campanaId, campana }) {
                 </tr>
               ))}
               {regs.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin registros de riego</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin registros de riego</td></tr>
               )}
             </tbody>
           </table>
