@@ -87,7 +87,10 @@ class DiagnosticosListCreate(generics.ListCreateAPIView):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(productor=self.request.user)
+        # Si viene campaña, derivar variedad automáticamente
+        campana  = serializer.validated_data.get('campana')
+        variedad = campana.variedad if campana else serializer.validated_data.get('variedad')
+        serializer.save(productor=self.request.user, variedad=variedad)
 
 
 class DiagnosticoDetail(generics.RetrieveDestroyAPIView):

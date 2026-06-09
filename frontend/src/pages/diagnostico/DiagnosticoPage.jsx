@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
@@ -8,7 +7,7 @@ import {
   Leaf, Sprout, Network, Apple, TreePine, CheckCircle,
   Upload, ImageIcon, ClipboardList, AlertTriangle, History,
   X, Zap, ShieldAlert, Info, CalendarRange, FlaskConical,
-  Trash2, Eye, Camera, FileText,
+  Trash2, Eye, Camera, FileText, Tag,
 } from 'lucide-react'
 
 /* ── Paleta ── */
@@ -40,7 +39,7 @@ const SINTOMAS = [
   { key:'frutos_deformes',       label:'Frutos deformes o manchados'   },
 ]
 
-const STEP_LABELS = ['Variedad', 'Parte afectada', 'Síntomas', 'Resultado']
+const STEP_LABELS = ['Campaña', 'Parte afectada', 'Síntomas', 'Resultado']
 
 const SEV_CFG = {
   leve:     { label:'Leve',     color:'#16a34a', darkColor:'#4ade80', bg:'#f0fdf4', darkBg:'rgba(22,163,74,0.12)',  icon:Info          },
@@ -57,10 +56,18 @@ function fileToBase64(file) {
   })
 }
 
-/* Construye descripción rica para la IA */
-function variedadDesc(v) {
-  if (!v) return 'cultivo'
-  return [v.cultivo, v.nombre, v.subtipo].filter(Boolean).join(' ')
+/* ── Badge de variedad (informativo, derivado de la campaña) ── */
+function VariedadBadge({ campana, dark }) {
+  if (!campana) return null
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+      style={{ backgroundColor: dark ? 'rgba(22,163,74,0.12)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(74,222,128,0.25)' : '#bbf7d0'}` }}>
+      <Tag size={12} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
+      <span className="text-xs font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
+        Variedad: {campana.variedad_str}
+      </span>
+    </div>
+  )
 }
 
 /* ── SeveridadBadge ── */
@@ -79,49 +86,35 @@ function SeveridadBadge({ severidad, dark }) {
   )
 }
 
-/* ── VariedadSelect ── */
-function VariedadSelect({ dark, variedades, value, onChange, ist, lst, label = 'Variedad de cultivo *' }) {
-  /* Agrupa por tipo de cultivo */
-  const grupos = variedades.reduce((acc, v) => {
-    const k = v.cultivo || 'Otros'
+/* ── Selector de campaña ── */
+function CampanaSelector({ campanas, value, onChange, dark, ist, lst, opcional = false }) {
+  /* Agrupa por biohuerto */
+  const grupos = campanas.reduce((acc, c) => {
+    const k = c.biohuerto_nombre || 'Mi biohuerto'
     if (!acc[k]) acc[k] = []
-    acc[k].push(v)
+    acc[k].push(c)
     return acc
   }, {})
 
   return (
-    <div>
-      <label style={lst}>{label}</label>
-      <select value={value} onChange={e => onChange(e.target.value)} style={ist}>
-        <option value="">Seleccionar variedad...</option>
-        {Object.entries(grupos).map(([cultivo, items]) => (
-          <optgroup key={cultivo} label={cultivo}>
-            {items.map(v => (
-              <option key={v.id} value={v.id}>
-                {v.nombre}{v.subtipo ? ` (${v.subtipo})` : ''}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-    </div>
-  )
-}
-
-/* ── CampanaSelect ── */
-function CampanaSelect({ dark, campanas, value, onChange, ist, lst }) {
-  if (!campanas.length) return null
-  return (
-    <div>
-      <label style={lst}>Asociar a campaña activa (opcional)</label>
-      <select value={value} onChange={e => onChange(e.target.value)} style={ist}>
-        <option value="">— Sin campaña —</option>
-        {campanas.map(c => (
-          <option key={c.id} value={c.id}>
-            {c.codigo} — {c.variedad_str} ({c.estado_display})
-          </option>
-        ))}
-      </select>
+    <div className="space-y-2">
+      <div>
+        <label style={lst}>
+          Campaña activa {opcional ? '(opcional)' : '*'}
+        </label>
+        <select value={value} onChange={e => onChange(e.target.value)} style={ist}>
+          <option value="">{opcional ? '— Sin campaña —' : 'Seleccionar campaña...'}</option>
+          {Object.entries(grupos).map(([biohuerto, items]) => (
+            <optgroup key={biohuerto} label={biohuerto}>
+              {items.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.codigo} — {c.variedad_str} ({c.estado_display})
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </div>
     </div>
   )
 }
@@ -146,17 +139,14 @@ function ResultadoPanel({ resultado, dark, guardado, onGuardar, onReiniciar }) {
         <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: dark ? '#fbbf24' : '#d97706' }}>Diagnóstico probable</p>
         <p className="font-extrabold text-lg" style={{ color: dark ? D.text : '#111827' }}>{resultado.diagnostico_probable}</p>
       </div>
-
       <div style={cs}>
         <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: dark ? D.sub : '#9ca3af' }}>Causa probable</p>
         <p className="text-sm" style={{ color: dark ? D.text : '#374151' }}>{resultado.causa_probable}</p>
       </div>
-
       <div style={{ ...cs, backgroundColor: dark ? 'rgba(22,163,74,0.10)' : '#f0fdf4', border:`1px solid ${dark ? 'rgba(22,163,74,0.30)' : '#bbf7d0'}` }}>
         <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: dark ? '#4ade80' : '#16a34a' }}>Recomendación de manejo orgánico</p>
         <p className="text-sm" style={{ color: dark ? D.text : '#374151' }}>{resultado.recomendacion}</p>
       </div>
-
       {resultado.acciones_preventivas?.length > 0 && (
         <div style={cs}>
           <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: dark ? D.sub : '#9ca3af' }}>Acciones preventivas</p>
@@ -173,7 +163,6 @@ function ResultadoPanel({ resultado, dark, guardado, onGuardar, onReiniciar }) {
           </ul>
         </div>
       )}
-
       <div className="flex flex-wrap gap-2 pt-1">
         {!guardado ? (
           <button onClick={onGuardar} className="btn-primary flex items-center gap-2 text-sm">
@@ -221,29 +210,28 @@ function DetalleModal({ dark, diag, onClose, onDelete }) {
           {diag.imagen_url && (
             <img src={diag.imagen_url} alt="Diagnóstico" className="w-full rounded-xl object-cover max-h-56" />
           )}
-
           <div className="flex flex-wrap gap-2">
             {diag.severidad && <SeveridadBadge severidad={diag.severidad} dark={dark} />}
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-              style={{ backgroundColor: diag.metodo==='imagen' ? (dark?'rgba(96,165,250,0.15)':'#dbeafe') : (dark?'rgba(22,163,74,0.15)':'#dcfce7'), color: diag.metodo==='imagen' ? (dark?'#60a5fa':'#1d4ed8') : (dark?'#4ade80':'#15803d') }}>
+              style={{ backgroundColor: diag.metodo==='imagen'?(dark?'rgba(96,165,250,0.15)':'#dbeafe'):(dark?'rgba(22,163,74,0.15)':'#dcfce7'), color: diag.metodo==='imagen'?(dark?'#60a5fa':'#1d4ed8'):(dark?'#4ade80':'#15803d') }}>
               {diag.metodo==='imagen' ? '📷 Por imagen' : '📋 Formulario guiado'}
             </span>
           </div>
 
-          <div style={cs} className="space-y-1">
-            {diag.variedad_str && (
-              <p className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
-                <strong style={{ color: dark ? D.text : '#374151' }}>Variedad:</strong> {diag.variedad_str}
-              </p>
-            )}
+          <div style={cs} className="space-y-1.5">
             {diag.campana_codigo && (
-              <p className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
-                <strong style={{ color: dark ? D.text : '#374151' }}>Campaña:</strong>{' '}
-                <span className="font-mono font-bold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{diag.campana_codigo}</span>
+              <p className="text-xs" style={{ color: dark?D.sub:'#6b7280' }}>
+                <strong style={{ color: dark?D.text:'#374151' }}>Campaña:</strong>{' '}
+                <span className="font-mono font-bold" style={{ color: dark?'#60a5fa':'#2563eb' }}>{diag.campana_codigo}</span>
               </p>
             )}
-            <p className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
-              <strong style={{ color: dark ? D.text : '#374151' }}>Fecha:</strong> {diag.fecha}
+            {diag.variedad_str && (
+              <p className="text-xs" style={{ color: dark?D.sub:'#6b7280' }}>
+                <strong style={{ color: dark?D.text:'#374151' }}>Variedad:</strong> {diag.variedad_str}
+              </p>
+            )}
+            <p className="text-xs" style={{ color: dark?D.sub:'#6b7280' }}>
+              <strong style={{ color: dark?D.text:'#374151' }}>Fecha:</strong> {diag.fecha}
             </p>
           </div>
 
@@ -263,7 +251,7 @@ function DetalleModal({ dark, diag, onClose, onDelete }) {
             <div style={cs}>
               <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: dark?D.sub:'#9ca3af' }}>Acciones preventivas</p>
               <ol className="space-y-1">
-                {diag.acciones_preventivas.map((a,i) => (
+                {diag.acciones_preventivas.map((a, i) => (
                   <li key={i} className="flex items-start gap-2 text-xs" style={{ color: dark?D.text:'#374151' }}>
                     <span className="font-bold shrink-0" style={{ color: dark?'#4ade80':'#16a34a' }}>{i+1}.</span> {a}
                   </li>
@@ -279,10 +267,9 @@ function DetalleModal({ dark, diag, onClose, onDelete }) {
 
 /* ── Tarjeta historial ── */
 function DiagCard({ dark, diag, onVer, onDelete }) {
-  const sev = SEV_CFG[diag.severidad]
   return (
-    <div className="flex gap-3 p-3 rounded-xl transition-all duration-150 cursor-pointer"
-      style={{ backgroundColor: dark ? D.cardBg : '#fff', border:`1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, borderRadius:'14px' }}
+    <div className="flex gap-3 p-3 rounded-xl transition-all duration-150"
+      style={{ backgroundColor: dark?D.cardBg:'#fff', border:`1.5px solid ${dark?D.cardBorder:'#e5e7eb'}`, borderRadius:'14px' }}
       onMouseEnter={e => e.currentTarget.style.backgroundColor = dark?'rgba(255,255,255,0.07)':'#f9fafb'}
       onMouseLeave={e => e.currentTarget.style.backgroundColor = dark?D.cardBg:'#fff'}>
 
@@ -304,7 +291,7 @@ function DiagCard({ dark, diag, onVer, onDelete }) {
           </p>
         )}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-          {sev && <SeveridadBadge severidad={diag.severidad} dark={dark} />}
+          {diag.severidad && <SeveridadBadge severidad={diag.severidad} dark={dark} />}
           {diag.campana_codigo && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md"
               style={{ backgroundColor: dark?'rgba(96,165,250,0.12)':'#dbeafe', color: dark?'#60a5fa':'#1d4ed8' }}>
@@ -344,28 +331,26 @@ export default function DiagnosticoPage() {
   const { dark } = useTheme()
   const [modo, setModo] = useState('formulario')
 
+  /* Campañas del productor */
+  const [campanas, setCampanas] = useState([])
+
   /* ── Formulario ── */
-  const [paso, setPaso]             = useState(1)
-  const [variedades, setVariedades] = useState([])
-  const [campanas, setCampanas]     = useState([])
-  const [variedadId, setVariedadId] = useState('')
-  const [campanaId, setCampanaId]   = useState('')
-  const [parte, setParte]           = useState('')
-  const [sintomas, setSintomas]     = useState([])
-  const [resultado, setResultado]   = useState(null)
-  const [guardado, setGuardado]     = useState(false)
-  const [loading, setLoading]       = useState(false)
+  const [paso, setPaso]         = useState(1)
+  const [campanaId, setCampanaId] = useState('')
+  const [parte, setParte]       = useState('')
+  const [sintomas, setSintomas] = useState([])
+  const [resultado, setResultado] = useState(null)
+  const [guardado, setGuardado] = useState(false)
+  const [loading, setLoading]   = useState(false)
 
   /* ── Imagen ── */
-  const [imgFile, setImgFile]             = useState(null)
-  const [imgPreview, setImgPreview]       = useState(null)
-  const [imgVariedadId, setImgVariedadId] = useState('')
-  const [imgCampanaId, setImgCampanaId]   = useState('')
-  const [imgCampanas, setImgCampanas]     = useState([])
-  const [imgDesc, setImgDesc]             = useState('')
-  const [imgResultado, setImgResultado]   = useState(null)
-  const [imgGuardado, setImgGuardado]     = useState(false)
-  const [imgLoading, setImgLoading]       = useState(false)
+  const [imgFile, setImgFile]         = useState(null)
+  const [imgPreview, setImgPreview]   = useState(null)
+  const [imgCampanaId, setImgCampanaId] = useState('')
+  const [imgDesc, setImgDesc]         = useState('')
+  const [imgResultado, setImgResultado] = useState(null)
+  const [imgGuardado, setImgGuardado] = useState(false)
+  const [imgLoading, setImgLoading]   = useState(false)
 
   /* ── Historial ── */
   const [historial, setHistorial]     = useState([])
@@ -374,35 +359,23 @@ export default function DiagnosticoPage() {
 
   const fileInputRef = useRef()
 
-  /* ── Carga inicial ── */
+  /* ── Carga inicial: campañas del productor ── */
   useEffect(() => {
-    api.get('/campanas/variedades/').then(r => setVariedades(r.data)).catch(() => {})
+    api.get('/campanas/').then(r => {
+      const todas = r.data.results ?? r.data
+      setCampanas(todas.filter(c => c.estado === 'activa' || c.estado === 'planificada'))
+    }).catch(() => {})
     cargarHistorial()
   }, [])
 
-  /* ── Campañas filtradas por variedad ── */
-  const cargarCampanas = useCallback(async (vidId, setter) => {
-    if (!vidId) { setter([]); return }
-    try {
-      const r = await api.get('/campanas/')
-      const todas = r.data.results ?? r.data
-      setter(todas.filter(c =>
-        String(c.variedad) === String(vidId) &&
-        (c.estado === 'activa' || c.estado === 'planificada')
-      ))
-    } catch { setter([]) }
-  }, [])
+  /* Objeto campaña seleccionada */
+  const campanaObj = id => campanas.find(c => String(c.id) === String(id))
 
-  const handleVariedadForm = id => {
-    setVariedadId(id); setCampanaId('')
-    cargarCampanas(id, setCampanas)
+  /* Descripción para IA derivada de la campaña */
+  const plantaDesc = id => {
+    const c = campanaObj(id)
+    return c?.variedad_str || 'cultivo'
   }
-  const handleVariedadImg = id => {
-    setImgVariedadId(id); setImgCampanaId('')
-    cargarCampanas(id, setImgCampanas)
-  }
-
-  const variedadObj = id => variedades.find(v => String(v.id) === String(id))
 
   /* ── Historial ── */
   const cargarHistorial = async () => {
@@ -430,10 +403,9 @@ export default function DiagnosticoPage() {
   const analizar = async () => {
     setLoading(true)
     try {
-      const v = variedadObj(variedadId)
       const res = await api.post('/diagnosticos/analizar-ia/', {
         metodo: 'formulario',
-        variedad_desc: variedadDesc(v),
+        variedad_desc: plantaDesc(campanaId),
         parte_afectada: parte,
         sintomas,
       })
@@ -446,8 +418,7 @@ export default function DiagnosticoPage() {
   const guardar = async () => {
     try {
       await api.post('/diagnosticos/', {
-        variedad: variedadId || null,
-        campana:  campanaId  || null,
+        campana: campanaId || null,
         parte_afectada: parte,
         sintomas,
         metodo: 'formulario',
@@ -460,8 +431,8 @@ export default function DiagnosticoPage() {
   }
 
   const reiniciar = () => {
-    setPaso(1); setVariedadId(''); setCampanaId(''); setParte('')
-    setSintomas([]); setResultado(null); setGuardado(false); setCampanas([])
+    setPaso(1); setCampanaId(''); setParte('')
+    setSintomas([]); setResultado(null); setGuardado(false)
   }
 
   /* ── Imagen ── */
@@ -477,10 +448,9 @@ export default function DiagnosticoPage() {
     setImgLoading(true)
     try {
       const b64 = await fileToBase64(imgFile)
-      const v   = variedadObj(imgVariedadId)
       const res = await api.post('/diagnosticos/analizar-ia/', {
         metodo: 'imagen',
-        variedad_desc: variedadDesc(v),
+        variedad_desc: plantaDesc(imgCampanaId),
         imagen: b64,
         media_type: imgFile.type || 'image/jpeg',
         descripcion: imgDesc,
@@ -494,8 +464,7 @@ export default function DiagnosticoPage() {
   const guardarImagen = async () => {
     try {
       const fd = new FormData()
-      if (imgVariedadId) fd.append('variedad', imgVariedadId)
-      if (imgCampanaId)  fd.append('campana',  imgCampanaId)
+      if (imgCampanaId) fd.append('campana', imgCampanaId)
       fd.append('parte_afectada',       'toda_la_planta')
       fd.append('sintomas',             JSON.stringify([]))
       fd.append('metodo',               'imagen')
@@ -513,8 +482,8 @@ export default function DiagnosticoPage() {
   }
 
   const reiniciarImagen = () => {
-    setImgFile(null); setImgPreview(null); setImgVariedadId(''); setImgCampanaId('')
-    setImgDesc(''); setImgResultado(null); setImgGuardado(false); setImgCampanas([])
+    setImgFile(null); setImgPreview(null); setImgCampanaId('')
+    setImgDesc(''); setImgResultado(null); setImgGuardado(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -556,15 +525,15 @@ export default function DiagnosticoPage() {
       {/* Tabs */}
       <div style={cardStyle} className="p-1 flex gap-1">
         {[
-          { id:'formulario', label:'Diagnóstico guiado',    Icon:ClipboardList },
-          { id:'imagen',     label:'Análisis por imagen',   Icon:ImageIcon     },
+          { id:'formulario', label:'Diagnóstico guiado',  Icon:ClipboardList },
+          { id:'imagen',     label:'Análisis por imagen', Icon:ImageIcon     },
         ].map(({ id, label, Icon }) => (
           <button key={id} onClick={() => setModo(id)}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
             style={{
-              backgroundColor: modo===id ? (dark?'rgba(22,163,74,0.20)':'#f0fdf4') : 'transparent',
-              color: modo===id ? (dark?'#4ade80':'#16a34a') : dark?D.sub:'#6b7280',
-              border: modo===id ? `1.5px solid ${dark?'rgba(74,222,128,0.35)':'#bbf7d0'}` : '1.5px solid transparent',
+              backgroundColor: modo===id?(dark?'rgba(22,163,74,0.20)':'#f0fdf4'):'transparent',
+              color: modo===id?(dark?'#4ade80':'#16a34a'):(dark?D.sub:'#6b7280'),
+              border: modo===id?`1.5px solid ${dark?'rgba(74,222,128,0.35)':'#bbf7d0'}`:'1.5px solid transparent',
             }}>
             <Icon size={15} /> {label}
           </button>
@@ -574,53 +543,68 @@ export default function DiagnosticoPage() {
       {/* ══ FORMULARIO GUIADO ══ */}
       {modo==='formulario' && (
         <>
-          {/* Progreso */}
+          {/* Barra de progreso */}
           <div style={cardStyle} className="p-4">
             <div className="flex items-center">
-              {[1,2,3,4].map((n,idx) => (
-                <div key={n} className="flex items-center" style={{ flex: n<4 ? 1 : 'none' }}>
+              {[1,2,3,4].map((n, idx) => (
+                <div key={n} className="flex items-center" style={{ flex: n<4?1:'none' }}>
                   <div className="flex flex-col items-center gap-1">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all"
                       style={{
-                        backgroundColor: paso>=n ? '#16a34a' : dark?'rgba(255,255,255,0.08)':'#f3f4f6',
-                        color: paso>=n ? '#fff' : dark?D.sub:'#9ca3af',
+                        backgroundColor: paso>=n?'#16a34a':(dark?'rgba(255,255,255,0.08)':'#f3f4f6'),
+                        color: paso>=n?'#fff':(dark?D.sub:'#9ca3af'),
                       }}>
                       {paso>n ? <CheckCircle size={16}/> : n}
                     </div>
                     <span className="text-xs font-medium hidden sm:block"
-                      style={{ color: paso>=n ? (dark?'#4ade80':'#16a34a') : dark?D.sub:'#9ca3af' }}>
+                      style={{ color: paso>=n?(dark?'#4ade80':'#16a34a'):(dark?D.sub:'#9ca3af') }}>
                       {STEP_LABELS[idx]}
                     </span>
                   </div>
                   {n<4 && (
                     <div className="flex-1 h-0.5 mx-2 mb-5 rounded"
-                      style={{ backgroundColor: paso>n ? '#16a34a' : dark?'rgba(255,255,255,0.08)':'#e5e7eb' }} />
+                      style={{ backgroundColor: paso>n?'#16a34a':(dark?'rgba(255,255,255,0.08)':'#e5e7eb') }} />
                   )}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Pasos */}
           <div style={{ ...cardStyle, padding:'24px' }}>
+
+            {/* Paso 1: Campaña */}
             {paso===1 && (
               <div className="space-y-4">
                 <h2 className="font-extrabold text-base" style={{ color: dark?D.text:'#111827' }}>
-                  Selecciona la variedad afectada
+                  Selecciona tu campaña activa
                 </h2>
-                <VariedadSelect dark={dark} variedades={variedades} value={variedadId} onChange={handleVariedadForm} ist={ist} lst={lst} />
-                <CampanaSelect dark={dark} campanas={campanas} value={campanaId} onChange={setCampanaId} ist={ist} lst={lst} />
+                {campanas.length === 0 ? (
+                  <div className="text-center py-6" style={{ color: dark?D.sub:'#9ca3af' }}>
+                    <CalendarRange size={28} className="mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">No tienes campañas activas.</p>
+                    <p className="text-xs mt-1">Crea una campaña en "Mi Huerto" primero.</p>
+                  </div>
+                ) : (
+                  <>
+                    <CampanaSelector campanas={campanas} value={campanaId} onChange={setCampanaId} dark={dark} ist={ist} lst={lst} />
+                    <VariedadBadge campana={campanaObj(campanaId)} dark={dark} />
+                  </>
+                )}
                 <div className="flex justify-end">
-                  <button onClick={() => setPaso(2)} disabled={!variedadId} className="btn-primary flex items-center gap-2 text-sm">
+                  <button onClick={() => setPaso(2)} disabled={!campanaId} className="btn-primary flex items-center gap-2 text-sm">
                     Siguiente <ChevronRight size={15}/>
                   </button>
                 </div>
               </div>
             )}
 
+            {/* Paso 2: Parte afectada */}
             {paso===2 && (
               <div className="space-y-4">
-                <h2 className="font-extrabold text-base" style={{ color: dark?D.text:'#111827' }}>¿Qué parte está afectada?</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-extrabold text-base" style={{ color: dark?D.text:'#111827' }}>¿Qué parte está afectada?</h2>
+                  <VariedadBadge campana={campanaObj(campanaId)} dark={dark} />
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {PARTES.map(p => {
                     const PIcon=p.Icon; const sel=parte===p.value
@@ -628,8 +612,8 @@ export default function DiagnosticoPage() {
                       <button key={p.value} onClick={() => setParte(p.value)}
                         className="p-4 rounded-xl text-center transition-all"
                         style={{
-                          backgroundColor: sel ? (dark?p.darkBg:p.bg) : dark?'rgba(255,255,255,0.04)':'#f9fafb',
-                          border: sel ? `2px solid ${dark?p.darkColor:p.color}` : `2px solid ${dark?'rgba(255,255,255,0.08)':'#e5e7eb'}`,
+                          backgroundColor: sel?(dark?p.darkBg:p.bg):(dark?'rgba(255,255,255,0.04)':'#f9fafb'),
+                          border: sel?`2px solid ${dark?p.darkColor:p.color}`:`2px solid ${dark?'rgba(255,255,255,0.08)':'#e5e7eb'}`,
                         }}>
                         <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center"
                           style={{ backgroundColor: sel?(dark?p.darkBg:p.bg):(dark?'rgba(255,255,255,0.06)':'#f3f4f6') }}>
@@ -647,6 +631,7 @@ export default function DiagnosticoPage() {
               </div>
             )}
 
+            {/* Paso 3: Síntomas */}
             {paso===3 && (
               <div className="space-y-4">
                 <h2 className="font-extrabold text-base" style={{ color: dark?D.text:'#111827' }}>Selecciona los síntomas visibles</h2>
@@ -675,7 +660,7 @@ export default function DiagnosticoPage() {
                 </div>
                 <div className="flex justify-between">
                   <button onClick={() => setPaso(2)} className="btn-secondary flex items-center gap-2 text-sm"><ChevronLeft size={15}/> Atrás</button>
-                  <button onClick={analizar} disabled={sintomas.length===0 || loading} className="btn-primary flex items-center gap-2 text-sm">
+                  <button onClick={analizar} disabled={sintomas.length===0||loading} className="btn-primary flex items-center gap-2 text-sm">
                     {loading
                       ? <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"/>Analizando...</>
                       : <><Zap size={15}/> Diagnosticar</>}
@@ -684,6 +669,7 @@ export default function DiagnosticoPage() {
               </div>
             )}
 
+            {/* Paso 4: Resultado */}
             {paso===4 && resultado && (
               <ResultadoPanel resultado={resultado} dark={dark} guardado={guardado} onGuardar={guardar} onReiniciar={reiniciar}/>
             )}
@@ -701,8 +687,11 @@ export default function DiagnosticoPage() {
             </p>
           </div>
 
-          <VariedadSelect dark={dark} variedades={variedades} value={imgVariedadId} onChange={handleVariedadImg} ist={ist} lst={lst} label="Variedad del cultivo (opcional)" />
-          <CampanaSelect dark={dark} campanas={imgCampanas} value={imgCampanaId} onChange={setImgCampanaId} ist={ist} lst={lst} />
+          {/* Campaña (opcional en imagen) */}
+          <div className="space-y-2">
+            <CampanaSelector campanas={campanas} value={imgCampanaId} onChange={setImgCampanaId} dark={dark} ist={ist} lst={lst} opcional />
+            <VariedadBadge campana={campanaObj(imgCampanaId)} dark={dark} />
+          </div>
 
           {/* Upload */}
           <div>
@@ -742,7 +731,7 @@ export default function DiagnosticoPage() {
           </div>
 
           {!imgResultado ? (
-            <button onClick={analizarImagen} disabled={!imgFile || imgLoading}
+            <button onClick={analizarImagen} disabled={!imgFile||imgLoading}
               className="btn-primary w-full flex items-center justify-center gap-2">
               {imgLoading
                 ? <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"/>Analizando con IA...</>
