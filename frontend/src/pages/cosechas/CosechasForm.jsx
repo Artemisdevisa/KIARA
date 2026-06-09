@@ -4,7 +4,7 @@ import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Upload, Leaf } from 'lucide-react'
+import { ArrowLeft, Upload, Leaf, TrendingUp, Info } from 'lucide-react'
 
 const INIT = {
   campana: '', nombre_producto: '', cantidad: '',
@@ -16,6 +16,8 @@ const D = {
   inputBg: 'rgba(255,255,255,0.07)', inputBorder: 'rgba(255,255,255,0.12)',
   text: 'rgba(255,255,255,0.90)', sub: 'rgba(255,255,255,0.45)',
 }
+
+const fmt = n => `S/. ${parseFloat(n || 0).toFixed(2)}`
 
 export default function CosechasForm() {
   const navigate = useNavigate()
@@ -31,7 +33,6 @@ export default function CosechasForm() {
   const [campanas, setCampanas] = useState([])
   const [loading, setLoading]   = useState(false)
 
-  // Campaña fija (vino desde el detalle de campaña)
   const campanaFija = campanaIdParam
     ? campanas.find(c => String(c.id) === campanaIdParam)
     : null
@@ -40,8 +41,21 @@ export default function CosechasForm() {
     api.get('/campanas/').then(res => setCampanas(res.data)).catch(() => {})
   }, [])
 
-  // Pre-rellenar nombre del producto desde la variedad de la campaña
+  // Pre-rellenar desde la campaña: nombre, cantidad objetivo, precio estimado
   useEffect(() => {
+    if (!campanaFija) return
+    setForm(f => ({
+      ...f,
+      nombre_producto: f.nombre_producto || campanaFija.variedad_str || '',
+      cantidad:        f.cantidad        || (campanaFija.objetivo_cosecha ? String(campanaFija.objetivo_cosecha) : ''),
+      unidad:          campanaFija.unidad_cosecha || f.unidad,
+      precio:          f.precio          || (campanaFija.precio_venta_estimado ? String(campanaFija.precio_venta_estimado) : ''),
+    }))
+  }, [campanaFija])
+
+  // Pre-rellenar nombre desde campaña seleccionada en el selector libre
+  useEffect(() => {
+    if (campanaIdParam) return
     if (form.campana) {
       const c = campanas.find(c => String(c.id) === String(form.campana))
       if (c && !form.nombre_producto) {
@@ -56,6 +70,16 @@ export default function CosechasForm() {
       setForm(f => ({ ...f, contacto: f.contacto || user.telefono }))
     }
   }, [user])
+
+  // Cálculo en vivo
+  const qty    = parseFloat(form.cantidad) || 0
+  const precio = parseFloat(form.precio)   || 0
+  const ingreso = qty * precio
+
+  // Sugerencia de precio mínimo para cubrir objetivos
+  const objCantidad = parseFloat(campanaFija?.objetivo_cosecha) || 0
+  const objPrecio   = parseFloat(campanaFija?.precio_venta_estimado) || 0
+  const objIngreso  = objCantidad * objPrecio
 
   const handleFoto = e => {
     const file = e.target.files[0]
@@ -111,10 +135,59 @@ export default function CosechasForm() {
         </div>
       </div>
 
+      {/* Panel de sugerencia — solo si viene de campaña con datos */}
+      {campanaFija && (objCantidad > 0 || objPrecio > 0) && (
+        <div className="rounded-xl p-4 space-y-3"
+          style={{ backgroundColor: dark ? 'rgba(59,130,246,0.08)' : '#eff6ff', border: `1px solid ${dark ? 'rgba(59,130,246,0.2)' : '#bfdbfe'}` }}>
+          <div className="flex items-center gap-2">
+            <TrendingUp size={15} style={{ color: dark ? '#60a5fa' : '#2563eb' }} />
+            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>
+              Sugerencia basada en la campaña
+            </span>
+          </div>
+
+          {/* Fila de valores objetivo */}
+          <div className="grid grid-cols-3 gap-3">
+            {objCantidad > 0 && (
+              <div className="rounded-lg px-3 py-2 text-center"
+                style={{ backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#fff' }}>
+                <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: dark ? D.sub : '#9ca3af' }}>Cantidad obj.</p>
+                <p className="text-sm font-extrabold" style={{ color: dark ? D.text : '#111827' }}>
+                  {objCantidad} {campanaFija.unidad_cosecha}
+                </p>
+              </div>
+            )}
+            {objPrecio > 0 && (
+              <div className="rounded-lg px-3 py-2 text-center"
+                style={{ backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#fff' }}>
+                <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: dark ? D.sub : '#9ca3af' }}>Precio est.</p>
+                <p className="text-sm font-extrabold" style={{ color: dark ? D.text : '#111827' }}>
+                  {fmt(objPrecio)}/{campanaFija.unidad_cosecha}
+                </p>
+              </div>
+            )}
+            {objCantidad > 0 && objPrecio > 0 && (
+              <div className="rounded-lg px-3 py-2 text-center"
+                style={{ backgroundColor: dark ? 'rgba(22,163,74,0.10)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(22,163,74,0.2)' : '#bbf7d0'}` }}>
+                <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: dark ? '#4ade80' : '#16a34a' }}>Ingreso est.</p>
+                <p className="text-sm font-extrabold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
+                  {fmt(objIngreso)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <p className="text-[11px] flex items-start gap-1.5" style={{ color: dark ? D.sub : '#6b7280' }}>
+            <Info size={11} style={{ marginTop: 1, flexShrink: 0 }} />
+            Los valores se pre-llenaron desde tu campaña. Puedes ajustarlos.
+          </p>
+        </div>
+      )}
+
       <div style={panelStyle}>
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Campaña — fija si viene del detalle, selector si es libre */}
+          {/* Campaña */}
           {campanaFija ? (
             <div>
               <label style={lst}>Campaña</label>
@@ -180,6 +253,19 @@ export default function CosechasForm() {
               <input type="date" style={ist} {...h('fecha_cosecha')} required />
             </div>
           </div>
+
+          {/* Ingreso en vivo */}
+          {qty > 0 && precio > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl"
+              style={{ backgroundColor: dark ? 'rgba(22,163,74,0.08)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(22,163,74,0.2)' : '#bbf7d0'}` }}>
+              <span className="text-xs font-bold" style={{ color: dark ? D.sub : '#6b7280' }}>
+                Ingreso si vendes todo ({qty} {form.unidad} × {fmt(precio)})
+              </span>
+              <span className="text-base font-extrabold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
+                {fmt(ingreso)}
+              </span>
+            </div>
+          )}
 
           {/* Contacto */}
           <div>
