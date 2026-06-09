@@ -31,13 +31,15 @@ class Variedad(models.Model):
 
 class ProductoAgricola(models.Model):
     TIPO = [
-        ('fitosanitario',  'Fitosanitario'),
-        ('fertilizante',   'Fertilizante'),
+        ('enmienda',       'Enmienda orgánica'),
+        ('biologico',      'Control biológico'),
         ('bioestimulante', 'Bioestimulante'),
+        ('fertilizante',   'Fertilizante'),
+        ('fitosanitario',  'Fitosanitario'),
         ('otro',           'Otro'),
     ]
     nombre          = models.CharField(max_length=200)
-    tipo            = models.CharField(max_length=20, choices=TIPO, default='otro')
+    tipo            = models.CharField(max_length=20, choices=TIPO, default='enmienda')
     unidad          = models.CharField(max_length=20, default='L')
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     descripcion     = models.TextField(blank=True)
@@ -162,6 +164,7 @@ class Campana(models.Model):
         ('cerrada',     'Cerrada'),
         ('cancelada',   'Cancelada'),
     ]
+    CICLO = [('', 'Heredar de variedad'), ('anual', 'Anual'), ('perenne', 'Perenne')]
     biohuerto             = models.ForeignKey('biohuertos.Biohuerto', on_delete=models.CASCADE, related_name='campanas')
     variedad              = models.ForeignKey(Variedad, on_delete=models.PROTECT, related_name='campanas')
     codigo                = models.CharField(max_length=30, blank=True)
@@ -171,6 +174,7 @@ class Campana(models.Model):
     area                  = models.DecimalField(max_digits=10, decimal_places=2)
     unidad_area           = models.CharField(max_length=10, default='m²')
     estado                = models.CharField(max_length=15, choices=ESTADO, default='planificada')
+    tipo_ciclo            = models.CharField(max_length=10, choices=CICLO, blank=True, default='', verbose_name='Tipo de ciclo')
     objetivo_cosecha      = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     unidad_cosecha        = models.CharField(max_length=50, blank=True)
     precio_venta_estimado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)

@@ -117,15 +117,41 @@ function CampanaModal({ dark, onClose, onSaved, editItem }) {
   )
 }
 
+function ConfirmModal({ dark, message, onConfirm, onCancel }) {
+  const panelStyle = {
+    backgroundColor: dark ? '#1e2a3a' : '#ffffff',
+    border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb',
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-6 z-10" style={panelStyle}>
+        <div className="flex flex-col items-center text-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+            <Trash2 size={20} className="text-red-600" />
+          </div>
+          <h3 className="font-extrabold text-base" style={{ color: dark ? 'rgba(255,255,255,0.90)' : '#111827' }}>Confirmar eliminación</h3>
+          <p className="text-sm" style={{ color: dark ? 'rgba(255,255,255,0.45)' : '#6b7280' }}>{message}</p>
+          <div className="flex gap-3 w-full pt-1">
+            <button onClick={onCancel} className="flex-1 btn-secondary text-sm">Cancelar</button>
+            <button onClick={onConfirm} className="flex-1 btn-danger text-sm">Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CampanasPage() {
   const { dark } = useTheme()
   const navigate = useNavigate()
-  const [campanas, setCampanas] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [search, setSearch]     = useState('')
-  const [estadoF, setEstadoF]   = useState('')
-  const [modal, setModal]       = useState(false)
-  const [editItem, setEditItem] = useState(null)
+  const [campanas, setCampanas]     = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [search, setSearch]         = useState('')
+  const [estadoF, setEstadoF]       = useState('')
+  const [modal, setModal]           = useState(false)
+  const [editItem, setEditItem]     = useState(null)
+  const [delConfirm, setDelConfirm] = useState(null)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -135,11 +161,13 @@ export default function CampanasPage() {
   }, [])
   useEffect(() => { fetch() }, [fetch])
 
-  const del = async c => {
-    if (!confirm(`¿Eliminar campaña "${c.codigo}"?`)) return
-    try { await api.delete(`/campanas/${c.id}/`); toast.success('Campaña eliminada.'); fetch() }
-    catch { toast.error('No se pudo eliminar.') }
-  }
+  const del = c => setDelConfirm({
+    msg: `¿Eliminar la campaña "${c.codigo}"? Esta acción no se puede deshacer.`,
+    fn:  async () => {
+      try { await api.delete(`/campanas/${c.id}/`); toast.success('Campaña eliminada.'); fetch() }
+      catch { toast.error('No se pudo eliminar.') }
+    }
+  })
 
   const filtered = campanas.filter(c => {
     const q = search.toLowerCase()
@@ -259,6 +287,11 @@ export default function CampanasPage() {
         <CampanaModal dark={dark} editItem={editItem}
           onClose={() => { setModal(false); setEditItem(null) }}
           onSaved={() => { setModal(false); setEditItem(null); fetch() }} />
+      )}
+      {delConfirm && (
+        <ConfirmModal dark={dark} message={delConfirm.msg}
+          onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }}
+          onCancel={() => setDelConfirm(null)} />
       )}
     </div>
   )

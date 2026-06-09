@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
@@ -26,10 +26,9 @@ const ETAPAS = [
   { key: 'floracion',   label: 'Floración',   dc: '#f9a8d4', lc: '#db2777', dbg: 'rgba(249,168,212,0.15)',lbg: '#fdf2f8' },
   { key: 'cosecha',     label: 'Cosecha',     dc: '#fb923c', lc: '#ea580c', dbg: 'rgba(251,146,60,0.15)', lbg: '#fff7ed' },
 ]
-// Etapas válidas según el ciclo de la variedad
 const ETAPAS_POR_CICLO = {
-  anual:    ['preparacion', 'germinacion', 'crecimiento', 'floracion', 'cosecha'],
-  perenne:  ['preparacion', 'establecido', 'poda', 'brotacion', 'floracion', 'cosecha'],
+  anual:   ['preparacion', 'germinacion', 'crecimiento', 'floracion', 'cosecha'],
+  perenne: ['preparacion', 'establecido', 'poda', 'brotacion', 'floracion', 'cosecha'],
 }
 const etapasPorCiclo = tipoCiclo =>
   ETAPAS.filter(e => (ETAPAS_POR_CICLO[tipoCiclo] ?? ETAPAS.map(x => x.key)).includes(e.key))
@@ -51,6 +50,26 @@ const ESTADO_COLOR = {
   cancelada:   { dark: { bg: 'rgba(239,68,68,0.15)',  c: '#f87171' }, light: { bg: '#fee2e2', c: '#dc2626' } },
 }
 
+// Posición relativa de cada etapa dentro del ciclo (0 = inicio, 1 = fin)
+const ETAPA_RATIO = {
+  preparacion: 0.00,
+  germinacion: 0.05,
+  crecimiento: 0.22,
+  establecido: 0.12,
+  poda:        0.28,
+  brotacion:   0.42,
+  floracion:   0.62,
+  cosecha:     0.84,
+}
+
+const sugerirFecha = (etapa, fechaInicio, diasCiclo) => {
+  if (!etapa || !fechaInicio || !diasCiclo) return ''
+  const ratio = ETAPA_RATIO[etapa] ?? 0
+  const d = new Date(fechaInicio)
+  d.setDate(d.getDate() + Math.round(ratio * diasCiclo))
+  return d.toISOString().slice(0, 10)
+}
+
 /* ── helpers ── */
 const fmt = n => `S/. ${parseFloat(n || 0).toFixed(2)}`
 const ist_ = dark => ({
@@ -60,6 +79,31 @@ const ist_ = dark => ({
 const lst_ = dark => ({ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '5px', color: dark ? D.sub : '#6b7280' })
 
 /* ── Generic mini modal ── */
+function ConfirmModal({ dark, message = '¿Eliminar este registro?', onConfirm, onCancel }) {
+  const panelStyle = {
+    backgroundColor: dark ? '#1e2a3a' : '#ffffff',
+    border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb',
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-6 z-10" style={panelStyle}>
+        <div className="flex flex-col items-center text-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+            <Trash2 size={20} className="text-red-600" />
+          </div>
+          <h3 className="font-extrabold text-base" style={{ color: dark ? D.text : '#111827' }}>Confirmar eliminación</h3>
+          <p className="text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{message}</p>
+          <div className="flex gap-3 w-full pt-1">
+            <button onClick={onCancel} className="flex-1 btn-secondary text-sm">Cancelar</button>
+            <button onClick={onConfirm} className="flex-1 btn-danger text-sm">Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function MiniModal({ dark, title, onClose, onSubmit, loading, children }) {
   const ps = { backgroundColor: dark ? '#1e2a3a' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb' }
   return (
@@ -94,12 +138,15 @@ const TABS = [
 /* ══════════════════════════════════════════════════════
    TAB: LABORES
 ══════════════════════════════════════════════════════ */
-function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas }) {
-  const [data, setData]       = useState([])
-  const [tipos, setTipos]     = useState([])
-  const [modal, setModal]     = useState(null)
-  const [form, setForm]       = useState({ tipo_labor: '', descripcion: '', fecha_programada: '', cantidad_programada: '', costo_unitario: '', operario: '', notas: '' })
-  const [loading, setLoading] = useState(false)
+function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
+  const [data, setData]             = useState([])
+  const [tipos, setTipos]           = useState([])
+  const [modal, setModal]           = useState(null)
+  const [delConfirm, setDelConfirm] = useState(null)
+  const [ejModal, setEjModal]       = useState(null)
+  const [ejForm, setEjForm]         = useState({ fecha_ejecutada: '', cantidad_ejecutada: '' })
+  const [form, setForm]             = useState({ tipo_labor: '', descripcion: '', fecha_programada: '', cantidad_programada: '', costo_unitario: '', operario: '', notas: '' })
+  const [loading, setLoading]       = useState(false)
 
   const fetch = useCallback(async () => {
     const [r, t] = await Promise.all([api.get(`/campanas/${campanaId}/labores/`), api.get('/campanas/tipos-labor/')])
@@ -109,7 +156,17 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas }) {
 
   const openNew = () => { setForm({ tipo_labor: '', descripcion: '', fecha_programada: '', cantidad_programada: '', costo_unitario: '', etapa: '', operario: '', notas: '' }); setModal('new') }
   const openEdit = item => { setForm({ ...item, tipo_labor: item.tipo_labor }); setModal('edit') }
-  const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+  const h = e => {
+    const { name, value } = e.target
+    setForm(f => {
+      const next = { ...f, [name]: value }
+      if (name === 'etapa' && !f.fecha_programada && modal === 'new') {
+        const sugerida = sugerirFecha(value, campana?.fecha_inicio, campana?.variedad_dias_ciclo)
+        if (sugerida) next.fecha_programada = sugerida
+      }
+      return next
+    })
+  }
 
   const handleTipoChange = e => {
     const t = tipos.find(t => String(t.id) === e.target.value)
@@ -125,22 +182,47 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas }) {
     } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
   }
 
-  const toggleEjecutada = async item => {
-    const isEj = item.estado === 'ejecutada'
-    try {
-      await api.patch(`/campanas/labores/${item.id}/`, {
-        estado: isEj ? 'programada' : 'ejecutada',
-        fecha_ejecutada: isEj ? null : new Date().toISOString().slice(0, 10),
-        cantidad_ejecutada: isEj ? null : item.cantidad_programada,
-      })
-      fetch()
-    } catch { toast.error('Error.') }
+  const openEjModal = item => {
+    if (item.estado === 'ejecutada') {
+      api.patch(`/campanas/labores/${item.id}/`, { estado: 'programada', fecha_ejecutada: null, cantidad_ejecutada: null })
+        .then(fetch).catch(() => toast.error('Error.'))
+      return
+    }
+    setEjForm({ fecha_ejecutada: new Date().toISOString().slice(0, 10), cantidad_ejecutada: item.cantidad_programada })
+    setEjModal(item)
   }
 
-  const del = async item => {
-    if (!confirm('¿Eliminar labor?')) return
-    try { await api.delete(`/campanas/labores/${item.id}/`); fetch() } catch { toast.error('Error.') }
+  const confirmEjecucion = async e => {
+    e.preventDefault(); setLoading(true)
+    try {
+      await api.patch(`/campanas/labores/${ejModal.id}/`, { estado: 'ejecutada', ...ejForm })
+      toast.success('Labor marcada como ejecutada.'); setEjModal(null); fetch()
+    } catch { toast.error('Error.') } finally { setLoading(false) }
   }
+
+  const del = item => setDelConfirm({ fn: async () => { await api.delete(`/campanas/labores/${item.id}/`); fetch() }, msg: `¿Eliminar la labor "${item.tipo_labor_nombre}"?` })
+
+  const etapaOrder = useMemo(() => ETAPAS.map(e => e.key), [])
+
+  const etapaActual = useMemo(() => {
+    const pendientes = data.filter(l => l.estado === 'programada' && l.etapa)
+    if (!pendientes.length) return null
+    return pendientes.reduce((prev, curr) => {
+      const ip = etapaOrder.indexOf(prev.etapa), ic = etapaOrder.indexOf(curr.etapa)
+      return ic < ip ? curr : prev
+    }).etapa
+  }, [data, etapaOrder])
+
+  const progreso = useMemo(() => {
+    const map = {}
+    data.forEach(l => {
+      if (!l.etapa) return
+      if (!map[l.etapa]) map[l.etapa] = { total: 0, ej: 0 }
+      map[l.etapa].total++
+      if (l.estado === 'ejecutada') map[l.etapa].ej++
+    })
+    return map
+  }, [data])
 
   const ist = ist_(dark); const lst = lst_(dark)
   const total_prog = data.reduce((s, l) => s + (l.costo_programado || 0), 0)
@@ -148,6 +230,39 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas }) {
 
   return (
     <div className="space-y-4">
+      {/* Etapa actual + progreso */}
+      {etapaActual && (() => {
+        const et = etapaOf(etapaActual)
+        return (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl flex-wrap"
+            style={{ backgroundColor: dark ? et.dbg : et.lbg, border: `1.5px solid ${dark ? et.dc : et.lc}20` }}>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: dark ? et.dc : et.lc }} />
+              <span className="text-xs font-extrabold uppercase tracking-wide" style={{ color: dark ? et.dc : et.lc }}>
+                Etapa actual: {et.label}
+              </span>
+            </div>
+            <div className="flex gap-2 flex-wrap ml-2">
+              {(etapasValidas ?? ETAPAS).filter(e => progreso[e.key]).map(e => {
+                const p = progreso[e.key] || { total: 0, ej: 0 }
+                const done = p.ej === p.total
+                const isCurrent = e.key === etapaActual
+                return (
+                  <span key={e.key} className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: done ? (dark ? 'rgba(22,163,74,0.2)' : '#dcfce7') : isCurrent ? (dark ? e.dbg : e.lbg) : (dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'),
+                      color: done ? (dark ? '#4ade80' : '#15803d') : isCurrent ? (dark ? e.dc : e.lc) : (dark ? D.sub : '#9ca3af'),
+                      border: `1px solid ${done ? (dark ? 'rgba(22,163,74,0.3)' : '#bbf7d0') : isCurrent ? (dark ? e.dc : e.lc) : 'transparent'}`,
+                    }}>
+                    {e.label} {p.ej}/{p.total}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
+
       <div className="flex items-center justify-between">
         <div className="flex gap-4 text-xs">
           <span style={{ color: dark ? D.sub : '#6b7280' }}>Presupuestado: <strong style={{ color: dark ? '#4ade80' : '#15803d' }}>{fmt(total_prog)}</strong></span>
@@ -160,15 +275,22 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas }) {
         <table className="w-full text-sm">
           <thead>
             <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-              {['', 'Labor', 'Fecha prog.', 'Cantidad', 'Costo prog.', 'Estado', ''].map((h, i) => (
-                <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide ${i === 6 ? 'text-right' : ''}`}
+              {['', 'Labor', 'Fecha prog.', 'Cant. prog.', 'Cant. real', 'Costo', 'Estado', ''].map((h, i) => (
+                <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide ${i === 7 ? 'text-right' : ''}`}
                   style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {(() => {
-              const visible = etapaFilter ? data.filter(l => l.etapa === etapaFilter) : data
+              const etapaOrder = ETAPAS.map(e => e.key)
+              const visible = (etapaFilter ? data.filter(l => l.etapa === etapaFilter) : data)
+                .slice().sort((a, b) => {
+                  const ia = etapaOrder.indexOf(a.etapa || ''), ib = etapaOrder.indexOf(b.etapa || '')
+                  const ea = ia === -1 ? 999 : ia, eb = ib === -1 ? 999 : ib
+                  if (ea !== eb) return ea - eb
+                  return (a.fecha_programada || '').localeCompare(b.fecha_programada || '')
+                })
               if (visible.length === 0)
                 return <tr><td colSpan={7} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin labores{etapaFilter ? ' en esta etapa' : ' registradas'}</td></tr>
               return visible.map(l => {
@@ -180,7 +302,7 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas }) {
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                     <td className="px-4 py-3">
-                      <button onClick={() => toggleEjecutada(l)} title={l.estado === 'ejecutada' ? 'Marcar pendiente' : 'Marcar ejecutada'}>
+                      <button onClick={() => openEjModal(l)} title={l.estado === 'ejecutada' ? 'Revertir a pendiente' : 'Marcar ejecutada'}>
                         {l.estado === 'ejecutada'
                           ? <CheckCircle2 size={18} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
                           : <Circle size={18} style={{ color: dark ? D.sub : '#d1d5db' }} />}
@@ -200,7 +322,14 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas }) {
                     </td>
                     <td className="px-4 py-3 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{l.fecha_programada}</td>
                     <td className="px-4 py-3 text-sm" style={{ color: dark ? D.text : '#374151' }}>{l.cantidad_programada} {l.tipo_labor_unidad}</td>
-                    <td className="px-4 py-3 text-sm font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{fmt(l.costo_programado)}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {l.estado === 'ejecutada'
+                        ? <span className="font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{l.cantidad_ejecutada} {l.tipo_labor_unidad}</span>
+                        : <span style={{ color: dark ? 'rgba(255,255,255,0.2)' : '#d1d5db' }}>—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
+                      {l.estado === 'ejecutada' ? fmt(l.costo_ejecutado) : fmt(l.costo_programado)}
+                    </td>
                     <td className="px-4 py-3">
                       <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                         style={l.estado === 'ejecutada'
@@ -243,7 +372,15 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas }) {
           </div>
           <div><label style={lst}>Descripción adicional</label><input name="descripcion" value={form.descripcion} onChange={h} style={ist} /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label style={lst}>Fecha programada *</label><input name="fecha_programada" type="date" value={form.fecha_programada} onChange={h} style={ist} required /></div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label style={lst}>Fecha programada *</label>
+                {modal === 'new' && form.etapa && form.fecha_programada && campana?.variedad_dias_ciclo && (
+                  <span className="text-[11px] font-bold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>sugerida</span>
+                )}
+              </div>
+              <input name="fecha_programada" type="date" value={form.fecha_programada} onChange={h} style={ist} required />
+            </div>
             <div><label style={lst}>Cantidad *</label><input name="cantidad_programada" type="number" step="0.01" value={form.cantidad_programada} onChange={h} style={ist} required /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -253,6 +390,30 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas }) {
           <div><label style={lst}>Notas</label><textarea name="notas" value={form.notas} onChange={h} rows={2} style={{ ...ist, resize: 'none' }} /></div>
         </MiniModal>
       )}
+      {/* Modal de ejecución */}
+      {ejModal && (
+        <MiniModal dark={dark} title={`Ejecutar: ${ejModal.tipo_labor_nombre}`} onClose={() => setEjModal(null)} onSubmit={confirmEjecucion} loading={loading}>
+          <p className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
+            Confirma la fecha y cantidad real de ejecución. Por defecto se sugiere hoy y la cantidad programada.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label style={lst}>Fecha ejecutada *</label>
+              <input type="date" value={ejForm.fecha_ejecutada}
+                onChange={e => setEjForm(f => ({ ...f, fecha_ejecutada: e.target.value }))} style={ist} required />
+            </div>
+            <div>
+              <label style={lst}>Cantidad real ({ejModal.tipo_labor_unidad}) *</label>
+              <input type="number" step="0.01" value={ejForm.cantidad_ejecutada}
+                onChange={e => setEjForm(f => ({ ...f, cantidad_ejecutada: e.target.value }))} style={ist} required />
+            </div>
+          </div>
+          <p className="text-[11px]" style={{ color: dark ? 'rgba(255,255,255,0.3)' : '#9ca3af' }}>
+            Programado: {ejModal.cantidad_programada} {ejModal.tipo_labor_unidad} · {ejModal.fecha_programada}
+          </p>
+        </MiniModal>
+      )}
+      {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
     </div>
   )
 }
@@ -263,12 +424,13 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas }) {
 function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
   const [plan, setPlan]       = useState([])
   const [regs, setRegs]       = useState([])
-  const [prods, setProds]     = useState([])
-  const [modal, setModal]     = useState(null)
-  const [regModal, setRegModal] = useState(false)
-  const [form, setForm]       = useState({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' })
-  const [regForm, setRegForm] = useState({ producto: '', fecha: '', dosis_aplicada: '', area_aplicada: '', operario: '', es_sostenible: false, observaciones: '' })
-  const [loading, setLoading] = useState(false)
+  const [prods, setProds]           = useState([])
+  const [modal, setModal]           = useState(null)
+  const [regModal, setRegModal]     = useState(false)
+  const [delConfirm, setDelConfirm] = useState(null)
+  const [form, setForm]             = useState({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' })
+  const [regForm, setRegForm]       = useState({ producto: '', fecha: '', dosis_aplicada: '', area_aplicada: '', operario: '', es_sostenible: false, observaciones: '' })
+  const [loading, setLoading]       = useState(false)
 
   const fetch = useCallback(async () => {
     const [p, r, pr] = await Promise.all([
@@ -301,8 +463,8 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
     } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
   }
 
-  const delPlan = async id => { if (!confirm('¿Eliminar?')) return; await api.delete(`/campanas/fitosanitario/${id}/`); fetch() }
-  const delReg  = async id => { if (!confirm('¿Eliminar?')) return; await api.delete(`/campanas/aplicaciones/${id}/`); fetch() }
+  const delPlan = (item) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/fitosanitario/${item.id}/`); fetch() }, msg: `¿Eliminar "${item.producto_nombre}" del plan?` })
+  const delReg  = (id)   => setDelConfirm({ fn: async () => { await api.delete(`/campanas/aplicaciones/${id}/`);      fetch() }, msg: '¿Eliminar este registro de aplicación?' })
 
   const ist = ist_(dark); const lst = lst_(dark)
 
@@ -351,6 +513,21 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
                       <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>
                         {item.dosis} {item.unidad_codigo || item.unidad}
                       </span>
+                      {/* Badge tipo producto */}
+                      {(() => {
+                        const tipo = item.producto_tipo
+                        const cfg = {
+                          enmienda:       { bg: dark ? 'rgba(74,222,128,0.15)' : '#dcfce7',  c: dark ? '#4ade80' : '#15803d',  label: 'Orgánico' },
+                          biologico:      { bg: dark ? 'rgba(52,211,153,0.15)' : '#d1fae5',  c: dark ? '#34d399' : '#059669',  label: 'Biológico' },
+                          bioestimulante: { bg: dark ? 'rgba(96,165,250,0.15)' : '#dbeafe',  c: dark ? '#60a5fa' : '#2563eb',  label: 'Bioestimulante' },
+                          fertilizante:   { bg: dark ? 'rgba(251,191,36,0.15)' : '#fef9c3',  c: dark ? '#fbbf24' : '#d97706',  label: 'Fertilizante' },
+                          fitosanitario:  { bg: dark ? 'rgba(248,113,113,0.15)' : '#fee2e2', c: dark ? '#f87171' : '#dc2626',  label: 'Sintético' },
+                        }[tipo]
+                        return cfg ? (
+                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md"
+                            style={{ backgroundColor: cfg.bg, color: cfg.c }}>{cfg.label}</span>
+                        ) : null
+                      })()}
                       {item.etapa && (
                         <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md"
                           style={{ backgroundColor: ebg, color: ec }}>{et.label}</span>
@@ -432,7 +609,21 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
           <div><label style={lst}>Producto *</label>
             <select name="producto" value={form.producto} onChange={h} style={ist} required>
               <option value="">Selecciona</option>
-              {prods.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.unidad})</option>)}
+              {[
+                ['enmienda',       'Enmiendas orgánicas'],
+                ['biologico',      'Control biológico'],
+                ['bioestimulante', 'Bioestimulantes'],
+                ['fertilizante',   'Fertilizantes'],
+                ['fitosanitario',  'Fitosanitarios'],
+              ].map(([tipo, label]) => {
+                const grupo = prods.filter(p => p.tipo === tipo)
+                if (!grupo.length) return null
+                return (
+                  <optgroup key={tipo} label={`— ${label} —`}>
+                    {grupo.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.unidad})</option>)}
+                  </optgroup>
+                )
+              })}
             </select>
           </div>
           <div><label style={lst}>Etapa fenológica</label>
@@ -455,9 +646,28 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
       {regModal && (
         <MiniModal dark={dark} title="Registrar aplicación" onClose={() => setRegModal(false)} onSubmit={submitReg} loading={loading}>
           <div><label style={lst}>Producto *</label>
-            <select name="producto" value={regForm.producto} onChange={hr} style={ist} required>
+            <select name="producto" value={regForm.producto} style={ist} required
+              onChange={e => {
+                const prod = prods.find(p => String(p.id) === e.target.value)
+                const esSos = prod ? ['enmienda','biologico','bioestimulante'].includes(prod.tipo) : false
+                setRegForm(f => ({ ...f, producto: e.target.value, es_sostenible: esSos }))
+              }}>
               <option value="">Selecciona</option>
-              {prods.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              {[
+                ['enmienda',       'Enmiendas orgánicas'],
+                ['biologico',      'Control biológico'],
+                ['bioestimulante', 'Bioestimulantes'],
+                ['fertilizante',   'Fertilizantes'],
+                ['fitosanitario',  'Fitosanitarios'],
+              ].map(([tipo, label]) => {
+                const grupo = prods.filter(p => p.tipo === tipo)
+                if (!grupo.length) return null
+                return (
+                  <optgroup key={tipo} label={`— ${label} —`}>
+                    {grupo.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  </optgroup>
+                )
+              })}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -468,13 +678,17 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
             <div><label style={lst}>Dosis aplicada *</label><input name="dosis_aplicada" type="number" step="0.001" value={regForm.dosis_aplicada} onChange={hr} style={ist} required /></div>
             <div><label style={lst}>Operario</label><input name="operario" value={regForm.operario} onChange={hr} style={ist} /></div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
+            style={{ backgroundColor: regForm.es_sostenible ? (dark ? 'rgba(22,163,74,0.12)' : '#f0fdf4') : (dark ? 'rgba(255,255,255,0.04)' : '#f9fafb'), border: `1px solid ${regForm.es_sostenible ? (dark ? 'rgba(22,163,74,0.3)' : '#bbf7d0') : (dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb')}` }}>
             <input type="checkbox" id="sos" name="es_sostenible" checked={regForm.es_sostenible} onChange={hr} />
-            <label htmlFor="sos" className="text-xs font-bold" style={{ color: dark ? '#4ade80' : '#15803d' }}>Práctica sostenible (bioestimulante, orgánico)</label>
+            <label htmlFor="sos" className="text-xs font-bold cursor-pointer" style={{ color: regForm.es_sostenible ? (dark ? '#4ade80' : '#15803d') : (dark ? D.sub : '#6b7280') }}>
+              {regForm.es_sostenible ? '✓ Producto orgánico / biológico' : 'Marcar como práctica sostenible'}
+            </label>
           </div>
           <div><label style={lst}>Observaciones</label><textarea name="observaciones" value={regForm.observaciones} onChange={hr} rows={2} style={{ ...ist, resize: 'none' }} /></div>
         </MiniModal>
       )}
+      {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
     </div>
   )
 }
@@ -483,14 +697,15 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas }) {
    TAB: RIEGO & FERTIRRIGACIÓN
 ══════════════════════════════════════════════════════ */
 function RiegoTab({ dark, campanaId }) {
-  const [planes, setPlanes]   = useState([])
-  const [regs, setRegs]       = useState([])
-  const [prods, setProds]     = useState([])
-  const [modal, setModal]     = useState(null)
-  const [regModal, setRegModal] = useState(false)
-  const [form, setForm]       = useState({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '' })
-  const [regForm, setRegForm] = useState({ plan: '', fecha: '', litros_aplicados: '', area_regada: '', costo_agua: '', fertilizante: '', dosis_fertilizante: '', operario: '', observaciones: '' })
-  const [loading, setLoading] = useState(false)
+  const [planes, setPlanes]         = useState([])
+  const [regs, setRegs]             = useState([])
+  const [prods, setProds]           = useState([])
+  const [modal, setModal]           = useState(null)
+  const [regModal, setRegModal]     = useState(false)
+  const [delConfirm, setDelConfirm] = useState(null)
+  const [form, setForm]             = useState({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '' })
+  const [regForm, setRegForm]       = useState({ plan: '', fecha: '', litros_aplicados: '', area_regada: '', costo_agua: '', fertilizante: '', dosis_fertilizante: '', operario: '', observaciones: '' })
+  const [loading, setLoading]       = useState(false)
   const METODOS = [['goteo','Goteo'],['aspersion','Aspersión'],['gravedad','Gravedad'],['manual','Manual']]
 
   const fetch = useCallback(async () => {
@@ -525,62 +740,108 @@ function RiegoTab({ dark, campanaId }) {
     } catch { toast.error('Error.') } finally { setLoading(false) }
   }
 
-  const delPlan = async id => { if (!confirm('¿Eliminar?')) return; await api.delete(`/campanas/plan-riego/${id}/`); fetch() }
-  const delReg  = async id => { if (!confirm('¿Eliminar?')) return; await api.delete(`/campanas/registros-riego/${id}/`); fetch() }
+  const delPlan = (id)   => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`);       fetch() }, msg: '¿Eliminar este plan de riego?' })
+  const delReg  = (id)   => setDelConfirm({ fn: async () => { await api.delete(`/campanas/registros-riego/${id}/`); fetch() }, msg: '¿Eliminar este registro de riego?' })
 
   const ist = ist_(dark); const lst = lst_(dark)
-  const total_agua = regs.reduce((s, r) => s + parseFloat(r.costo_agua || 0), 0)
+  const total_agua   = regs.reduce((s, r) => s + parseFloat(r.costo_agua || 0), 0)
+  const total_litros = regs.reduce((s, r) => s + parseFloat(r.litros_aplicados || 0), 0)
+
+  const METODO_BADGE = {
+    goteo:     { dbg: 'rgba(59,130,246,0.15)',  lbg: '#dbeafe', dc: '#60a5fa', lc: '#2563eb' },
+    aspersion: { dbg: 'rgba(14,165,233,0.15)',  lbg: '#e0f2fe', dc: '#38bdf8', lc: '#0284c7' },
+    gravedad:  { dbg: 'rgba(22,163,74,0.15)',   lbg: '#dcfce7', dc: '#4ade80', lc: '#15803d' },
+    manual:    { dbg: 'rgba(255,255,255,0.08)', lbg: '#f3f4f6', dc: '#94a3b8', lc: '#6b7280' },
+  }
 
   return (
     <div className="space-y-5">
-      {/* Planes */}
+
+      {/* ── Planes de riego ─────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-extrabold uppercase tracking-wide" style={{ color: dark ? D.sub : '#6b7280' }}>Planes de riego</p>
+          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: dark ? D.sub : '#9ca3af' }}>
+            {planes.length} plan{planes.length !== 1 ? 'es' : ''} de riego
+          </p>
           <button onClick={() => { setForm({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '' }); setModal('new') }}
-            className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg"
-            style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.text : '#374151' }}>
-            <Plus size={12} /> Nuevo plan
+            className="flex items-center gap-1.5 btn-primary text-sm">
+            <Plus size={13} /> Nuevo plan
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {planes.map(p => (
-            <div key={p.id} className="p-3 rounded-xl" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f9fafb', border: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-bold" style={{ color: dark ? D.text : '#111827' }}>{p.nombre}</p>
-                  <p className="text-[13px] mt-0.5" style={{ color: dark ? D.sub : '#6b7280' }}>
-                    {p.litros_por_m2} L/m² · cada {p.frecuencia_dias} días · {p.metodo_display}
-                  </p>
-                  {p.fertilizante_nombre && (
-                    <p className="text-[13px] mt-0.5" style={{ color: dark ? '#4ade80' : '#15803d' }}>
-                      + {p.fertilizante_nombre} {p.dosis_fertilizante} L/ha
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-1">
-                  <button onClick={() => { setForm({ ...p, fertilizante: p.fertilizante || '' }); setModal('edit') }} className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={12} /></button>
-                  <button onClick={() => delPlan(p.id)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
-                </div>
-              </div>
-            </div>
-          ))}
-          {planes.length === 0 && <p className="text-sm py-4" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin planes de riego</p>}
+        <div style={{ borderRadius: '14px', overflow: 'hidden', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, backgroundColor: dark ? D.cardBg : '#fff' }}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
+                {['Nombre', 'Método', 'L/m²', 'Frecuencia', 'Duración', 'Fertirrigación', ''].map((col, i) => (
+                  <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide${i === 6 ? ' text-right' : ''}`}
+                    style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {planes.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin planes — usa "Nuevo plan" para agregar</td></tr>
+              ) : planes.map(p => {
+                const mb = METODO_BADGE[p.metodo] || METODO_BADGE.manual
+                return (
+                  <tr key={p.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                    <td className="px-4 py-3 font-semibold text-sm" style={{ color: dark ? D.text : '#111827' }}>{p.nombre}</td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: dark ? mb.dbg : mb.lbg, color: dark ? mb.dc : mb.lc }}>
+                        {p.metodo_display}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm" style={{ color: dark ? D.text : '#374151' }}>{p.litros_por_m2} L</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>c/ {p.frecuencia_dias}d</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>
+                      {p.duracion_minutos ? `${p.duracion_minutos} min` : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {p.fertilizante_nombre
+                        ? <span style={{ color: dark ? '#4ade80' : '#15803d' }}>
+                            {p.fertilizante_nombre}
+                            {p.dosis_fertilizante && <span className="ml-1 font-bold opacity-75">{p.dosis_fertilizante} kg</span>}
+                          </span>
+                        : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={() => { setForm({ ...p, fertilizante: p.fertilizante || '' }); setModal('edit') }}
+                          className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={13} /></button>
+                        <button onClick={() => delPlan(p.id)}
+                          className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={13} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Registros */}
+      {/* ── Riegos ejecutados ────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <p className="text-xs font-extrabold uppercase tracking-wide" style={{ color: dark ? D.sub : '#6b7280' }}>Riegos ejecutados</p>
-            <span className="text-xs font-bold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>Costo agua: {fmt(total_agua)}</span>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: dark ? D.sub : '#9ca3af' }}>
+              {regs.length} riego{regs.length !== 1 ? 's' : ''} ejecutado{regs.length !== 1 ? 's' : ''}
+            </p>
+            {regs.length > 0 && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
+                style={{ backgroundColor: dark ? 'rgba(59,130,246,0.12)' : '#eff6ff', color: dark ? '#60a5fa' : '#2563eb' }}>
+                {total_litros.toFixed(0)} L · {fmt(total_agua)}
+              </span>
+            )}
           </div>
-          <button onClick={() => { setRegForm({ plan: '', fecha: '', litros_aplicados: '', area_regada: '', costo_agua: '', fertilizante: '', dosis_fertilizante: '', operario: '', observaciones: '' }); setRegModal(true) }}
+          <button onClick={() => { setRegForm({ plan: '', fecha: '', litros_aplicados: '', area_regada: '', costo_agua: '0', fertilizante: '', dosis_fertilizante: '', operario: '', observaciones: '' }); setRegModal(true) }}
             className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg"
             style={{ backgroundColor: dark ? 'rgba(59,130,246,0.15)' : '#eff6ff', color: dark ? '#60a5fa' : '#2563eb' }}>
             <Plus size={12} /> Registrar riego
@@ -590,8 +851,9 @@ function RiegoTab({ dark, campanaId }) {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                {['Fecha', 'Litros', 'Área', 'Fertirrigación', 'Costo agua', ''].map((h, i) => (
-                  <th key={i} className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide" style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{h}</th>
+                {['Fecha', 'Plan', 'Litros', 'Área', 'Fertirrigación', 'Costo agua', ''].map((col, i) => (
+                  <th key={i} className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide"
+                    style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{col}</th>
                 ))}
               </tr>
             </thead>
@@ -601,6 +863,7 @@ function RiegoTab({ dark, campanaId }) {
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                   <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{r.fecha}</td>
+                  <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: dark ? D.sub : '#6b7280' }}>{r.plan_nombre || '—'}</td>
                   <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.text : '#374151' }}>{r.litros_aplicados} L</td>
                   <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{r.area_regada} m²</td>
                   <td className="px-4 py-2.5 text-sm" style={{ color: dark ? '#4ade80' : '#15803d' }}>
@@ -614,34 +877,52 @@ function RiegoTab({ dark, campanaId }) {
                   </td>
                 </tr>
               ))}
-              {regs.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin registros de riego</td></tr>}
+              {regs.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin registros de riego</td></tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* ── Modal: plan ──────────────────────────────────── */}
       {modal && (
-        <MiniModal dark={dark} title={modal === 'edit' ? 'Editar plan' : 'Nuevo plan de riego'} onClose={() => setModal(null)} onSubmit={submitPlan} loading={loading}>
-          <div><label style={lst}>Nombre *</label><input name="nombre" value={form.nombre} onChange={h} style={ist} placeholder="Riego fase vegetativa" required /></div>
+        <MiniModal dark={dark} title={modal === 'edit' ? 'Editar plan de riego' : 'Nuevo plan de riego'} onClose={() => setModal(null)} onSubmit={submitPlan} loading={loading}>
+          <div><label style={lst}>Nombre *</label>
+            <input name="nombre" value={form.nombre} onChange={h} style={ist} placeholder="Ej: Riego diario — germinación" required />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div><label style={lst}>Método</label>
               <select name="metodo" value={form.metodo} onChange={h} style={ist}>
                 {METODOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
-            <div><label style={lst}>Frecuencia (días) *</label><input name="frecuencia_dias" type="number" value={form.frecuencia_dias} onChange={h} style={ist} required /></div>
+            <div><label style={lst}>Frecuencia (días) *</label>
+              <input name="frecuencia_dias" type="number" value={form.frecuencia_dias} onChange={h} style={ist} required placeholder="1" />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label style={lst}>Litros por m² *</label><input name="litros_por_m2" type="number" step="0.01" value={form.litros_por_m2} onChange={h} style={ist} required /></div>
-            <div><label style={lst}>Duración (min)</label><input name="duracion_minutos" type="number" value={form.duracion_minutos} onChange={h} style={ist} /></div>
+            <div><label style={lst}>Litros por m² *</label>
+              <input name="litros_por_m2" type="number" step="0.01" value={form.litros_por_m2} onChange={h} style={ist} required placeholder="2.5" />
+            </div>
+            <div><label style={lst}>Duración (min)</label>
+              <input name="duracion_minutos" type="number" value={form.duracion_minutos} onChange={h} style={ist} placeholder="30" />
+            </div>
           </div>
-          <div><label style={lst}>Fertilizante (fertirrigación)</label>
-            <select name="fertilizante" value={form.fertilizante} onChange={h} style={ist}>
-              <option value="">Sin fertilizante</option>
-              {prods.filter(p => p.tipo === 'fertilizante').map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-            </select>
+          <div style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6'}`, paddingTop: '10px' }}>
+            <p className="text-[11px] font-extrabold uppercase tracking-widest mb-2" style={{ color: dark ? 'rgba(255,255,255,0.28)' : '#9ca3af' }}>Fertirrigación (opcional)</p>
+            <div><label style={lst}>Fertilizante</label>
+              <select name="fertilizante" value={form.fertilizante} onChange={h} style={ist}>
+                <option value="">Sin fertilizante</option>
+                {prods.filter(p => p.tipo === 'fertilizante').map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </select>
+            </div>
+            {form.fertilizante && (
+              <div className="mt-2"><label style={lst}>Dosis (kg/m²)</label>
+                <input name="dosis_fertilizante" type="number" step="0.001" value={form.dosis_fertilizante} onChange={h} style={ist} placeholder="0.005" />
+              </div>
+            )}
           </div>
-          {form.fertilizante && <div><label style={lst}>Dosis fertilizante (L/ha)</label><input name="dosis_fertilizante" type="number" step="0.001" value={form.dosis_fertilizante} onChange={h} style={ist} /></div>}
           <div className="grid grid-cols-2 gap-3">
             <div><label style={lst}>Fecha inicio</label><input name="fecha_inicio" type="date" value={form.fecha_inicio} onChange={h} style={ist} /></div>
             <div><label style={lst}>Fecha fin</label><input name="fecha_fin" type="date" value={form.fecha_fin} onChange={h} style={ist} /></div>
@@ -649,11 +930,12 @@ function RiegoTab({ dark, campanaId }) {
         </MiniModal>
       )}
 
+      {/* ── Modal: registrar riego ───────────────────────── */}
       {regModal && (
-        <MiniModal dark={dark} title="Registrar riego" onClose={() => setRegModal(false)} onSubmit={submitReg} loading={loading}>
-          <div><label style={lst}>Plan (opcional)</label>
+        <MiniModal dark={dark} title="Registrar riego ejecutado" onClose={() => setRegModal(false)} onSubmit={submitReg} loading={loading}>
+          <div><label style={lst}>Plan asociado</label>
             <select name="plan" value={regForm.plan} onChange={hr} style={ist}>
-              <option value="">Sin plan asociado</option>
+              <option value="">Sin plan</option>
               {planes.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
             </select>
           </div>
@@ -671,10 +953,15 @@ function RiegoTab({ dark, campanaId }) {
               {prods.filter(p => p.tipo === 'fertilizante').map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
             </select>
           </div>
-          {regForm.fertilizante && <div><label style={lst}>Dosis</label><input name="dosis_fertilizante" type="number" step="0.001" value={regForm.dosis_fertilizante} onChange={hr} style={ist} /></div>}
+          {regForm.fertilizante && (
+            <div><label style={lst}>Dosis (kg/m²)</label>
+              <input name="dosis_fertilizante" type="number" step="0.001" value={regForm.dosis_fertilizante} onChange={hr} style={ist} />
+            </div>
+          )}
           <div><label style={lst}>Operario</label><input name="operario" value={regForm.operario} onChange={hr} style={ist} /></div>
         </MiniModal>
       )}
+      {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
     </div>
   )
 }
@@ -683,10 +970,11 @@ function RiegoTab({ dark, campanaId }) {
    TAB: PRESUPUESTO
 ══════════════════════════════════════════════════════ */
 function PresupuestoTab({ dark, campanaId, campana }) {
-  const [items, setItems]     = useState([])
-  const [modal, setModal]     = useState(null)
-  const [form, setForm]       = useState({ categoria: 'insumo', descripcion: '', cantidad: '', unidad: '', precio_unitario: '', monto_ejecutado: '0' })
-  const [loading, setLoading] = useState(false)
+  const [items, setItems]           = useState([])
+  const [modal, setModal]           = useState(null)
+  const [delConfirm, setDelConfirm] = useState(null)
+  const [form, setForm]             = useState({ categoria: 'insumo', descripcion: '', cantidad: '', unidad: '', precio_unitario: '', monto_ejecutado: '0' })
+  const [loading, setLoading]       = useState(false)
   const CATS = [['insumo','Insumo'],['agua','Agua'],['mano_obra','Mano de obra'],['otro','Otro']]
 
   const fetch = useCallback(async () => { const r = await api.get(`/campanas/${campanaId}/presupuesto/`); setItems(r.data) }, [campanaId])
@@ -702,7 +990,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
       setModal(null); fetch()
     } catch { toast.error('Error.') } finally { setLoading(false) }
   }
-  const del = async id => { if (!confirm('¿Eliminar?')) return; await api.delete(`/campanas/presupuesto/${id}/`); fetch() }
+  const del = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/presupuesto/${id}/`); fetch() }, msg: '¿Eliminar este ítem del presupuesto?' })
 
   const total_pres = items.reduce((s, i) => s + i.monto_presupuestado, 0)
   const total_ej   = items.reduce((s, i) => s + parseFloat(i.monto_ejecutado || 0), 0)
@@ -825,6 +1113,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
           </div>
         </MiniModal>
       )}
+      {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
     </div>
   )
 }
@@ -833,13 +1122,14 @@ function PresupuestoTab({ dark, campanaId, campana }) {
    TAB: TRAZABILIDAD
 ══════════════════════════════════════════════════════ */
 function TrazabilidadTab({ dark, campanaId, campana }) {
-  const [practicas, setPracticas] = useState([])
-  const [aplicaciones, setApls]   = useState([])
-  const [riegos, setRiegos]       = useState([])
-  const [labores, setLabores]     = useState([])
-  const [modal, setModal]         = useState(false)
-  const [form, setForm]           = useState({ tipo: 'compost', descripcion: '', fecha: '', cantidad: '', unidad: '' })
-  const [loading, setLoading]     = useState(false)
+  const [practicas, setPracticas]   = useState([])
+  const [aplicaciones, setApls]     = useState([])
+  const [riegos, setRiegos]         = useState([])
+  const [labores, setLabores]       = useState([])
+  const [modal, setModal]           = useState(false)
+  const [delConfirm, setDelConfirm] = useState(null)
+  const [form, setForm]             = useState({ tipo: 'compost', descripcion: '', fecha: '', cantidad: '', unidad: '' })
+  const [loading, setLoading]       = useState(false)
 
   const TIPOS_PRAC = [
     ['compost','Uso de compost'],['sin_agroquimicos','Sin agroquímicos sintéticos'],
@@ -866,7 +1156,7 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
       toast.success('Práctica registrada.'); setModal(false); fetch()
     } catch { toast.error('Error.') } finally { setLoading(false) }
   }
-  const delPrac = async id => { if (!confirm('¿Eliminar?')) return; await api.delete(`/campanas/practicas/${id}/`); fetch() }
+  const delPrac = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/practicas/${id}/`); fetch() }, msg: '¿Eliminar esta práctica sostenible?' })
 
   const ist = ist_(dark); const lst = lst_(dark)
 
@@ -1010,6 +1300,7 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
           </div>
         </MiniModal>
       )}
+      {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
     </div>
   )
 }
@@ -1021,11 +1312,12 @@ export default function CampanaDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { dark } = useTheme()
-  const [campana, setCampana] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [tab, setTab]             = useState('labores')
+  const [campana, setCampana]         = useState(null)
+  const [loading, setLoading]         = useState(true)
+  const [tab, setTab]                 = useState('labores')
   const [etapaFilter, setEtapaFilter] = useState('')
   const [showEtapaBar, setShowEtapaBar] = useState(false)
+  const [cicloConfirm, setCicloConfirm] = useState(null)
 
   const fetch = useCallback(async () => {
     try { const r = await api.get(`/campanas/${id}/`); setCampana(r.data) }
@@ -1034,6 +1326,40 @@ export default function CampanaDetailPage() {
   }, [id])
   useEffect(() => { fetch() }, [fetch])
 
+  const applyCiclo = async (ciclo, clearIncompat = false, labIncompat = [], fitoIncompat = []) => {
+    try {
+      if (clearIncompat) {
+        await Promise.all([
+          ...labIncompat.map(l  => api.patch(`/campanas/labores/${l.id}/`,       { etapa: '' })),
+          ...fitoIncompat.map(f => api.patch(`/campanas/fitosanitario/${f.id}/`, { etapa: '' })),
+        ])
+      }
+      await api.patch(`/campanas/${id}/`, { tipo_ciclo: ciclo })
+      setCampana(c => ({ ...c, tipo_ciclo: ciclo, tipo_ciclo_efectivo: ciclo || c.variedad_tipo_ciclo }))
+      setEtapaFilter('')
+      setCicloConfirm(null)
+      toast.success(ciclo ? `Ciclo cambiado a ${ciclo}` : 'Ciclo heredado de la variedad')
+    } catch { toast.error('Error al cambiar ciclo.') }
+  }
+
+  const changeCiclo = async ciclo => {
+    const efectivo = ciclo || campana.variedad_tipo_ciclo
+    const validas  = new Set(ETAPAS_POR_CICLO[efectivo] ?? [])
+    try {
+      const [labRes, fitoRes] = await Promise.all([
+        api.get(`/campanas/${id}/labores/`),
+        api.get(`/campanas/${id}/fitosanitario/`),
+      ])
+      const labIncompat  = labRes.data.filter(l  => l.etapa  && !validas.has(l.etapa))
+      const fitoIncompat = fitoRes.data.filter(f => f.etapa  && !validas.has(f.etapa))
+      if (labIncompat.length > 0 || fitoIncompat.length > 0) {
+        setCicloConfirm({ ciclo, labIncompat, fitoIncompat })
+        return
+      }
+      await applyCiclo(ciclo)
+    } catch { toast.error('Error al cambiar ciclo.') }
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center py-24">
       <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
@@ -1041,7 +1367,7 @@ export default function CampanaDetailPage() {
   )
   if (!campana) return null
 
-  const etapasValidas = etapasPorCiclo(campana.variedad_tipo_ciclo)
+  const etapasValidas = etapasPorCiclo(campana.tipo_ciclo_efectivo)
   const ec = dark ? ESTADO_COLOR[campana.estado]?.dark : ESTADO_COLOR[campana.estado]?.light
   const cardStyle = { backgroundColor: dark ? D.cardBg : '#fff', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, borderRadius: '16px' }
   const handleTabChange = key => {
@@ -1081,6 +1407,23 @@ export default function CampanaDetailPage() {
                 style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? 'rgba(255,255,255,0.65)' : '#374151' }}>
                 {campana.area} {campana.unidad_area}
               </span>
+              {/* Selector de ciclo inline */}
+              <div className="flex items-center gap-0.5 rounded-lg overflow-hidden"
+                style={{ border: `1px solid ${dark ? 'rgba(255,255,255,0.10)' : '#e5e7eb'}` }}>
+                {[['', 'Auto'], ['anual', 'Anual'], ['perenne', 'Perenne']].map(([val, label]) => {
+                  const active = (campana.tipo_ciclo || '') === val
+                  return (
+                    <button key={val} onClick={() => changeCiclo(val)}
+                      className="text-[11px] font-bold px-2 py-1 transition-all"
+                      style={{
+                        backgroundColor: active ? (dark ? 'rgba(22,163,74,0.25)' : '#dcfce7') : 'transparent',
+                        color: active ? (dark ? '#4ade80' : '#15803d') : (dark ? 'rgba(255,255,255,0.35)' : '#9ca3af'),
+                      }}>
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -1166,13 +1509,63 @@ export default function CampanaDetailPage() {
       {/* ── Contenido de sección ── */}
       <div style={{ ...cardStyle, overflow: 'hidden' }}>
         <div className="p-5">
-          {tab === 'labores'       && <LaboresTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} />}
+          {tab === 'labores'       && <LaboresTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} campana={campana} />}
           {tab === 'fitosanitario' && <FitosanitarioTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} />}
           {tab === 'riego'         && <RiegoTab dark={dark} campanaId={id} />}
           {tab === 'presupuesto'   && <PresupuestoTab dark={dark} campanaId={id} campana={campana} />}
           {tab === 'trazabilidad'  && <TrazabilidadTab dark={dark} campanaId={id} campana={campana} />}
         </div>
       </div>
+
+      {/* ── Modal: confirmar cambio de ciclo ── */}
+      {cicloConfirm && (() => {
+        const total      = cicloConfirm.labIncompat.length + cicloConfirm.fitoIncompat.length
+        const cicloLabel = cicloConfirm.ciclo || campana.variedad_tipo_ciclo
+        const ps         = { backgroundColor: dark ? '#1e2a3a' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb' }
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setCicloConfirm(null)} />
+            <div className="relative w-full max-w-md rounded-2xl shadow-2xl z-10 flex flex-col" style={ps}>
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+                <h3 className="text-sm font-extrabold" style={{ color: dark ? D.text : '#111827' }}>
+                  Etapas incompatibles
+                </h3>
+                <button onClick={() => setCicloConfirm(null)} style={{ color: D.sub }}><X size={16} /></button>
+              </div>
+              <div className="px-5 pb-4 space-y-3">
+                <p className="text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>
+                  <strong style={{ color: dark ? D.text : '#374151' }}>{total} registro{total !== 1 ? 's' : ''}</strong> tiene{total !== 1 ? 'n' : ''} etapas que no existen en el ciclo <strong style={{ color: dark ? D.text : '#374151' }}>{cicloLabel}</strong>:
+                </p>
+                <div className="space-y-2">
+                  {cicloConfirm.labIncompat.length > 0 && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs"
+                      style={{ backgroundColor: dark ? 'rgba(251,191,36,0.08)' : '#fffbeb', border: `1px solid ${dark ? 'rgba(251,191,36,0.18)' : '#fde68a'}` }}>
+                      <span className="font-bold" style={{ color: dark ? '#fbbf24' : '#d97706' }}>{cicloConfirm.labIncompat.length} labor{cicloConfirm.labIncompat.length !== 1 ? 'es' : ''}</span>
+                      <span style={{ color: dark ? D.sub : '#6b7280' }}>— {[...new Set(cicloConfirm.labIncompat.map(l => etapaOf(l.etapa).label))].join(', ')}</span>
+                    </div>
+                  )}
+                  {cicloConfirm.fitoIncompat.length > 0 && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs"
+                      style={{ backgroundColor: dark ? 'rgba(239,68,68,0.08)' : '#fef2f2', border: `1px solid ${dark ? 'rgba(239,68,68,0.18)' : '#fecaca'}` }}>
+                      <span className="font-bold" style={{ color: dark ? '#f87171' : '#dc2626' }}>{cicloConfirm.fitoIncompat.length} fitosanitario{cicloConfirm.fitoIncompat.length !== 1 ? 's' : ''}</span>
+                      <span style={{ color: dark ? D.sub : '#6b7280' }}>— {[...new Set(cicloConfirm.fitoIncompat.map(f => etapaOf(f.etapa).label))].join(', ')}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>
+                  "Limpiar" los deja sin etapa asignada para que puedas reasignarlos. "Solo cambiar" mantiene los valores aunque no sean válidos para el ciclo.
+                </p>
+              </div>
+              <div className="flex gap-2 px-5 py-3 shrink-0" style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}` }}>
+                <button onClick={() => applyCiclo(cicloConfirm.ciclo, false)}
+                  className="flex-1 btn-secondary text-sm">Solo cambiar ciclo</button>
+                <button onClick={() => applyCiclo(cicloConfirm.ciclo, true, cicloConfirm.labIncompat, cicloConfirm.fitoIncompat)}
+                  className="flex-1 btn-primary text-sm">Limpiar etapas y cambiar</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

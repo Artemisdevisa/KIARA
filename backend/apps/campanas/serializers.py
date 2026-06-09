@@ -83,6 +83,7 @@ class LaborCampanaSerializer(serializers.ModelSerializer):
 class ItemFitosanitarioSerializer(serializers.ModelSerializer):
     producto_nombre  = serializers.CharField(source='producto.nombre',         read_only=True)
     producto_unidad  = serializers.CharField(source='producto.unidad',         read_only=True)
+    producto_tipo    = serializers.CharField(source='producto.tipo',           read_only=True)
     producto_precio  = serializers.DecimalField(source='producto.precio_unitario', max_digits=10, decimal_places=2, read_only=True)
     objetivo_nombre  = serializers.CharField(source='objetivo.nombre',         read_only=True, allow_null=True)
     plaga_nombre     = serializers.CharField(source='plaga.nombre',            read_only=True, allow_null=True)
@@ -198,17 +199,22 @@ class PlantillaRiegoSerializer(serializers.ModelSerializer):
 
 
 class CampanaSerializer(serializers.ModelSerializer):
-    variedad_str       = serializers.CharField(source='variedad.__str__', read_only=True)
+    variedad_str        = serializers.CharField(source='variedad.__str__', read_only=True)
     variedad_tipo_ciclo = serializers.CharField(source='variedad.tipo_ciclo', read_only=True)
-    biohuerto_nombre   = serializers.CharField(source='biohuerto.nombre', read_only=True)
-    estado_display     = serializers.CharField(source='get_estado_display', read_only=True)
-    labores_count      = serializers.SerializerMethodField()
-    labores_pendientes = serializers.SerializerMethodField()
+    variedad_dias_ciclo = serializers.IntegerField(source='variedad.dias_ciclo', read_only=True, allow_null=True)
+    tipo_ciclo_efectivo = serializers.SerializerMethodField()
+    biohuerto_nombre    = serializers.CharField(source='biohuerto.nombre', read_only=True)
+    estado_display      = serializers.CharField(source='get_estado_display', read_only=True)
+    labores_count       = serializers.SerializerMethodField()
+    labores_pendientes  = serializers.SerializerMethodField()
 
     class Meta:
         model  = Campana
         fields = '__all__'
         read_only_fields = ['id', 'codigo', 'created_at', 'updated_at']
+
+    def get_tipo_ciclo_efectivo(self, obj):
+        return obj.tipo_ciclo or obj.variedad.tipo_ciclo
 
     def get_labores_count(self, obj):
         return obj.labores.count()
