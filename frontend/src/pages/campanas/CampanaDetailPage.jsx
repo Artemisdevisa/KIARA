@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import {
   CalendarRange, Calendar, ClipboardList, FlaskConical, Droplets,
   Wallet, Leaf, Plus, Pencil, Trash2, X, CheckCircle2, Circle,
-  AlertTriangle, Printer, TrendingUp, TrendingDown, Minus, Eye, ChevronDown,
+  AlertTriangle, Printer, TrendingUp, TrendingDown, Minus, Eye, ChevronDown, ArrowLeft,
 } from 'lucide-react'
 import Breadcrumb from '../../components/ui/Breadcrumb'
 
