@@ -1,108 +1,259 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
-import { ShoppingBasket, Search, Leaf, Phone } from 'lucide-react'
+import {
+  Search, Leaf, Phone, ShoppingBasket, Sprout,
+  MapPin, CalendarDays, Package, Scale, X, SlidersHorizontal,
+  Wheat, Apple, FlowerIcon, Salad, Bean,
+} from 'lucide-react'
 
+/* ── Categorías de filtro ── */
+const CATEGORIAS = [
+  { key: '',          label: 'Todos',      Icon: ShoppingBasket },
+  { key: 'hortaliza', label: 'Hortalizas', Icon: Salad          },
+  { key: 'fruta',     label: 'Frutas',     Icon: Apple          },
+  { key: 'grano',     label: 'Granos',     Icon: Wheat          },
+  { key: 'hierba',    label: 'Hierbas',    Icon: Leaf           },
+  { key: 'legumbre',  label: 'Legumbres',  Icon: Bean           },
+]
+
+/* ── Colores por unidad ── */
+const UNIDAD_COLOR = {
+  kg:    { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0' },
+  unid:  { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' },
+  manojo:{ bg: '#fdf4ff', text: '#9333ea', border: '#e9d5ff' },
+  caja:  { bg: '#fff7ed', text: '#ea580c', border: '#fed7aa' },
+  bolsa: { bg: '#fefce8', text: '#ca8a04', border: '#fef08a' },
+}
+
+function unidadStyle(unidad) {
+  const k = Object.keys(UNIDAD_COLOR).find(k => unidad?.toLowerCase().includes(k))
+  return UNIDAD_COLOR[k] || { bg: '#f3f4f6', text: '#374151', border: '#e5e7eb' }
+}
+
+/* ── Tarjeta de producto ── */
+function ProductCard({ c }) {
+  const us = unidadStyle(c.unidad_display)
+  const telefono = c.contacto?.replace(/\D/g, '')
+  const whatsapp = `https://wa.me/51${telefono}`
+
+  return (
+    <article className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col group">
+      {/* Imagen */}
+      <div className="relative overflow-hidden h-44 bg-gradient-to-br from-emerald-50 to-green-100">
+        {c.foto_url ? (
+          <img
+            src={c.foto_url}
+            alt={c.nombre_producto}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+            <Sprout size={40} className="text-emerald-300" />
+            <span className="text-xs text-emerald-400 font-medium">Sin imagen</span>
+          </div>
+        )}
+        {/* Badge precio */}
+        <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm rounded-xl px-2.5 py-1 shadow-sm">
+          <span className="text-emerald-700 font-extrabold text-sm">S/ {c.precio}</span>
+          <span className="text-gray-400 text-[10px] ml-1">/ {c.unidad_display}</span>
+        </div>
+      </div>
+
+      {/* Cuerpo */}
+      <div className="p-4 flex flex-col flex-1 gap-3">
+        <div>
+          <h3 className="font-extrabold text-gray-800 text-base leading-tight">{c.nombre_producto}</h3>
+          <p className="flex items-center gap-1 text-xs text-gray-400 mt-1">
+            <MapPin size={10} /> {c.biohuerto_nombre}
+          </p>
+        </div>
+
+        {/* Atributos */}
+        <div className="flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg"
+            style={{ backgroundColor: us.bg, color: us.text, border: `1px solid ${us.border}` }}>
+            <Scale size={10} /> {c.cantidad} {c.unidad_display}
+          </span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-gray-50 text-gray-500 border border-gray-100">
+            <CalendarDays size={10} /> {c.fecha_cosecha}
+          </span>
+        </div>
+
+        {/* Botón contacto */}
+        <a
+          href={whatsapp}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-auto flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold text-white transition-all duration-150 active:scale-95"
+          style={{ backgroundColor: '#16a34a' }}
+          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#15803d'}
+          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#16a34a'}
+        >
+          <Phone size={14} />
+          Contactar al productor
+        </a>
+      </div>
+    </article>
+  )
+}
+
+/* ══ MARKETPLACE ══ */
 export default function MarketplacePage() {
-  const [cosechas, setCosechas] = useState([])
-  const [busqueda, setBusqueda] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [cosechas, setCosechas]     = useState([])
+  const [busqueda, setBusqueda]     = useState('')
+  const [categoria, setCategoria]   = useState('')
+  const [loading, setLoading]       = useState(true)
+  const [showFilters, setShowFilters] = useState(false)
+  const inputRef = useRef()
 
-  const buscar = (texto = busqueda) => {
-    const params = texto ? `?producto=${encodeURIComponent(texto)}` : ''
+  const buscar = (texto = busqueda, cat = categoria) => {
     setLoading(true)
-    axios.get(`/api/cosechas/publicas/${params}`)
-      .then(res => setCosechas(res.data))
+    const params = new URLSearchParams()
+    if (texto) params.set('producto', texto)
+    if (cat)   params.set('categoria', cat)
+    axios.get(`/api/cosechas/publicas/?${params}`)
+      .then(r => setCosechas(r.data))
       .catch(() => {})
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { buscar('') }, [])
+  useEffect(() => { buscar('', '') }, [])
 
-  const handleBuscar = e => {
-    e.preventDefault()
-    buscar()
+  const handleSubmit = e => { e.preventDefault(); buscar() }
+
+  const handleCategoria = cat => {
+    setCategoria(cat)
+    buscar(busqueda, cat)
+  }
+
+  const limpiar = () => {
+    setBusqueda(''); setCategoria('')
+    buscar('', '')
+    inputRef.current?.focus()
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-emerald-50">
-      {/* Header */}
-      <header className="bg-primary-700 text-white py-6 px-4 shadow">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-3 mb-4">
-            <Leaf size={28} />
-            <h1 className="text-2xl font-bold">BioHuerto USAT — Marketplace</h1>
-          </div>
-          <p className="text-primary-200 text-sm mb-4">Cosechas frescas y orgánicas de productores locales de Lambayeque</p>
+    <div className="min-h-screen" style={{ backgroundColor: '#f8faf7' }}>
 
-          <form onSubmit={handleBuscar} className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Buscar producto... (ej: tomate, lechuga)"
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-              className="flex-1 px-4 py-2 rounded-lg text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
-            />
-            <button type="submit" className="bg-white text-primary-700 font-medium px-4 py-2 rounded-lg flex items-center gap-2 text-sm hover:bg-primary-50 transition-colors">
-              <Search size={16} /> Buscar
+      {/* ── Hero header ── */}
+      <header style={{ background: 'linear-gradient(135deg, #14532d 0%, #166534 60%, #15803d 100%)' }}>
+        <div className="max-w-5xl mx-auto px-5 py-10">
+          {/* Marca */}
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
+              <Leaf size={22} color="white" />
+            </div>
+            <div>
+              <h1 className="text-white font-extrabold text-2xl leading-tight tracking-tight">
+                Marketplace
+              </h1>
+              <p className="text-emerald-300 text-xs font-medium">BioHuerto USAT · Lambayeque</p>
+            </div>
+          </div>
+          <p className="text-white/65 text-sm mt-3 mb-6 max-w-lg">
+            Cosechas frescas y orgánicas directamente de productores locales.
+          </p>
+
+          {/* Buscador */}
+          <form onSubmit={handleSubmit} className="flex gap-2 max-w-xl">
+            <div className="flex-1 relative">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Buscar producto… ej: lechuga, tomate"
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                className="w-full pl-9 pr-9 py-2.5 rounded-xl text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300"
+              />
+              {busqueda && (
+                <button type="button" onClick={limpiar}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            <button type="submit"
+              className="bg-white text-emerald-700 font-bold px-5 py-2.5 rounded-xl text-sm hover:bg-emerald-50 transition-colors flex items-center gap-2 shrink-0">
+              <Search size={15} /> Buscar
             </button>
           </form>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      {/* ── Filtros de categoría ── */}
+      <div className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-5">
+          <div className="flex items-center gap-1 overflow-x-auto py-3 no-scrollbar">
+            {CATEGORIAS.map(({ key, label, Icon }) => {
+              const active = categoria === key
+              return (
+                <button key={key} onClick={() => handleCategoria(key)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all duration-150"
+                  style={{
+                    backgroundColor: active ? '#16a34a' : '#f3f4f6',
+                    color: active ? '#fff' : '#4b5563',
+                    border: active ? '1.5px solid #16a34a' : '1.5px solid transparent',
+                  }}>
+                  <Icon size={12} />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Contenido ── */}
+      <main className="max-w-5xl mx-auto px-5 py-8">
+
+        {/* Contador */}
+        {!loading && cosechas.length > 0 && (
+          <p className="text-xs text-gray-400 mb-5 font-medium">
+            {cosechas.length} producto{cosechas.length !== 1 ? 's' : ''} disponible{cosechas.length !== 1 ? 's' : ''}
+            {busqueda && <span> · búsqueda: <strong className="text-gray-600">"{busqueda}"</strong></span>}
+          </p>
+        )}
+
         {loading ? (
-          <div className="text-center py-16 text-gray-400">
-            <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-3" />
-            Cargando cosechas disponibles...
+          <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <div className="w-9 h-9 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin" />
+            <p className="text-sm text-gray-400">Cargando cosechas disponibles…</p>
           </div>
+
         ) : cosechas.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <ShoppingBasket size={48} className="mx-auto mb-3 text-gray-200" />
-            <p className="text-lg">Sin cosechas disponibles en este momento</p>
-            <p className="text-sm mt-1">Vuelve pronto — los productores actualizan regularmente</p>
-          </div>
-        ) : (
-          <>
-            <p className="text-sm text-gray-500 mb-4">{cosechas.length} cosecha(s) disponible(s)</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {cosechas.map(c => (
-                <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                  {c.foto_url ? (
-                    <img src={c.foto_url} alt={c.nombre_producto} className="w-full h-44 object-cover" />
-                  ) : (
-                    <div className="w-full h-44 bg-primary-50 flex items-center justify-center">
-                      <ShoppingBasket size={40} className="text-primary-200" />
-                    </div>
-                  )}
-
-                  <div className="p-4">
-                    <h3 className="font-bold text-gray-800 text-lg mb-1">{c.nombre_producto}</h3>
-                    <p className="text-xs text-gray-400 mb-3">{c.biohuerto_nombre}</p>
-
-                    <div className="space-y-1 text-sm text-gray-600 mb-4">
-                      <p>🌾 {c.cantidad} {c.unidad_display}</p>
-                      <p className="text-primary-700 font-bold text-base">S/ {c.precio} / {c.unidad_display}</p>
-                      <p>📅 Cosecha: {c.fecha_cosecha}</p>
-                    </div>
-
-                    <a
-                      href={`https://wa.me/${c.contacto.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors w-full"
-                    >
-                      <Phone size={15} /> Contactar: {c.contacto}
-                    </a>
-                  </div>
-                </div>
-              ))}
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center">
+              <ShoppingBasket size={32} className="text-emerald-300" />
             </div>
-          </>
+            <p className="font-bold text-gray-600 text-lg">Sin productos disponibles</p>
+            <p className="text-sm text-gray-400 text-center max-w-xs">
+              {busqueda || categoria
+                ? 'No encontramos cosechas con esos filtros. Intenta con otra búsqueda.'
+                : 'Los productores actualizarán sus cosechas pronto. ¡Vuelve en breve!'}
+            </p>
+            {(busqueda || categoria) && (
+              <button onClick={limpiar}
+                className="mt-1 text-sm text-emerald-600 font-semibold hover:underline">
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {cosechas.map(c => <ProductCard key={c.id} c={c} />)}
+          </div>
         )}
       </main>
 
-      <footer className="text-center py-6 text-xs text-gray-400">
-        BioHuerto USAT — Gestión Agroecológica Urbana · Chiclayo, Lambayeque
+      {/* ── Footer ── */}
+      <footer className="py-8 text-center border-t border-gray-100 mt-8">
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <Leaf size={14} className="text-emerald-500" />
+          <span className="text-sm font-bold text-gray-500">BioHuerto USAT</span>
+        </div>
+        <p className="text-xs text-gray-400">Gestión Agroecológica Urbana · Chiclayo, Lambayeque</p>
       </footer>
     </div>
   )

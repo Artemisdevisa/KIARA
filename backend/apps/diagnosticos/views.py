@@ -76,15 +76,18 @@ class DiagnosticosListCreate(generics.ListCreateAPIView):
 
     def get_queryset(self):
         qs = Diagnostico.objects.select_related(
-            'cultivo__biohuerto', 'campana__variedad'
-        ).filter(cultivo__biohuerto__productor=self.request.user)
-        cultivo_id = self.request.query_params.get('cultivo')
-        campana_id = self.request.query_params.get('campana')
-        if cultivo_id:
-            qs = qs.filter(cultivo_id=cultivo_id)
+            'productor', 'variedad', 'campana'
+        ).filter(productor=self.request.user)
+        variedad_id = self.request.query_params.get('variedad')
+        campana_id  = self.request.query_params.get('campana')
+        if variedad_id:
+            qs = qs.filter(variedad_id=variedad_id)
         if campana_id:
             qs = qs.filter(campana_id=campana_id)
         return qs
+
+    def perform_create(self, serializer):
+        serializer.save(productor=self.request.user)
 
 
 class DiagnosticoDetail(generics.RetrieveDestroyAPIView):
@@ -96,8 +99,8 @@ class DiagnosticoDetail(generics.RetrieveDestroyAPIView):
 
     def get_queryset(self):
         return Diagnostico.objects.select_related(
-            'cultivo__biohuerto', 'campana__variedad'
-        ).filter(cultivo__biohuerto__productor=self.request.user)
+            'productor', 'variedad', 'campana'
+        ).filter(productor=self.request.user)
 
 
 class DiagnosticoAnalizarView(APIView):
@@ -122,11 +125,11 @@ JSON_SCHEMA = '''{
 }'''
 
 
-def _prompt_formulario(cultivo_nombre, parte, sintomas):
+def _prompt_formulario(planta_desc, parte, sintomas):
     sintomas_texto = ', '.join(s.replace('_', ' ') for s in sintomas)
     return (
         f"Eres un experto en fitopatología de biohuertos urbanos en Lambayeque, Perú.\n"
-        f"Un productor reporta el siguiente problema en su cultivo de {cultivo_nombre}:\n"
+        f"Un productor reporta el siguiente problema en su cultivo de {planta_desc}:\n"
         f"- Parte afectada: {parte.replace('_', ' ')}\n"
         f"- Síntomas observados: {sintomas_texto}\n\n"
         f"Identifica el problema fitosanitario más probable y proporciona recomendaciones "
@@ -135,10 +138,10 @@ def _prompt_formulario(cultivo_nombre, parte, sintomas):
     )
 
 
-def _prompt_imagen(cultivo_nombre, descripcion):
+def _prompt_imagen(planta_desc, descripcion):
     return (
         f"Eres un experto en fitopatología de biohuertos urbanos en Lambayeque, Perú.\n"
-        f"Analiza esta imagen de un cultivo de {cultivo_nombre} e identifica "
+        f"Analiza esta imagen de un cultivo de {planta_desc} e identifica "
         f"plagas, enfermedades o deficiencias nutricionales.\n"
         + (f"Descripción adicional del productor: {descripcion}\n" if descripcion else '')
         + f"\nResponde ÚNICAMENTE con el siguiente JSON (sin texto adicional):\n{JSON_SCHEMA}"
@@ -190,13 +193,14 @@ class DiagnosticoClaudeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        metodo        = request.data.get('metodo', 'formulario')
-        cultivo_nombre = request.data.get('cultivo_nombre', 'cultivo')
-        parte         = request.data.get('parte_afectada', '')
-        sintomas      = request.data.get('sintomas', [])
-        imagen_b64    = request.data.get('imagen', '')
-        media_type    = request.data.get('media_type', 'image/jpeg')
-        descripcion   = request.data.get('descripcion', '')
+        metodo          = request.data.get('metodo', 'formulario')
+        # Acepta variedad_desc (nuevo) o cultivo_nombre (compatibilidad)
+        variedad_desc   = request.data.get('variedad_desc') or request.data.get('cultivo_nombre', 'cultivo')
+        parte           = request.data.get('parte_afectada', '')
+        sintomas        = request.data.get('sintomas', [])
+        imagen_b64      = request.data.get('imagen', '')
+        media_type      = request.data.get('media_type', 'image/jpeg')
+        descripcion     = request.data.get('descripcion', '')
 
         if metodo == 'imagen' and not imagen_b64:
             return Response({'detail': 'Imagen requerida.'}, status=400)
@@ -204,14 +208,14 @@ class DiagnosticoClaudeView(APIView):
             return Response({'detail': 'Parte afectada y síntomas son requeridos.'}, status=400)
 
         # ── 1. Intentar con Claude ──────────────────────────────────
-        resultado = self._intentar_claude(metodo, cultivo_nombre, parte, sintomas, imagen_b64, media_type, descripcion)
+        resultado = self._intentar_claude(metodo, variedad_desc, parte, sintomas, imagen_b64, media_type, descripcion)
         if resultado:
             return Response(resultado)
 
         # ── 2. Intentar con Gemini ──────────────────────────────────
         try:
             from google import genai  # noqa
-            resultado = _analizar_con_gemini(metodo, cultivo_nombre, parte, sintomas, imagen_b64, media_type, descripcion)
+            resultado = _analizar_con_gemini(metodo, variedad_desc, parte, sintomas, imagen_b64, media_type, descripcion)
             if resultado:
                 return Response(resultado)
         except Exception as e:

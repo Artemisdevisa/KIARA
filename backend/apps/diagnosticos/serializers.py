@@ -20,11 +20,21 @@ class JSONStringField(serializers.Field):
 
 
 class DiagnosticoSerializer(serializers.ModelSerializer):
-    cultivo_nombre       = serializers.CharField(source='cultivo.nombre',           read_only=True)
-    biohuerto_nombre     = serializers.CharField(source='cultivo.biohuerto.nombre', read_only=True)
-    campana_codigo       = serializers.CharField(source='campana.codigo',           read_only=True, allow_null=True)
-    variedad_str         = serializers.SerializerMethodField()
-    imagen_url           = serializers.SerializerMethodField()
+    # Variedad
+    variedad_nombre  = serializers.SerializerMethodField()
+    variedad_cultivo = serializers.SerializerMethodField()
+    variedad_str     = serializers.SerializerMethodField()
+
+    # Campaña
+    campana_codigo = serializers.CharField(source='campana.codigo', read_only=True, allow_null=True)
+
+    # Productor
+    productor_nombre = serializers.SerializerMethodField()
+
+    # Imagen
+    imagen_url = serializers.SerializerMethodField()
+
+    # Campos multipart-safe
     sintomas             = JSONStringField(default=list)
     acciones_preventivas = JSONStringField(default=list)
 
@@ -32,20 +42,30 @@ class DiagnosticoSerializer(serializers.ModelSerializer):
         model  = Diagnostico
         fields = [
             'id',
-            'cultivo', 'cultivo_nombre', 'biohuerto_nombre',
-            'campana', 'campana_codigo', 'variedad_str',
+            'productor', 'productor_nombre',
+            'variedad', 'variedad_nombre', 'variedad_cultivo', 'variedad_str',
+            'campana', 'campana_codigo',
             'parte_afectada', 'sintomas',
             'diagnostico_probable', 'causa_probable', 'recomendacion',
             'severidad', 'acciones_preventivas',
             'metodo', 'imagen', 'imagen_url',
             'fecha', 'created_at',
         ]
-        read_only_fields = ['id', 'fecha', 'created_at']
+        read_only_fields = ['id', 'productor', 'fecha', 'created_at']
+
+    def get_variedad_nombre(self, obj):
+        return obj.variedad.nombre if obj.variedad else None
+
+    def get_variedad_cultivo(self, obj):
+        return obj.variedad.cultivo if obj.variedad else None
 
     def get_variedad_str(self, obj):
-        if obj.campana_id:
-            return str(obj.campana.variedad)
-        return None
+        return str(obj.variedad) if obj.variedad else None
+
+    def get_productor_nombre(self, obj):
+        u = obj.productor
+        nombre = f'{u.first_name} {u.last_name}'.strip()
+        return nombre or u.username
 
     def get_imagen_url(self, obj):
         if not obj.imagen:
