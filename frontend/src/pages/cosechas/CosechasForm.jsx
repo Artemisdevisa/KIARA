@@ -33,36 +33,30 @@ export default function CosechasForm() {
   const [campanas, setCampanas] = useState([])
   const [loading, setLoading]   = useState(false)
 
-  const campanaFija = campanaIdParam
+  const campanaFija   = campanaIdParam
     ? campanas.find(c => String(c.id) === campanaIdParam)
     : null
+
+  // Campaña actualmente seleccionada (ya sea fija por URL o elegida en el dropdown)
+  const campanaActual = campanaFija
+    ?? campanas.find(c => String(c.id) === String(form.campana))
+    ?? null
 
   useEffect(() => {
     api.get('/campanas/').then(res => setCampanas(res.data)).catch(() => {})
   }, [])
 
-  // Pre-rellenar desde la campaña: nombre, cantidad objetivo, precio estimado
+  // Pre-rellenar desde la campaña seleccionada (URL o dropdown)
   useEffect(() => {
-    if (!campanaFija) return
+    if (!campanaActual) return
     setForm(f => ({
       ...f,
-      nombre_producto: f.nombre_producto || campanaFija.variedad_str || '',
-      cantidad:        f.cantidad        || (campanaFija.objetivo_cosecha ? String(campanaFija.objetivo_cosecha) : ''),
-      unidad:          campanaFija.unidad_cosecha || f.unidad,
-      precio:          f.precio          || (campanaFija.precio_venta_estimado ? String(campanaFija.precio_venta_estimado) : ''),
+      nombre_producto: f.nombre_producto || campanaActual.variedad_str || '',
+      cantidad:        f.cantidad        || (campanaActual.objetivo_cosecha ? String(campanaActual.objetivo_cosecha) : ''),
+      unidad:          campanaActual.unidad_cosecha || f.unidad,
+      precio:          f.precio          || (campanaActual.precio_venta_estimado ? String(campanaActual.precio_venta_estimado) : ''),
     }))
-  }, [campanaFija])
-
-  // Pre-rellenar nombre desde campaña seleccionada en el selector libre
-  useEffect(() => {
-    if (campanaIdParam) return
-    if (form.campana) {
-      const c = campanas.find(c => String(c.id) === String(form.campana))
-      if (c && !form.nombre_producto) {
-        setForm(f => ({ ...f, nombre_producto: c.variedad_str || '' }))
-      }
-    }
-  }, [form.campana, campanas])
+  }, [campanaActual?.id])
 
   // Pre-rellenar contacto con el teléfono del usuario
   useEffect(() => {
@@ -76,9 +70,9 @@ export default function CosechasForm() {
   const precio = parseFloat(form.precio)   || 0
   const ingreso = qty * precio
 
-  // Sugerencia de precio mínimo para cubrir objetivos
-  const objCantidad = parseFloat(campanaFija?.objetivo_cosecha) || 0
-  const objPrecio   = parseFloat(campanaFija?.precio_venta_estimado) || 0
+  // Sugerencia basada en la campaña actualmente seleccionada
+  const objCantidad = parseFloat(campanaActual?.objetivo_cosecha) || 0
+  const objPrecio   = parseFloat(campanaActual?.precio_venta_estimado) || 0
   const objIngreso  = objCantidad * objPrecio
 
   const handleFoto = e => {
@@ -136,7 +130,7 @@ export default function CosechasForm() {
       </div>
 
       {/* Panel de sugerencia — solo si viene de campaña con datos */}
-      {campanaFija && (objCantidad > 0 || objPrecio > 0) && (
+      {campanaActual && (objCantidad > 0 || objPrecio > 0) && (
         <div className="rounded-xl p-4 space-y-3"
           style={{ backgroundColor: dark ? 'rgba(59,130,246,0.08)' : '#eff6ff', border: `1px solid ${dark ? 'rgba(59,130,246,0.2)' : '#bfdbfe'}` }}>
           <div className="flex items-center gap-2">
@@ -153,7 +147,7 @@ export default function CosechasForm() {
                 style={{ backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#fff' }}>
                 <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: dark ? D.sub : '#9ca3af' }}>Cantidad obj.</p>
                 <p className="text-sm font-extrabold" style={{ color: dark ? D.text : '#111827' }}>
-                  {objCantidad} {campanaFija.unidad_cosecha}
+                  {objCantidad} {campanaActual.unidad_cosecha}
                 </p>
               </div>
             )}
@@ -162,7 +156,7 @@ export default function CosechasForm() {
                 style={{ backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#fff' }}>
                 <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: dark ? D.sub : '#9ca3af' }}>Precio est.</p>
                 <p className="text-sm font-extrabold" style={{ color: dark ? D.text : '#111827' }}>
-                  {fmt(objPrecio)}/{campanaFija.unidad_cosecha}
+                  {fmt(objPrecio)}/{campanaActual.unidad_cosecha}
                 </p>
               </div>
             )}
@@ -208,7 +202,9 @@ export default function CosechasForm() {
           ) : (
             <div>
               <label style={lst}>Campaña *</label>
-              <select style={ist} {...h('campana')} required>
+              <select style={ist} value={form.campana}
+                onChange={e => setForm({ ...INIT, campana: e.target.value, contacto: form.contacto })}
+                required>
                 <option value="">Seleccionar campaña...</option>
                 {campanas.map(c => (
                   <option key={c.id} value={c.id}>

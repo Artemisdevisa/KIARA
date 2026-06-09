@@ -47,8 +47,10 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  const refreshUser = () => api.get('/auth/me/').then(res => setUser(res.data)).catch(() => {})
+
   return (
-    <AuthContext.Provider value={{ user, token, login, loginWithTokens, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, loginWithTokens, logout, refreshUser, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   )

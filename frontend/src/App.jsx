@@ -52,6 +52,7 @@ import PlagasPage from './pages/catalogos/PlagasPage'
 import ObjetivosPage from './pages/catalogos/ObjetivosPage'
 import CondicionesPage from './pages/catalogos/CondicionesPage'
 import MiHuertoPage from './pages/mihuerto/MiHuertoPage'
+import MiCuentaPage from './pages/cuenta/MiCuentaPage'
 
 function ProtectedRoute({ children }) {
   const { token } = useAuth()
@@ -102,6 +103,7 @@ export default function App() {
         <Route path="administrativo/biohuert-miembros" element={<BiohuertMiembrosPage />} />
         <Route path="usuarios" element={<UsuariosPage />} />
         <Route path="mi-huerto" element={<MiHuertoPage />} />
+        <Route path="mi-cuenta" element={<MiCuentaPage />} />
         <Route path="campanas" element={<CampanasPage />} />
         <Route path="campanas/:id" element={<CampanaDetailPage />} />
         <Route path="catalogos" element={<CatalogosPage />} />
