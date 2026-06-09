@@ -111,7 +111,7 @@ export default function Sidebar() {
       </div>
 
       {/* Módulos */}
-      <div className="flex-1 overflow-hidden px-4 py-3">
+      <div className="flex-1 overflow-y-auto thin-scroll px-4 py-3">
         <p className="text-[10px] font-bold uppercase tracking-widest mb-3 px-1" style={{ color: p.label }}>
           Módulos
         </p>
