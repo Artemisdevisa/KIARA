@@ -690,6 +690,13 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
     } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
   }
 
+  const toggleSostenible = async item => {
+    try {
+      const res = await api.patch(`/campanas/fitosanitario/${item.id}/`, { es_sostenible: !item.es_sostenible })
+      setPlan(prev => prev.map(x => x.id === item.id ? { ...x, es_sostenible: res.data.es_sostenible } : x))
+    } catch { toast.error('Error al actualizar.') }
+  }
+
   const delPlan = (item) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/fitosanitario/${item.id}/`); fetch() }, msg: `¿Eliminar "${item.producto_nombre}" del plan?` })
 
   const ist = ist_(dark); const lst = lst_(dark)
@@ -732,8 +739,8 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
         <table className="w-full text-sm">
           <thead>
             <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-              {['', 'Producto', 'Tipo', 'Etapa', 'Dosis/m²', 'Total campo', 'Costo est.', 'Estado', ''].map((h, i) => (
-                <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide${i === 8 ? ' text-right' : ''}`}
+              {['', 'Producto', 'Tipo', 'Etapa', 'Dosis/m²', 'Total campo', 'Costo est.', 'Estado', 'Sost.', ''].map((h, i) => (
+                <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide${i === 9 ? ' text-right' : ''}`}
                   style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{h}</th>
               ))}
             </tr>
@@ -744,7 +751,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
               const visible = (etapaFilter ? plan.filter(i => i.etapa === etapaFilter) : [...plan])
                 .sort((a, b) => (ETAPA_ORDER.indexOf(a.etapa) ?? 99) - (ETAPA_ORDER.indexOf(b.etapa) ?? 99))
               if (visible.length === 0)
-                return <tr><td colSpan={9} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin productos{etapaFilter ? ' en esta etapa' : ' en el plan'}</td></tr>
+                return <tr><td colSpan={10} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin productos{etapaFilter ? ' en esta etapa' : ' en el plan'}</td></tr>
               return visible.map(item => {
                 const et = etapaOf(item.etapa)
                 const ec = dark ? et.dc : et.lc
@@ -812,6 +819,19 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
                           : { backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>
                         {aplicado ? `Aplicado${item.fecha_aplicada ? ' · ' + item.fecha_aplicada : ''}` : 'Pendiente'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => toggleSostenible(item)}
+                        title={item.es_sostenible ? 'Quitar sostenible' : 'Marcar como sostenible'}
+                        className="p-1.5 rounded-lg transition-all"
+                        style={{
+                          backgroundColor: item.es_sostenible ? (dark ? 'rgba(22,163,74,0.15)' : '#dcfce7') : 'transparent',
+                          color: item.es_sostenible ? (dark ? '#4ade80' : '#16a34a') : (dark ? D.sub : '#d1d5db'),
+                        }}
+                        onMouseEnter={e => { if (!item.es_sostenible) e.currentTarget.style.backgroundColor = dark ? 'rgba(22,163,74,0.08)' : '#f0fdf4' }}
+                        onMouseLeave={e => { if (!item.es_sostenible) e.currentTarget.style.backgroundColor = 'transparent' }}>
+                        <Leaf size={14} />
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
