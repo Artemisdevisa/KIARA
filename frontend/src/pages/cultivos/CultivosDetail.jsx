@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import Loading from '../../components/ui/Loading'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Droplets, Leaf, AlertTriangle, RotateCcw, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { ArrowLeft, Droplets, Leaf, AlertTriangle, RotateCcw, Clock, CheckCircle, XCircle, BellRing, ScanSearch, BarChart3 } from 'lucide-react'
 
 const ETAPAS = ['germinacion', 'crecimiento', 'floracion', 'cosecha']
 const ETAPA_LABEL = { germinacion: 'Germinación', crecimiento: 'Crecimiento', floracion: 'Floración', cosecha: 'Cosecha' }
@@ -151,9 +151,9 @@ export default function CultivosDetail() {
 
       {/* Accesos rápidos */}
       <div className="flex flex-wrap gap-2">
-        <Link to={`/alertas`} className="btn-secondary text-xs">🔔 Ver alertas del cultivo</Link>
-        <Link to={`/diagnostico`} className="btn-secondary text-xs">🔬 Hacer diagnóstico</Link>
-        <Link to={`/trazabilidad`} className="btn-secondary text-xs">📊 Ver costos</Link>
+        <Link to={`/alertas`} className="btn-secondary text-xs flex items-center gap-1.5"><BellRing size={13} /> Ver alertas</Link>
+        <Link to={`/diagnostico`} className="btn-secondary text-xs flex items-center gap-1.5"><ScanSearch size={13} /> Hacer diagnóstico</Link>
+        <Link to={`/trazabilidad`} className="btn-secondary text-xs flex items-center gap-1.5"><BarChart3 size={13} /> Ver costos</Link>
       </div>
     </div>
   )
