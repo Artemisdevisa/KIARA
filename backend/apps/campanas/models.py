@@ -288,6 +288,7 @@ class PlanRiego(models.Model):
     duracion_minutos   = models.IntegerField(null=True, blank=True)
     fertilizante       = models.ForeignKey(ProductoAgricola, on_delete=models.SET_NULL, null=True, blank=True, related_name='planes_riego')
     dosis_fertilizante = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    numero_riegos      = models.IntegerField(null=True, blank=True, verbose_name='Número de riegos')
     fecha_inicio       = models.DateField(null=True, blank=True)
     fecha_fin          = models.DateField(null=True, blank=True)
     operario           = models.CharField(max_length=100, blank=True)

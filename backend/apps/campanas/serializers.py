@@ -119,11 +119,15 @@ class PlanRiegoSerializer(serializers.ModelSerializer):
     fertilizante_nombre  = serializers.CharField(source='fertilizante.nombre', read_only=True, allow_null=True)
     fertilizante_precio  = serializers.DecimalField(source='fertilizante.precio_unitario', max_digits=10, decimal_places=2, read_only=True, allow_null=True)
     fertilizante_unidad  = serializers.CharField(source='fertilizante.unidad', read_only=True, allow_null=True)
+    registros_count      = serializers.SerializerMethodField()
 
     class Meta:
         model  = PlanRiego
         fields = '__all__'
         read_only_fields = ['campana']
+
+    def get_registros_count(self, obj):
+        return RegistroRiego.objects.filter(plan=obj).count()
 
 
 class RegistroRiegoSerializer(serializers.ModelSerializer):
