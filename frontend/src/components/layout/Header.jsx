@@ -12,9 +12,19 @@ import api from '../../api/axios'
 /* ────────────────────────────────────────────
    LOGO
 ──────────────────────────────────────────── */
-function KiaraLogomark({ size = 90 }) {
+function KiaraLogomark({ size = 34 }) {
   return (
-    <img src="/sinfondo.png" alt="Kiara logo" style={{ height: size, width: 'auto', objectFit: 'contain', display: 'block' }} />
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <circle cx="18" cy="18" r="18" fill="url(#hg)" />
+      <path d="M18 28 C18 28 8 22 9 14 C12 12 16 15 18 28Z" fill="white" opacity="0.9" />
+      <path d="M18 24 C18 24 28 18 27 10 C24 8 20 11 18 24Z" fill="white" />
+      <path d="M18 28 L18 30" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+      <defs>
+        <linearGradient id="hg" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#2D6A4F" /><stop offset="100%" stopColor="#1B4332" />
+        </linearGradient>
+      </defs>
+    </svg>
   )
 }
 
@@ -169,7 +179,7 @@ function MenuDrawer({ open, onClose, token, categorias }) {
         {/* ── Cabecera ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <Link to="/" onClick={onClose} className="flex items-center gap-2.5">
-            <KiaraLogomark size={68} />
+            <KiaraLogomark size={30} />
             <KiaraWordmark />
           </Link>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400">
@@ -495,14 +505,14 @@ export default function Header() {
         }}>
 
         <div className="max-w-[1480px] mx-auto px-4 sm:px-6 xl:px-10">
-          <div className="flex items-center h-28 gap-2">
+          <div className="flex items-center h-16 gap-2">
 
             {/* 1 · Logo */}
-            <Link to="/" onClick={closeDrawer} className="flex items-center group shrink-0">
+            <Link to="/" onClick={closeDrawer} className="flex items-center gap-2.5 group shrink-0">
               <div className="transition-transform duration-300 group-hover:rotate-6">
-                <KiaraLogomark size={90} />
+                <KiaraLogomark size={34} />
               </div>
-              <span style={{ marginLeft: '-12px' }}><KiaraWordmark /></span>
+              <KiaraWordmark />
             </Link>
 
             {/* 2 · Botón Menú */}
