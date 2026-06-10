@@ -301,7 +301,14 @@ class RegistroRiegoListCreate(CampanaMixin, generics.ListCreateAPIView):
         return RegistroRiego.objects.filter(campana=self._campana())
 
     def perform_create(self, serializer):
-        serializer.save(campana=self._campana())
+        instance = serializer.save(campana=self._campana())
+        plan = instance.plan
+        if plan and plan.numero_riegos:
+            count = RegistroRiego.objects.filter(plan=plan).count()
+            if count >= plan.numero_riegos and not plan.completado:
+                plan.completado = True
+                plan.operario = instance.operario or plan.operario
+                plan.save()
 
 
 class RegistroRiegoDetail(generics.RetrieveUpdateDestroyAPIView):
@@ -478,9 +485,12 @@ def _generar_alertas_campana(campana):
             nuevas.append('rotacion')
 
     # 2. Intervalos de seguridad fitosanitarios
-    # Solo ítems activos y pendientes (no aplicados aún)
+    # Solo etapas cercanas a cosecha — en preparación/germinación el producto
+    # ya se metabolizó mucho antes, el intervalo de seguridad no aplica.
+    ETAPAS_CERCANAS_COSECHA = ['crecimiento', 'establecido', 'floracion', 'cosecha', 'brotacion', 'poda', '']
     fito_pendientes = campana.plan_fitosanitario.filter(
         dias_antes_cosecha__isnull=False,
+        etapa__in=ETAPAS_CERCANAS_COSECHA,
         activo=True,
         estado='programado',
     ).select_related('producto')

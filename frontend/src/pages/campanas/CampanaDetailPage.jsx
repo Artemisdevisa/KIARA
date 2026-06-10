@@ -1111,11 +1111,13 @@ function RiegoTab({ dark, campanaId, campana }) {
   const [viewPlan, setViewPlan]     = useState(null)
   const [modal, setModal]           = useState(null)
   const [delConfirm, setDelConfirm] = useState(null)
-  const [form, setForm]             = useState({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '', operario: '', costo_agua_total: '' })
+  const [form, setForm]             = useState({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', numero_riegos: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '', operario: '', costo_agua_total: '' })
   const [loading, setLoading]       = useState(false)
   const [miembros, setMiembros]     = useState([])
   const [completarModal, setCompletarModal] = useState(null)
   const [completarForm, setCompletarForm]   = useState({ operario: '' })
+  const [riegoModal, setRiegoModal]         = useState(null)
+  const [riegoForm, setRiegoForm]           = useState({ fecha: '', litros_aplicados: '', area_regada: '', operario: '', observaciones: '' })
   const METODOS = [['goteo','Goteo'],['aspersion','Aspersión'],['gravedad','Gravedad'],['manual','Manual']]
 
   const fetch = useCallback(async () => {
@@ -1154,19 +1156,27 @@ function RiegoTab({ dark, campanaId, campana }) {
     } catch { toast.error('Error al actualizar.') }
   }
   const togglePlan = async (p) => {
-    if (p.completado) {
+    if (p.completado && !p.numero_riegos) {
       try {
         const res = await api.patch(`/campanas/plan-riego/${p.id}/`, { completado: false })
         setPlanes(prev => prev.map(x => x.id === p.id ? { ...x, completado: res.data.completado } : x))
       } catch { toast.error('Error al actualizar.') }
       return
     }
-    if (p.fecha_inicio) {
-      const hayAnterior = planes.some(x => !x.completado && x.id !== p.id && x.fecha_inicio && x.fecha_inicio < p.fecha_inicio)
-      if (hayAnterior) { toast.error('Hay planes de riego anteriores sin completar. Complétalos primero.'); return }
+    if (!p.numero_riegos) {
+      if (p.fecha_inicio) {
+        const hayAnterior = planes.some(x => !x.completado && x.id !== p.id && x.fecha_inicio && x.fecha_inicio < p.fecha_inicio)
+        if (hayAnterior) { toast.error('Hay planes de riego anteriores sin completar. Complétalos primero.'); return }
+      }
+      setCompletarForm({ operario: p.operario || '' })
+      setCompletarModal(p)
+      return
     }
-    setCompletarForm({ operario: p.operario || '' })
-    setCompletarModal(p)
+    // Flujo múltiple: registrar evento de riego
+    const litros = p.litros_por_m2 && campana?.area
+      ? (parseFloat(p.litros_por_m2) * parseFloat(campana.area)).toFixed(2) : ''
+    setRiegoForm({ fecha: new Date().toISOString().slice(0, 10), litros_aplicados: litros, area_regada: campana?.area ?? '', operario: p.operario || '', observaciones: '' })
+    setRiegoModal(p)
   }
 
   const confirmCompletar = async e => {
@@ -1176,6 +1186,24 @@ function RiegoTab({ dark, campanaId, campana }) {
       setPlanes(prev => prev.map(x => x.id === completarModal.id ? { ...x, completado: res.data.completado, operario: res.data.operario } : x))
       toast.success('Plan marcado como completado.'); setCompletarModal(null)
     } catch { toast.error('Error al actualizar.') } finally { setLoading(false) }
+  }
+
+  const confirmRiego = async e => {
+    e.preventDefault(); setLoading(true)
+    try {
+      await api.post(`/campanas/${campanaId}/registros-riego/`, {
+        plan:             riegoModal.id,
+        fecha:            riegoForm.fecha,
+        litros_aplicados: riegoForm.litros_aplicados,
+        area_regada:      riegoForm.area_regada,
+        operario:         riegoForm.operario,
+        observaciones:    riegoForm.observaciones,
+      })
+      const nuevoCont = (riegoModal.registros_count || 0) + 1
+      if (nuevoCont >= riegoModal.numero_riegos) toast.success(`Riego ${nuevoCont}/${riegoModal.numero_riegos} registrado. ¡Plan completado!`)
+      else toast.success(`Riego ${nuevoCont}/${riegoModal.numero_riegos} registrado.`)
+      setRiegoModal(null); fetch()
+    } catch { toast.error('Error al registrar.') } finally { setLoading(false) }
   }
   const ist = ist_(dark); const lst = lst_(dark)
 
@@ -1204,7 +1232,7 @@ function RiegoTab({ dark, campanaId, campana }) {
             )}
           </div>
           {campana?.estado !== 'cerrada' && (
-            <button onClick={() => { setForm({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '', operario: '', costo_agua_total: '' }); setModal('new') }}
+            <button onClick={() => { setForm({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', numero_riegos: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '', operario: '', costo_agua_total: '' }); setModal('new') }}
               className="flex items-center gap-1.5 btn-primary text-sm">
               <Plus size={13} /> Agregar
             </button>
@@ -1242,6 +1270,21 @@ function RiegoTab({ dark, campanaId, campana }) {
                     <td className="px-4 py-3 font-semibold text-sm"
                       style={{ color: dark ? D.text : '#111827', textDecoration: p.completado ? 'line-through' : 'none', opacity: p.completado ? 0.6 : 1 }}>
                       {p.nombre}
+                      {p.numero_riegos && (() => {
+                        const cnt = p.registros_count || 0
+                        const tot = p.numero_riegos
+                        const done = cnt >= tot
+                        return (
+                          <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={done
+                              ? { backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }
+                              : cnt > 0
+                                ? { backgroundColor: dark ? 'rgba(251,191,36,0.15)' : '#fef9c3', color: dark ? '#fbbf24' : '#d97706' }
+                                : { backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>
+                            {cnt}/{tot} riegos{done ? ' ✓' : ''}
+                          </span>
+                        )
+                      })()}
                       {p.es_sostenible && (
                         <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                           style={{ backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }}>
@@ -1325,9 +1368,12 @@ function RiegoTab({ dark, campanaId, campana }) {
               <input name="frecuencia_dias" type="number" value={form.frecuencia_dias} onChange={h} style={ist} required placeholder="1" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div><label style={lst}>Litros por m² *</label>
               <input name="litros_por_m2" type="number" step="0.01" value={form.litros_por_m2} onChange={h} style={ist} required placeholder="2.5" />
+            </div>
+            <div><label style={lst}>N° de riegos</label>
+              <input name="numero_riegos" type="number" min="1" value={form.numero_riegos || ''} onChange={h} style={ist} placeholder="45" />
             </div>
             <div><label style={lst}>Duración (min)</label>
               <input name="duracion_minutos" type="number" value={form.duracion_minutos} onChange={h} style={ist} placeholder="30" />
@@ -1386,6 +1432,34 @@ function RiegoTab({ dark, campanaId, campana }) {
           <div>
             <label style={lst}>Operario</label>
             <OperarioSelect dark={dark} value={completarForm.operario} ist={ist} onChange={v => setCompletarForm(f => ({ ...f, operario: v }))} miembros={miembros} />
+          </div>
+        </MiniModal>
+      )}
+      {riegoModal && (
+        <MiniModal dark={dark}
+          title={`Registrar riego ${(riegoModal.registros_count || 0) + 1}/${riegoModal.numero_riegos} — ${riegoModal.nombre}`}
+          onClose={() => setRiegoModal(null)} onSubmit={confirmRiego} loading={loading}>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label style={lst}>Fecha *</label>
+              <input type="date" value={riegoForm.fecha} onChange={e => setRiegoForm(f => ({ ...f, fecha: e.target.value }))} style={ist} required />
+            </div>
+            <div>
+              <label style={lst}>Litros aplicados *</label>
+              <input type="number" step="0.01" value={riegoForm.litros_aplicados} onChange={e => setRiegoForm(f => ({ ...f, litros_aplicados: e.target.value }))} style={ist} required placeholder="0.5" />
+            </div>
+          </div>
+          <div>
+            <label style={lst}>Área regada (m²)</label>
+            <input type="number" step="0.01" value={riegoForm.area_regada} onChange={e => setRiegoForm(f => ({ ...f, area_regada: e.target.value }))} style={ist} placeholder={campana?.area ?? ''} />
+          </div>
+          <div>
+            <label style={lst}>Operario</label>
+            <OperarioSelect dark={dark} value={riegoForm.operario} ist={ist} onChange={v => setRiegoForm(f => ({ ...f, operario: v }))} miembros={miembros} />
+          </div>
+          <div>
+            <label style={lst}>Observaciones</label>
+            <textarea value={riegoForm.observaciones} onChange={e => setRiegoForm(f => ({ ...f, observaciones: e.target.value }))} rows={2} style={{ ...ist, resize: 'none' }} />
           </div>
         </MiniModal>
       )}
