@@ -235,6 +235,8 @@ class CampanaSerializer(serializers.ModelSerializer):
     fito_pendientes      = serializers.SerializerMethodField()
     riego_pendientes     = serializers.SerializerMethodField()
     lista_para_cosechar  = serializers.SerializerMethodField()
+    tiene_cosecha        = serializers.SerializerMethodField()
+    cosecha_id           = serializers.SerializerMethodField()
 
     class Meta:
         model  = Campana
@@ -263,7 +265,16 @@ class CampanaSerializer(serializers.ModelSerializer):
         return obj.plan_riego.filter(completado=False).count()
 
     def get_lista_para_cosechar(self, obj):
+        if obj.cosechas.exists():
+            return False
         labores_ok = obj.labores.filter(estado='programada').count() == 0
         fito_ok    = obj.plan_fitosanitario.filter(estado='programado', activo=True).count() == 0
         riego_ok   = obj.plan_riego.filter(completado=False).count() == 0
         return labores_ok and fito_ok and riego_ok
+
+    def get_tiene_cosecha(self, obj):
+        return obj.cosechas.exists()
+
+    def get_cosecha_id(self, obj):
+        c = obj.cosechas.first()
+        return c.id if c else None

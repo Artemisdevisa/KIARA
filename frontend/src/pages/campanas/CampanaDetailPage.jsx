@@ -351,6 +351,13 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
 
   const del = item => setDelConfirm({ fn: async () => { await api.delete(`/campanas/labores/${item.id}/`); fetch() }, msg: `¿Eliminar la labor "${item.tipo_labor_nombre}"?` })
 
+  const toggleSostenibleLabor = async item => {
+    try {
+      const res = await api.patch(`/campanas/labores/${item.id}/`, { es_sostenible: !item.es_sostenible })
+      setData(prev => prev.map(x => x.id === item.id ? { ...x, es_sostenible: res.data.es_sostenible } : x))
+    } catch { toast.error('Error al actualizar.') }
+  }
+
   const etapaOrder = useMemo(() => ETAPAS.map(e => e.key), [])
 
   const etapaActual = useMemo(() => {
@@ -417,7 +424,9 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
           <span style={{ color: dark ? D.sub : '#6b7280' }}>Presupuestado: <strong style={{ color: dark ? '#4ade80' : '#15803d' }}>{fmt(total_prog)}</strong></span>
           <span style={{ color: dark ? D.sub : '#6b7280' }}>Ejecutado: <strong style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{fmt(total_ej)}</strong></span>
         </div>
-        <button onClick={openNew} className="flex items-center gap-1.5 btn-primary text-sm"><Plus size={13} /> Agregar</button>
+        {campana?.estado !== 'cerrada' && (
+          <button onClick={openNew} className="flex items-center gap-1.5 btn-primary text-sm"><Plus size={13} /> Agregar</button>
+        )}
       </div>
 
       <div style={{ borderRadius: '14px', overflow: 'hidden', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, backgroundColor: dark ? D.cardBg : '#fff' }}>
@@ -466,7 +475,12 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
                           <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md"
                             style={{ backgroundColor: ebg, color: ec }}>{et.label}</span>
                         )}
-
+                        {l.es_sostenible && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }}>
+                            sostenible
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{l.fecha_programada}</td>
@@ -489,15 +503,28 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={() => toggleSostenibleLabor(l)}
+                          title={l.es_sostenible ? 'Quitar sostenible' : 'Marcar como sostenible'}
+                          className="p-1.5 rounded-lg transition-all"
+                          style={{
+                            backgroundColor: l.es_sostenible ? (dark ? 'rgba(22,163,74,0.15)' : '#dcfce7') : 'transparent',
+                            color: l.es_sostenible ? (dark ? '#4ade80' : '#16a34a') : (dark ? D.sub : '#d1d5db'),
+                          }}
+                          onMouseEnter={e => { if (!l.es_sostenible) e.currentTarget.style.backgroundColor = dark ? 'rgba(22,163,74,0.08)' : '#f0fdf4' }}
+                          onMouseLeave={e => { if (!l.es_sostenible) e.currentTarget.style.backgroundColor = 'transparent' }}>
+                          <Leaf size={14} />
+                        </button>
                         <button onClick={() => setViewItem(l)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
                           onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
                           onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={13} /></button>
-                        <button onClick={() => openEdit(l)} className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={13} /></button>
-                        <button onClick={() => del(l)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={13} /></button>
+                        {campana?.estado !== 'cerrada' && <>
+                          <button onClick={() => openEdit(l)} className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={13} /></button>
+                          <button onClick={() => del(l)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={13} /></button>
+                        </>}
                       </div>
                     </td>
                   </tr>
@@ -732,11 +759,13 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
             </span>
           )}
         </div>
-        <button onClick={() => { setForm({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' }); setModal('new') }}
-          className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg"
-          style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.text : '#374151' }}>
-          <Plus size={12} /> Agregar producto
-        </button>
+        {campana?.estado !== 'cerrada' && (
+          <button onClick={() => { setForm({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' }); setModal('new') }}
+            className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg"
+            style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.text : '#374151' }}>
+            <Plus size={12} /> Agregar producto
+          </button>
+        )}
       </div>
       <div style={{ borderRadius: '14px', overflow: 'hidden', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, backgroundColor: dark ? D.cardBg : '#fff' }}>
         <table className="w-full text-sm">
@@ -841,12 +870,14 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
                         <button onClick={() => setViewItem(item)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
                           onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
                           onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={12} /></button>
-                        <button onClick={() => { setForm({ ...item }); setModal('edit') }} className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={12} /></button>
-                        <button onClick={() => delPlan(item)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
+                        {campana?.estado !== 'cerrada' && <>
+                          <button onClick={() => { setForm({ ...item }); setModal('edit') }} className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={12} /></button>
+                          <button onClick={() => delPlan(item)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
+                        </>}
                       </div>
                     </td>
                   </tr>
@@ -996,6 +1027,13 @@ function RiegoTab({ dark, campanaId, campana }) {
   }
 
   const delPlan    = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`); fetch() }, msg: '¿Eliminar este plan de riego?' })
+
+  const toggleSostenibleRiego = async plan => {
+    try {
+      const res = await api.patch(`/campanas/plan-riego/${plan.id}/`, { es_sostenible: !plan.es_sostenible })
+      setPlanes(prev => prev.map(x => x.id === plan.id ? { ...x, es_sostenible: res.data.es_sostenible } : x))
+    } catch { toast.error('Error al actualizar.') }
+  }
   const togglePlan = async (p) => {
     if (!p.completado && p.fecha_inicio) {
       const hayAnterior = planes.some(x => !x.completado && x.id !== p.id && x.fecha_inicio && x.fecha_inicio < p.fecha_inicio)
@@ -1035,10 +1073,12 @@ function RiegoTab({ dark, campanaId, campana }) {
               </span>
             )}
           </div>
-          <button onClick={() => { setForm({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '', operario: '', costo_agua_total: '' }); setModal('new') }}
-            className="flex items-center gap-1.5 btn-primary text-sm">
-            <Plus size={13} /> Nuevo plan
-          </button>
+          {campana?.estado !== 'cerrada' && (
+            <button onClick={() => { setForm({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '', operario: '', costo_agua_total: '' }); setModal('new') }}
+              className="flex items-center gap-1.5 btn-primary text-sm">
+              <Plus size={13} /> Nuevo plan
+            </button>
+          )}
         </div>
         <div style={{ borderRadius: '14px', overflow: 'hidden', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, backgroundColor: dark ? D.cardBg : '#fff' }}>
           <table className="w-full text-sm">
@@ -1067,7 +1107,15 @@ function RiegoTab({ dark, campanaId, campana }) {
                       </button>
                     </td>
                     <td className="px-4 py-3 font-semibold text-sm"
-                      style={{ color: dark ? D.text : '#111827', textDecoration: p.completado ? 'line-through' : 'none', opacity: p.completado ? 0.6 : 1 }}>{p.nombre}</td>
+                      style={{ color: dark ? D.text : '#111827', textDecoration: p.completado ? 'line-through' : 'none', opacity: p.completado ? 0.6 : 1 }}>
+                      {p.nombre}
+                      {p.es_sostenible && (
+                        <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{ backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }}>
+                          sostenible
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3" style={{ opacity: p.completado ? 0.6 : 1 }}>
                       <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                         style={{ backgroundColor: dark ? mb.dbg : mb.lbg, color: dark ? mb.dc : mb.lc }}>
@@ -1094,17 +1142,30 @@ function RiegoTab({ dark, campanaId, campana }) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={() => toggleSostenibleRiego(p)}
+                          title={p.es_sostenible ? 'Quitar sostenible' : 'Marcar como sostenible'}
+                          className="p-1.5 rounded-lg transition-all"
+                          style={{
+                            backgroundColor: p.es_sostenible ? (dark ? 'rgba(22,163,74,0.15)' : '#dcfce7') : 'transparent',
+                            color: p.es_sostenible ? (dark ? '#4ade80' : '#16a34a') : (dark ? D.sub : '#d1d5db'),
+                          }}
+                          onMouseEnter={e => { if (!p.es_sostenible) e.currentTarget.style.backgroundColor = dark ? 'rgba(22,163,74,0.08)' : '#f0fdf4' }}
+                          onMouseLeave={e => { if (!p.es_sostenible) e.currentTarget.style.backgroundColor = 'transparent' }}>
+                          <Leaf size={14} />
+                        </button>
                         <button onClick={() => setViewPlan(p)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
                           onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
                           onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={13} /></button>
-                        <button onClick={() => { setForm({ ...p, fertilizante: p.fertilizante || '', operario: p.operario || '', costo_agua_total: p.costo_agua_total || '' }); setModal('edit') }}
-                          className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={13} /></button>
-                        <button onClick={() => delPlan(p.id)}
-                          className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={13} /></button>
+                        {campana?.estado !== 'cerrada' && <>
+                          <button onClick={() => { setForm({ ...p, fertilizante: p.fertilizante || '', operario: p.operario || '', costo_agua_total: p.costo_agua_total || '' }); setModal('edit') }}
+                            className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={13} /></button>
+                          <button onClick={() => delPlan(p.id)}
+                            className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={13} /></button>
+                        </>}
                       </div>
                     </td>
                   </tr>
@@ -1324,10 +1385,12 @@ function PresupuestoTab({ dark, campanaId, campana }) {
         <p className="text-xs font-bold uppercase tracking-wide" style={{ color: dark ? D.sub : '#9ca3af' }}>
           {items.length} ítem{items.length !== 1 ? 's' : ''}
         </p>
-        <button onClick={() => { setForm({ categoria: 'insumo', descripcion: '', cantidad: '', unidad: '', precio_unitario: '', monto_ejecutado: '0' }); setPorM2(''); setModal('new') }}
-          className="flex items-center gap-1.5 btn-primary text-sm">
-          <Plus size={13} /> Agregar ítem
-        </button>
+        {campana?.estado !== 'cerrada' && (
+          <button onClick={() => { setForm({ categoria: 'insumo', descripcion: '', cantidad: '', unidad: '', precio_unitario: '', monto_ejecutado: '0' }); setPorM2(''); setModal('new') }}
+            className="flex items-center gap-1.5 btn-primary text-sm">
+            <Plus size={13} /> Agregar ítem
+          </button>
+        )}
       </div>
 
       {/* Tabla única */}
@@ -1420,16 +1483,18 @@ function PresupuestoTab({ dark, campanaId, campana }) {
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => { setForm({ ...item }); setPorM2(''); setModal('edit') }}
-                        className="p-2 rounded-lg transition-all duration-150"
-                        style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: 'transparent' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={16} /></button>
-                      <button onClick={() => del(item.id)}
-                        className="p-2 rounded-lg transition-all duration-150"
-                        style={{ color: dark ? '#f87171' : '#dc2626', backgroundColor: 'transparent' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={16} /></button>
+                      {campana?.estado !== 'cerrada' && <>
+                        <button onClick={() => { setForm({ ...item }); setPorM2(''); setModal('edit') }}
+                          className="p-2 rounded-lg transition-all duration-150"
+                          style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: 'transparent' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={16} /></button>
+                        <button onClick={() => del(item.id)}
+                          className="p-2 rounded-lg transition-all duration-150"
+                          style={{ color: dark ? '#f87171' : '#dc2626', backgroundColor: 'transparent' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={16} /></button>
+                      </>}
                     </div>
                   </td>
                 </tr>
@@ -1523,57 +1588,74 @@ function PresupuestoTab({ dark, campanaId, campana }) {
    TAB: TRAZABILIDAD
 ══════════════════════════════════════════════════════ */
 function TrazabilidadTab({ dark, campanaId, campana }) {
-  const [practicas, setPracticas]   = useState([])
   const [fito, setFito]             = useState([])
   const [riegoPlanes, setRiegoPlanes] = useState([])
   const [labores, setLabores]       = useState([])
-  const [modal, setModal]           = useState(false)
-  const [delConfirm, setDelConfirm] = useState(null)
-  const [form, setForm]             = useState({ tipo: 'compost', descripcion: '', fecha: '', cantidad: '', unidad: '' })
-  const [loading, setLoading]       = useState(false)
 
-  const TIPOS_PRAC = [
-    ['compost','Uso de compost'],['sin_agroquimicos','Sin agroquímicos sintéticos'],
-    ['riego_eficiente','Riego eficiente'],['control_biologico','Control biológico'],
-    ['abono_verde','Abono verde'],['otro','Otra práctica'],
+  // Indicadores derivados automáticamente de los módulos
+  const fitoAplicado       = fito.filter(a => a.estado === 'aplicado')
+  const fitoSostenible     = fitoAplicado.filter(a => a.es_sostenible || ['biologico','enmienda','bioestimulante'].includes(a.producto_tipo))
+  const pctSostenible      = fitoAplicado.length > 0 ? Math.round((fitoSostenible.length / fitoAplicado.length) * 100) : null
+  const tieneRiegoEfic     = riegoPlanes.some(r => r.metodo === 'goteo' || r.metodo === 'aspersion')
+  const tieneCtrlBio       = fitoSostenible.some(a => a.producto_tipo === 'biologico')
+  const laboresSostenibles = labores.filter(l => l.estado === 'ejecutada' && l.es_sostenible)
+  const riegoSostenible    = riegoPlanes.filter(r => r.es_sostenible)
+  const indicadoresAuto  = [
+    {
+      key: 'sin_agroquimicos', activo: pctSostenible !== null,
+      label: 'Sin agroquímicos sintéticos',
+      valor: pctSostenible !== null ? `${pctSostenible}% de aplicaciones sostenibles (${fitoSostenible.length}/${fitoAplicado.length})` : 'Sin aplicaciones registradas',
+      color: pctSostenible === 100 ? 'green' : pctSostenible > 0 ? 'yellow' : 'gray',
+    },
+    {
+      key: 'riego_eficiente', activo: tieneRiegoEfic,
+      label: 'Riego eficiente',
+      valor: tieneRiegoEfic ? `Usa goteo o aspersión (${riegoPlanes.filter(r => r.metodo === 'goteo' || r.metodo === 'aspersion').length} plan(es))` : 'Sin riego eficiente registrado',
+      color: tieneRiegoEfic ? 'green' : 'gray',
+    },
+    {
+      key: 'control_biologico', activo: tieneCtrlBio,
+      label: 'Control biológico',
+      valor: tieneCtrlBio ? `${fitoSostenible.filter(a => a.producto_tipo === 'biologico').length} aplicación(es) de productos biológicos` : 'Sin control biológico registrado',
+      color: tieneCtrlBio ? 'green' : 'gray',
+    },
+    {
+      key: 'labores_sostenibles', activo: laboresSostenibles.length > 0,
+      label: 'Labores sostenibles',
+      valor: laboresSostenibles.length > 0 ? `${laboresSostenibles.length} labor(es) ejecutadas marcadas como sostenibles` : 'Sin labores sostenibles registradas',
+      color: laboresSostenibles.length > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'riego_sostenible', activo: riegoSostenible.length > 0,
+      label: 'Prácticas de riego sostenible',
+      valor: riegoSostenible.length > 0 ? `${riegoSostenible.length} plan(es) de riego marcados como sostenibles` : 'Sin planes de riego sostenibles',
+      color: riegoSostenible.length > 0 ? 'green' : 'gray',
+    },
   ]
 
-  const fetch = useCallback(async () => {
-    const [p, f, r, l] = await Promise.all([
-      api.get(`/campanas/${campanaId}/practicas/`),
+  const fetchData = useCallback(async () => {
+    const [f, r, l] = await Promise.all([
       api.get(`/campanas/${campanaId}/fitosanitario/`),
       api.get(`/campanas/${campanaId}/plan-riego/`),
       api.get(`/campanas/${campanaId}/labores/`),
     ])
-    setPracticas(p.data); setFito(f.data); setRiegoPlanes(r.data); setLabores(l.data)
+    setFito(f.data); setRiegoPlanes(r.data); setLabores(l.data)
   }, [campanaId])
-  useEffect(() => { fetch() }, [fetch])
-
-  const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
-  const submit = async e => {
-    e.preventDefault(); setLoading(true)
-    try {
-      await api.post(`/campanas/${campanaId}/practicas/`, { ...form, cantidad: form.cantidad || null })
-      toast.success('Práctica registrada.'); setModal(false); fetch()
-    } catch { toast.error('Error.') } finally { setLoading(false) }
-  }
-  const delPrac = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/practicas/${id}/`); fetch() }, msg: '¿Eliminar esta práctica sostenible?' })
+  useEffect(() => { fetchData() }, [fetchData])
 
   const ist = ist_(dark); const lst = lst_(dark)
 
-  // Build unified timeline
+  // Build unified timeline from module records only
   const timeline = [
-    ...labores.filter(l => l.fecha_ejecutada).map(l => ({ fecha: l.fecha_ejecutada, tipo: 'labor', label: l.tipo_labor_nombre, detalle: `${l.cantidad_ejecutada ?? l.cantidad_programada} ${l.tipo_labor_unidad}` })),
-    ...fito.filter(a => a.estado === 'aplicado' && a.fecha_aplicada).map(a => ({ fecha: a.fecha_aplicada, tipo: 'aplicacion', label: `Aplicación: ${a.producto_nombre}`, detalle: `${a.dosis} ${a.unidad_codigo || ''}${a.area_aplicada ? ` · ${a.area_aplicada} m²` : ''}`, sostenible: a.es_sostenible })),
-    ...riegoPlanes.filter(r => r.completado && (r.fecha_fin || r.fecha_inicio)).map(r => ({ fecha: r.fecha_fin || r.fecha_inicio, tipo: 'riego', label: `Riego: ${r.nombre}`, detalle: `${r.litros_por_m2} L/m² · ${r.metodo_display}${r.operario ? ' · ' + r.operario : ''}` })),
-    ...practicas.map(p => ({ fecha: p.fecha, tipo: 'practica', label: p.tipo_display, detalle: p.descripcion })),
+    ...labores.filter(l => l.fecha_ejecutada).map(l => ({ fecha: l.fecha_ejecutada, tipo: 'labor', label: l.tipo_labor_nombre, detalle: `${l.cantidad_ejecutada ?? l.cantidad_programada} ${l.tipo_labor_unidad}`, sostenible: l.es_sostenible })),
+    ...fito.filter(a => a.estado === 'aplicado' && a.fecha_aplicada).map(a => ({ fecha: a.fecha_aplicada, tipo: 'aplicacion', label: `Aplicación: ${a.producto_nombre}`, detalle: `${a.dosis} ${a.unidad_codigo || ''}${a.area_aplicada ? ` · ${a.area_aplicada} m²` : ''}`, sostenible: a.es_sostenible || ['biologico','enmienda','bioestimulante'].includes(a.producto_tipo) })),
+    ...riegoPlanes.filter(r => r.completado && (r.fecha_fin || r.fecha_inicio)).map(r => ({ fecha: r.fecha_fin || r.fecha_inicio, tipo: 'riego', label: `Riego: ${r.nombre}`, detalle: `${r.litros_por_m2} L/m² · ${r.metodo_display}${r.operario ? ' · ' + r.operario : ''}`, sostenible: r.es_sostenible })),
   ].sort((a, b) => b.fecha.localeCompare(a.fecha))
 
   const TIPO_ICON_COLOR = {
-    labor:     { color: dark ? '#60a5fa' : '#2563eb',  label: 'Labor'       },
-    aplicacion:{ color: dark ? '#f87171' : '#dc2626',  label: 'Aplicación'  },
-    riego:     { color: dark ? '#38bdf8' : '#0284c7',  label: 'Riego'       },
-    practica:  { color: dark ? '#4ade80' : '#16a34a',  label: 'Práctica'    },
+    labor:     { color: dark ? '#60a5fa' : '#2563eb', label: 'Labor'      },
+    aplicacion:{ color: dark ? '#f87171' : '#dc2626', label: 'Aplicación' },
+    riego:     { color: dark ? '#38bdf8' : '#0284c7', label: 'Riego'      },
   }
 
   const exportPDF = () => {
@@ -1599,9 +1681,13 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
       <strong>Generado:</strong> ${new Date().toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' })}
     </div>
 
-    <h2>Prácticas Sostenibles</h2>
-    <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Cantidad</th></tr></thead><tbody>
-    ${practicas.length ? practicas.map(p => `<tr><td>${p.fecha}</td><td><span class="badge verde">${p.tipo_display}</span></td><td>${p.descripcion}</td><td>${p.cantidad ? p.cantidad + ' ' + p.unidad : '—'}</td></tr>`).join('') : '<tr><td colspan="4" style="color:#9ca3af;text-align:center">Sin prácticas registradas</td></tr>'}
+    <h2>Indicadores de Sostenibilidad</h2>
+    <table><thead><tr><th>Indicador</th><th>Estado</th><th>Detalle</th></tr></thead><tbody>
+    <tr><td>Sin agroquímicos sintéticos</td><td><span class="badge ${pctSostenible === 100 ? 'verde' : pctSostenible > 0 ? 'azul' : 'gris'}">${pctSostenible !== null ? pctSostenible + '%' : '—'}</span></td><td>${pctSostenible !== null ? fitoSostenible.length + '/' + fitoAplicado.length + ' aplicaciones sostenibles' : 'Sin aplicaciones'}</td></tr>
+    <tr><td>Riego eficiente</td><td><span class="badge ${tieneRiegoEfic ? 'verde' : 'gris'}">${tieneRiegoEfic ? 'Sí' : 'No'}</span></td><td>${tieneRiegoEfic ? 'Usa goteo o aspersión' : 'Sin riego eficiente'}</td></tr>
+    <tr><td>Control biológico</td><td><span class="badge ${tieneCtrlBio ? 'verde' : 'gris'}">${tieneCtrlBio ? 'Sí' : 'No'}</span></td><td>${tieneCtrlBio ? fitoSostenible.filter(a => a.producto_tipo === 'biologico').length + ' aplicación(es) biológicas' : 'Sin control biológico'}</td></tr>
+    <tr><td>Labores sostenibles</td><td><span class="badge ${laboresSostenibles.length > 0 ? 'verde' : 'gris'}">${laboresSostenibles.length > 0 ? 'Sí' : 'No'}</span></td><td>${laboresSostenibles.length > 0 ? laboresSostenibles.length + ' labor(es) ejecutadas sostenibles' : 'Sin labores sostenibles'}</td></tr>
+    <tr><td>Prácticas de riego sostenible</td><td><span class="badge ${riegoSostenible.length > 0 ? 'verde' : 'gris'}">${riegoSostenible.length > 0 ? 'Sí' : 'No'}</span></td><td>${riegoSostenible.length > 0 ? riegoSostenible.length + ' plan(es) de riego sostenibles' : 'Sin riego sostenible'}</td></tr>
     </tbody></table>
 
     <h2>Aplicaciones Fitosanitarias</h2>
@@ -1610,13 +1696,13 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
     </tbody></table>
 
     <h2>Planes de Riego Completados</h2>
-    <table><thead><tr><th>Nombre</th><th>Método</th><th>L/m²</th><th>Fertirrigación</th><th>Operario</th><th>Costo agua</th></tr></thead><tbody>
-    ${riegoPlanes.filter(r => r.completado).length ? riegoPlanes.filter(r => r.completado).map(r => `<tr><td>${r.nombre}</td><td>${r.metodo_display}</td><td>${r.litros_por_m2} L</td><td>${r.fertilizante_nombre ?? '—'}</td><td>${r.operario || '—'}</td><td>${r.costo_agua_total ? 'S/. ' + parseFloat(r.costo_agua_total).toFixed(2) : '—'}</td></tr>`).join('') : '<tr><td colspan="6" style="color:#9ca3af;text-align:center">Sin planes completados</td></tr>'}
+    <table><thead><tr><th>Nombre</th><th>Método</th><th>L/m²</th><th>Fertirrigación</th><th>Operario</th><th>Costo agua</th><th>Sostenible</th></tr></thead><tbody>
+    ${riegoPlanes.filter(r => r.completado).length ? riegoPlanes.filter(r => r.completado).map(r => `<tr><td>${r.nombre}</td><td>${r.metodo_display}</td><td>${r.litros_por_m2} L</td><td>${r.fertilizante_nombre ?? '—'}</td><td>${r.operario || '—'}</td><td>${r.costo_agua_total ? 'S/. ' + parseFloat(r.costo_agua_total).toFixed(2) : '—'}</td><td>${r.es_sostenible ? '<span class="badge verde">Sí</span>' : '—'}</td></tr>`).join('') : '<tr><td colspan="7" style="color:#9ca3af;text-align:center">Sin planes completados</td></tr>'}
     </tbody></table>
 
     <h2>Labores Ejecutadas</h2>
-    <table><thead><tr><th>Fecha</th><th>Labor</th><th>Cantidad</th><th>Operario</th></tr></thead><tbody>
-    ${labores.filter(l => l.estado === 'ejecutada').length ? labores.filter(l => l.estado === 'ejecutada').map(l => `<tr><td>${l.fecha_ejecutada}</td><td>${l.tipo_labor_nombre}</td><td>${l.cantidad_ejecutada ?? l.cantidad_programada} ${l.tipo_labor_unidad}</td><td>${l.operario || '—'}</td></tr>`).join('') : '<tr><td colspan="4" style="color:#9ca3af;text-align:center">Sin labores ejecutadas</td></tr>'}
+    <table><thead><tr><th>Fecha</th><th>Labor</th><th>Cantidad</th><th>Operario</th><th>Sostenible</th></tr></thead><tbody>
+    ${labores.filter(l => l.estado === 'ejecutada').length ? labores.filter(l => l.estado === 'ejecutada').map(l => `<tr><td>${l.fecha_ejecutada}</td><td>${l.tipo_labor_nombre}</td><td>${l.cantidad_ejecutada ?? l.cantidad_programada} ${l.tipo_labor_unidad}</td><td>${l.operario || '—'}</td><td>${l.es_sostenible ? '<span class="badge verde">Sí</span>' : '—'}</td></tr>`).join('') : '<tr><td colspan="5" style="color:#9ca3af;text-align:center">Sin labores ejecutadas</td></tr>'}
     </tbody></table>
     </body></html>`
     const w = window.open('', '_blank')
@@ -1627,11 +1713,7 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-2">
-          <button onClick={() => { setForm({ tipo: 'compost', descripcion: '', fecha: '', cantidad: '', unidad: '' }); setModal(true) }}
-            className="flex items-center gap-1.5 btn-primary text-sm"><Plus size={13} /> Registrar práctica</button>
-        </div>
+      <div className="flex items-center justify-end">
         <button onClick={exportPDF}
           className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-lg transition-all"
           style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.text : '#374151', border: `1px solid ${dark ? D.btnBorder : '#e5e7eb'}` }}
@@ -1641,20 +1723,31 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
         </button>
       </div>
 
-      {/* Prácticas sostenibles */}
-      <div>
-        <p className="text-xs font-extrabold uppercase tracking-wide mb-3" style={{ color: dark ? D.sub : '#6b7280' }}>Prácticas sostenibles</p>
-        <div className="flex flex-wrap gap-2">
-          {practicas.map(p => (
-            <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{ backgroundColor: dark ? 'rgba(22,163,74,0.12)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(22,163,74,0.3)' : '#bbf7d0'}` }}>
-              <span className="text-[13px] font-bold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{p.tipo_display}</span>
-              <span className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>{p.fecha}</span>
-              <button onClick={() => delPrac(p.id)} style={{ color: dark ? '#f87171' : '#dc2626' }}><X size={11} /></button>
-            </div>
-          ))}
-          {practicas.length === 0 && <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin prácticas sostenibles registradas</p>}
+      {/* Sostenibilidad */}
+      <div className="space-y-3">
+        <p className="text-xs font-extrabold uppercase tracking-wide" style={{ color: dark ? D.sub : '#6b7280' }}>Indicadores de sostenibilidad</p>
+
+        {/* Auto-derivados desde módulos */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {indicadoresAuto.map(ind => {
+            const isGreen  = ind.color === 'green'
+            const isYellow = ind.color === 'yellow'
+            const bg  = isGreen ? (dark ? 'rgba(22,163,74,0.12)' : '#f0fdf4') : isYellow ? (dark ? 'rgba(251,191,36,0.10)' : '#fffbeb') : (dark ? 'rgba(255,255,255,0.04)' : '#f9fafb')
+            const brd = isGreen ? (dark ? 'rgba(22,163,74,0.30)' : '#bbf7d0') : isYellow ? (dark ? 'rgba(251,191,36,0.25)' : '#fde68a') : (dark ? 'rgba(255,255,255,0.07)' : '#e5e7eb')
+            const clr = isGreen ? (dark ? '#4ade80' : '#15803d') : isYellow ? (dark ? '#fbbf24' : '#b45309') : (dark ? 'rgba(255,255,255,0.30)' : '#9ca3af')
+            return (
+              <div key={ind.key} className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: bg, border: `1px solid ${brd}` }}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: clr }} />
+                  <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: clr }}>{ind.label}</span>
+                </div>
+                <p className="text-[12px]" style={{ color: dark ? 'rgba(255,255,255,0.50)' : '#6b7280' }}>{ind.valor}</p>
+                <p className="text-[10px] mt-1 font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.22)' : '#9ca3af' }}>Derivado del módulo fitosanitario / riego</p>
+              </div>
+            )
+          })}
         </div>
+
       </div>
 
       {/* Timeline */}
@@ -1686,27 +1779,6 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
           )}
       </div>
 
-      {modal && (
-        <MiniModal dark={dark} title="Registrar práctica sostenible" onClose={() => setModal(false)} onSubmit={submit} loading={loading}>
-          <div><label style={lst}>Tipo *</label>
-            <select name="tipo" value={form.tipo} onChange={h} style={ist}>
-              {TIPOS_PRAC.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          </div>
-          <div><label style={lst}>Fecha *</label><input name="fecha" type="date" value={form.fecha} onChange={h} style={ist} required /></div>
-          <div><label style={lst}>Descripción *</label><textarea name="descripcion" value={form.descripcion} onChange={h} rows={2} style={{ ...ist, resize: 'none' }} required /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label style={lst}>Cantidad</label><input name="cantidad" type="number" step="0.01" value={form.cantidad} onChange={h} style={ist} /></div>
-            <div><label style={lst}>Unidad</label>
-              <input name="unidad" value={form.unidad} onChange={h} style={ist} list="unidades-prac" placeholder="kg, m², L…" />
-              <datalist id="unidades-prac">
-                {['kg','L','m²','m³','hora','jornal','saco','unid.'].map(u => <option key={u} value={u} />)}
-              </datalist>
-            </div>
-          </div>
-        </MiniModal>
-      )}
-      {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
     </div>
   )
 }
@@ -2247,7 +2319,13 @@ export default function CampanaDetailPage() {
                 </button>
               </>
             )}
-            {campana.lista_para_cosechar ? (
+            {campana.tiene_cosecha ? (
+              <Link to={`/cosechas`}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                style={{ backgroundColor: dark ? 'rgba(96,165,250,0.15)' : '#dbeafe', color: dark ? '#60a5fa' : '#1d4ed8', border: `1px solid ${dark ? 'rgba(96,165,250,0.35)' : '#93c5fd'}` }}>
+                <Scissors size={13} /> Ver cosecha registrada
+              </Link>
+            ) : campana.lista_para_cosechar ? (
               <Link to={`/cosechas/nueva?campana=${id}`}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
                 style={{ backgroundColor: dark ? 'rgba(22,163,74,0.20)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d', border: `1px solid ${dark ? 'rgba(22,163,74,0.4)' : '#86efac'}` }}>
@@ -2294,26 +2372,6 @@ export default function CampanaDetailPage() {
               </div>
             </div>
           ))}
-          {/* Selector de ciclo */}
-          <div style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f9fafb', borderRadius: '12px', padding: '10px 14px', border: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6'}` }}>
-            <p className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: dark ? D.sub : '#9ca3af' }}>Ciclo</p>
-            <div className="flex items-center gap-0.5 rounded-lg overflow-hidden"
-              style={{ border: `1px solid ${dark ? 'rgba(255,255,255,0.10)' : '#e5e7eb'}`, width: 'fit-content' }}>
-              {[['', 'Auto'], ['anual', 'Anual'], ['perenne', 'Perenne']].map(([val, lbl]) => {
-                const active = (campana.tipo_ciclo || '') === val
-                return (
-                  <button key={val} onClick={() => changeCiclo(val)}
-                    className="text-[11px] font-bold px-2 py-1 transition-all"
-                    style={{
-                      backgroundColor: active ? (dark ? 'rgba(22,163,74,0.25)' : '#dcfce7') : 'transparent',
-                      color: active ? (dark ? '#4ade80' : '#15803d') : (dark ? 'rgba(255,255,255,0.35)' : '#9ca3af'),
-                    }}>
-                    {lbl}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
           {campana.objetivo_cosecha && (
             <div style={{ backgroundColor: dark ? 'rgba(22,163,74,0.06)' : '#f0fdf4', borderRadius: '12px', padding: '10px 14px', border: `1px solid ${dark ? 'rgba(22,163,74,0.15)' : '#bbf7d0'}` }}>
               <p className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: dark ? '#4ade80' : '#16a34a' }}>Meta cosecha</p>

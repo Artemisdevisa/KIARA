@@ -17,6 +17,12 @@ class CosechasListCreate(generics.ListCreateAPIView):
     def get_serializer_context(self):
         return {'request': self.request}
 
+    def perform_create(self, serializer):
+        cosecha = serializer.save()
+        if cosecha.campana and cosecha.campana.estado != 'cerrada':
+            cosecha.campana.estado = 'cerrada'
+            cosecha.campana.save(update_fields=['estado'])
+
 
 class CosechaDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CosechaSerializer

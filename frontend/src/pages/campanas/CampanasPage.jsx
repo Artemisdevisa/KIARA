@@ -48,7 +48,21 @@ function CampanaModal({ dark, onClose, onSaved, editItem }) {
     (!editItem || c.id !== editItem.id)
   )
 
-  const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+  const h = e => {
+    const { name, value } = e.target
+    if (name === 'campana_anterior') {
+      const prev = prevCampanas.find(c => String(c.id) === String(value))
+      setForm(f => ({
+        ...f,
+        campana_anterior: value,
+        numero_ciclo: prev ? (prev.numero_ciclo || 1) + 1 : 1,
+      }))
+    } else if (name === 'variedad') {
+      setForm(f => ({ ...f, variedad: value, campana_anterior: '', numero_ciclo: 1 }))
+    } else {
+      setForm(f => ({ ...f, [name]: value }))
+    }
+  }
 
   const submit = async e => {
     e.preventDefault(); setLoading(true)
@@ -100,23 +114,40 @@ function CampanaModal({ dark, onClose, onSaved, editItem }) {
             {isPerenne && (
               <div className="rounded-xl p-3 space-y-3" style={{ backgroundColor: dark ? 'rgba(52,211,153,0.07)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(52,211,153,0.20)' : '#bbf7d0'}` }}>
                 <p className="text-[11px] font-black uppercase tracking-wider" style={{ color: dark ? '#34d399' : '#065f46' }}>
-                  Planta perenne — ciclo productivo
+                  Planta perenne — continuidad de la planta
                 </p>
-                <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label style={lst}>¿Viene de una campaña anterior?</label>
+                  <select name="campana_anterior" value={form.campana_anterior} onChange={h} style={ist}>
+                    <option value="">— No, es planta nueva (ciclo 1) —</option>
+                    {prevOptions.length === 0
+                      ? <option disabled>Sin campañas anteriores de esta variedad</option>
+                      : prevOptions.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.codigo} ({c.anio}) — Ciclo {c.numero_ciclo}
+                          </option>
+                        ))
+                    }
+                  </select>
+                </div>
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg"
+                  style={{ backgroundColor: dark ? 'rgba(0,0,0,0.20)' : '#fff', border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#d1fae5'}` }}>
+                  <div className="text-2xl font-black" style={{ color: dark ? '#34d399' : '#059669' }}>
+                    {form.numero_ciclo}
+                  </div>
                   <div>
-                    <label style={lst}>Número de ciclo</label>
-                    <input name="numero_ciclo" type="number" min="1" value={form.numero_ciclo} onChange={h} style={ist} />
-                    <p className="text-[11px] mt-1" style={{ color: dark ? 'rgba(255,255,255,0.35)' : '#9ca3af' }}>
-                      {Number(form.numero_ciclo) === 1 ? 'Ciclo 1 = Establecimiento (planta nueva)' : `Ciclo ${form.numero_ciclo} = Producción (planta establecida)`}
+                    <p className="text-[11px] font-black" style={{ color: dark ? '#34d399' : '#065f46' }}>
+                      {Number(form.numero_ciclo) === 1 ? 'Establecimiento' : 'Producción'}
+                    </p>
+                    <p className="text-[11px]" style={{ color: dark ? 'rgba(255,255,255,0.40)' : '#6b7280' }}>
+                      {Number(form.numero_ciclo) === 1
+                        ? 'Planta nueva — etapas: preparación → crecimiento → cosecha'
+                        : 'Planta establecida — etapas: poda → brotación → cosecha'}
                     </p>
                   </div>
-                  <div>
-                    <label style={lst}>Campaña anterior</label>
-                    <select name="campana_anterior" value={form.campana_anterior} onChange={h} style={ist}>
-                      <option value="">— Ninguna —</option>
-                      {prevOptions.map(c => <option key={c.id} value={c.id}>{c.codigo} ({c.anio})</option>)}
-                    </select>
-                  </div>
+                  <input name="numero_ciclo" type="number" min="1" value={form.numero_ciclo} onChange={h}
+                    className="ml-auto w-16 text-center font-bold text-sm rounded-lg outline-none"
+                    style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#bbf7d0'}`, color: dark ? D.text : '#111827', padding: '6px' }} />
                 </div>
               </div>
             )}

@@ -224,6 +224,7 @@ class LaborCampana(models.Model):
     operario            = models.CharField(max_length=100, blank=True)
     estado              = models.CharField(max_length=15, choices=ESTADO, default='programada')
     etapa               = models.CharField(max_length=15, choices=ETAPA_CHOICES, blank=True, default='')
+    es_sostenible       = models.BooleanField(default=False)
     notas               = models.TextField(blank=True)
 
     class Meta:
@@ -292,6 +293,7 @@ class PlanRiego(models.Model):
     costo_agua_total   = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     activo             = models.BooleanField(default=True)
     completado         = models.BooleanField(default=False)
+    es_sostenible      = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['fecha_inicio', 'nombre']
