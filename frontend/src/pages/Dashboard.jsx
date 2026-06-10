@@ -173,10 +173,9 @@ export default function Dashboard() {
     sectionHdr(1, 'Indicadores del biohuerto', C.teal)
     const ind = [
       ['Biohuertos activos',     String(data.total_biohuertos ?? 0)],
-      ['Cultivos en producción', String(data.cultivos_activos ?? 0)],
+      ['Campañas activas',       String(data.campanas_activas ?? 0)],
       ['Alertas pendientes',     String(data.alertas_pendientes ?? 0)],
       ['Cosechas publicadas',    String(data.cosechas_activas ?? 0)],
-      ['Costo acumulado del mes', `S/ ${(data.costo_total_mes ?? 0).toFixed(2)}`],
       ['Prácticas sostenibles',  String(data.practicas_mes ?? 0)],
       ['Semáforo ambiental',     (data.semaforo_ambiental ?? 'rojo').toUpperCase()],
     ]
@@ -190,16 +189,24 @@ export default function Dashboard() {
         C.green, { columnStyles: { 2: { halign: 'center' } } })
     else emptyMsg('No hay cosechas en los próximos 7 días.')
 
-    /* 3 — Costos por concepto */
-    sectionHdr(3, 'Costos de producción — mes actual', C.navy)
-    if (data.costos_por_concepto?.length) {
-      const tot = data.costos_por_concepto.reduce((s, c) => s + c.total, 0)
-      table(['Concepto','Monto (S/)','% total'],
-        data.costos_por_concepto.map(c => [
-          c.concepto, c.total.toFixed(2), `${((c.total / tot) * 100).toFixed(1)}%`,
-        ]),
-        C.navy, { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'center' } } })
-    } else emptyMsg('Sin costos registrados este mes.')
+    /* 3 — Gasto por campaña */
+    sectionHdr(3, 'Gasto por campaña (presupuesto vs ejecutado)', C.navy)
+    if (data.campanas_costos?.length) {
+      const totPres = data.campanas_costos.reduce((s, c) => s + c.presupuestado, 0)
+      const totEj   = data.campanas_costos.reduce((s, c) => s + c.ejecutado, 0)
+      table(
+        ['Campaña', 'Variedad', 'Presupuestado (S/)', 'Ejecutado (S/)'],
+        [
+          ...data.campanas_costos.map(c => [
+            c.codigo ?? '—', c.variedad ?? '—',
+            c.presupuestado.toFixed(2), c.ejecutado.toFixed(2),
+          ]),
+          ['', 'TOTAL', totPres.toFixed(2), totEj.toFixed(2)],
+        ],
+        C.navy,
+        { columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' } } }
+      )
+    } else emptyMsg('Sin campañas activas o planificadas.')
 
     /* 4 — Prácticas sostenibles */
     sectionHdr(4, 'Prácticas sostenibles del mes', C.green)
@@ -439,26 +446,51 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Costos del mes */}
+          {/* Gasto por campaña */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Wallet size={14} className="text-blue-500 dark:text-blue-400" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Costo acumulado</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Gasto por campaña</p>
               </div>
-              <Link to="/trazabilidad" className="text-[10px] text-blue-500 dark:text-blue-400 font-semibold hover:underline">Ver detalle</Link>
+              <Link to="/campanas" className="text-[10px] text-blue-500 dark:text-blue-400 font-semibold hover:underline">Ver campañas</Link>
             </div>
-            <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-50 tabular-nums mt-3 mb-4">
-              S/&nbsp;{(data?.costo_total_mes ?? 0).toFixed(2)}
-            </p>
-            {data?.costos_por_concepto?.length > 0 ? (
+            {data?.campanas_costos?.length > 0 ? (
               <div className="space-y-3">
-                {data.costos_por_concepto.map((c, i) => (
-                  <CostoBar key={i} label={c.concepto} value={c.total} total={costoTotal} barClass={BAR_COLORS[i % BAR_COLORS.length]} />
-                ))}
+                {data.campanas_costos.map((c, i) => {
+                  const pct = c.presupuestado > 0 ? Math.min(100, Math.round((c.ejecutado / c.presupuestado) * 100)) : 0
+                  const overBudget = c.ejecutado > c.presupuestado && c.presupuestado > 0
+                  return (
+                    <div key={i} className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{c.variedad}</p>
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{c.biohuerto}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className={`text-xs font-extrabold tabular-nums ${overBudget ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
+                            S/ {c.ejecutado.toFixed(2)}
+                          </p>
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums">
+                            / S/ {c.presupuestado.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${overBudget ? 'bg-red-500' : BAR_COLORS[i % BAR_COLORS.length]}`}
+                          style={{ width: `${c.presupuestado > 0 ? pct : 0}%` }}
+                        />
+                      </div>
+                      {c.presupuestado > 0 && (
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-right">{pct}% ejecutado</p>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             ) : (
-              <p className="text-xs text-gray-400 dark:text-gray-500 italic">Sin costos este mes</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 italic">Sin campañas activas o planificadas</p>
             )}
           </div>
 

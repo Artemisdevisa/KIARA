@@ -57,14 +57,25 @@ class DashboardView(APIView):
             fecha__gte=inicio_mes
         ).count()
 
-        if practicas_mes >= 2:
+        # También contar productos fitosanitarios marcados como sostenibles y aplicados este mes
+        from apps.campanas.models import ItemFitosanitario
+        fito_sostenible_mes = ItemFitosanitario.objects.filter(
+            campana__biohuerto__in=biohuertos,
+            es_sostenible=True,
+            estado='aplicado',
+            fecha_aplicada__gte=inicio_mes
+        ).count()
+
+        practicas_total = practicas_mes + fito_sostenible_mes
+
+        if practicas_total >= 2:
             semaforo = 'verde'
-        elif practicas_mes == 1:
+        elif practicas_total == 1:
             semaforo = 'amarillo'
         else:
             semaforo = 'rojo'
 
-        # Detalle prácticas del mes
+        # Detalle prácticas del mes (registro manual)
         practicas_detalle = list(
             PracticaCampana.objects.filter(
                 campana__biohuerto__in=biohuertos, fecha__gte=inicio_mes
@@ -73,6 +84,24 @@ class DashboardView(APIView):
         for p in practicas_detalle:
             p['fecha'] = str(p['fecha'])
             p['cultivo__nombre'] = p.pop('campana__variedad__nombre') or ''
+
+        # Detalle fitosanitarios sostenibles aplicados este mes
+        fito_detalle = list(
+            ItemFitosanitario.objects.filter(
+                campana__biohuerto__in=biohuertos,
+                es_sostenible=True,
+                estado='aplicado',
+                fecha_aplicada__gte=inicio_mes
+            ).select_related('campana__variedad', 'producto')
+            .values('fecha_aplicada', 'producto__nombre', 'campana__variedad__nombre')
+        )
+        for f in fito_detalle:
+            practicas_detalle.append({
+                'fecha':          str(f['fecha_aplicada']),
+                'tipo':           f['producto__nombre'] or 'Producto sostenible',
+                'cultivo__nombre': f['campana__variedad__nombre'] or '',
+                'fuente':         'fitosanitario',
+            })
 
         # Costos por concepto del mes
         from django.db.models import Sum as DSum
@@ -101,6 +130,34 @@ class DashboardView(APIView):
             d['fecha'] = str(d['fecha'])
             d['cultivo__nombre'] = d.pop('variedad__nombre') or ''
             d['campana_codigo']  = d.pop('campana__codigo') or ''
+
+        # Gasto por campaña (PresupuestoItem)
+        from apps.campanas.models import PresupuestoItem
+        from django.db.models import F, ExpressionWrapper, DecimalField as DDecField
+
+        campanas_activas_qs = Campana.objects.filter(
+            biohuerto__in=biohuertos, estado__in=['activa', 'planificada']
+        ).select_related('variedad', 'biohuerto')
+
+        pres_map = {
+            r['campana_id']: {'presupuestado': float(r['total_pres'] or 0), 'ejecutado': float(r['total_ej'] or 0)}
+            for r in PresupuestoItem.objects.filter(campana__in=campanas_activas_qs)
+            .annotate(monto_pres=ExpressionWrapper(F('cantidad') * F('precio_unitario'), output_field=DDecField(max_digits=12, decimal_places=2)))
+            .values('campana_id')
+            .annotate(total_pres=Sum('monto_pres'), total_ej=Sum('monto_ejecutado'))
+        }
+
+        campanas_costos = [
+            {
+                'codigo':        c.codigo,
+                'variedad':      c.variedad.nombre if c.variedad else '',
+                'biohuerto':     c.biohuerto.nombre if c.biohuerto else '',
+                'presupuestado': pres_map.get(c.id, {}).get('presupuestado', 0),
+                'ejecutado':     pres_map.get(c.id, {}).get('ejecutado', 0),
+                'estado':        c.estado,
+            }
+            for c in campanas_activas_qs
+        ]
 
         # Campañas activas con detalle
         campanas_detalle = list(
@@ -134,7 +191,7 @@ class DashboardView(APIView):
             'alertas_pendientes': alertas_pendientes,
             'cosechas_activas': cosechas_activas,
             'costo_total_mes': float(costo_mes),
-            'practicas_mes': practicas_mes,
+            'practicas_mes': practicas_total,
             'semaforo_ambiental': semaforo,
             'total_biohuertos': biohuertos.count(),
             'practicas_detalle': practicas_detalle,
@@ -142,4 +199,5 @@ class DashboardView(APIView):
             'ultimos_diagnosticos': ultimos_diagnosticos,
             'campanas_detalle': campanas_detalle,
             'alertas_detalle': alertas_detalle,
+            'campanas_costos': campanas_costos,
         })
