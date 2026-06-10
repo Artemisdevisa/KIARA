@@ -266,7 +266,7 @@ function OperarioSelect({ dark, value, onChange, miembros, ist }) {
 /* ══════════════════════════════════════════════════════
    TAB: LABORES
 ══════════════════════════════════════════════════════ */
-function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
+function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana, onRefreshCampana }) {
   const [data, setData]             = useState([])
   const [tipos, setTipos]           = useState([])
   const [modal, setModal]           = useState(null)
@@ -282,6 +282,7 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
     const [r, t] = await Promise.all([api.get(`/campanas/${campanaId}/labores/`), api.get('/campanas/tipos-labor/')])
     setData(r.data); setTipos(t.data)
   }, [campanaId])
+  const refresh = useCallback(() => { fetch(); onRefreshCampana?.() }, [fetch, onRefreshCampana])
   useEffect(() => { fetch() }, [fetch])
 
   useEffect(() => {
@@ -325,14 +326,14 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
       const payload = { ...form, tipo_labor: tipoId }
       if (modal === 'edit') { await api.patch(`/campanas/labores/${form.id}/`, payload); toast.success('Labor actualizada.') }
       else { await api.post(`/campanas/${campanaId}/labores/`, payload); toast.success('Labor registrada.') }
-      setModal(null); fetch()
+      setModal(null); refresh()
     } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
   }
 
   const openEjModal = item => {
     if (item.estado === 'ejecutada') {
       api.patch(`/campanas/labores/${item.id}/`, { estado: 'programada', fecha_ejecutada: null, cantidad_ejecutada: null })
-        .then(fetch).catch(() => toast.error('Error.'))
+        .then(refresh).catch(() => toast.error('Error.'))
       return
     }
     const blocker = checkEtapaOrder(data, item.etapa, i => i.estado === 'ejecutada')
@@ -345,11 +346,11 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
     e.preventDefault(); setLoading(true)
     try {
       await api.patch(`/campanas/labores/${ejModal.id}/`, { estado: 'ejecutada', ...ejForm })
-      toast.success('Labor marcada como ejecutada.'); setEjModal(null); fetch()
+      toast.success('Labor marcada como ejecutada.'); setEjModal(null); refresh()
     } catch { toast.error('Error.') } finally { setLoading(false) }
   }
 
-  const del = item => setDelConfirm({ fn: async () => { await api.delete(`/campanas/labores/${item.id}/`); fetch() }, msg: `¿Eliminar la labor "${item.tipo_labor_nombre}"?` })
+  const del = item => setDelConfirm({ fn: async () => { await api.delete(`/campanas/labores/${item.id}/`); refresh() }, msg: `¿Eliminar la labor "${item.tipo_labor_nombre}"?` })
 
   const toggleSostenibleLabor = async item => {
     try {
@@ -659,7 +660,7 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
 /* ══════════════════════════════════════════════════════
    TAB: FITOSANITARIO
 ══════════════════════════════════════════════════════ */
-function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
+function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana, onRefreshCampana }) {
   const [plan, setPlan]             = useState([])
   const [prods, setProds]           = useState([])
   const [unidades, setUnidades]     = useState([])
@@ -680,6 +681,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
     ])
     setPlan(p.data); setProds(pr.data); setUnidades(un.data)
   }, [campanaId])
+  const refresh = useCallback(() => { fetch(); onRefreshCampana?.() }, [fetch, onRefreshCampana])
   useEffect(() => { fetch() }, [fetch])
 
   useEffect(() => {
@@ -694,7 +696,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
   const openApModal = item => {
     if (item.estado === 'aplicado') {
       api.patch(`/campanas/fitosanitario/${item.id}/`, { estado: 'programado', fecha_aplicada: null })
-        .then(fetch).catch(() => toast.error('Error.'))
+        .then(refresh).catch(() => toast.error('Error.'))
       return
     }
     const blocker = checkEtapaOrder(plan, item.etapa, i => i.estado === 'aplicado')
@@ -722,7 +724,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
         es_sostenible:  apForm.es_sostenible,
         observaciones:  apForm.observaciones,
       })
-      toast.success('Marcado como aplicado.'); setApModal(null); fetch()
+      toast.success('Marcado como aplicado.'); setApModal(null); refresh()
     } catch { toast.error('Error.') } finally { setLoading(false) }
   }
 
@@ -745,7 +747,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
       else if (hasSeg)            toast.success('Guardado. Alerta de intervalo de seguridad creada.')
       else if (hasFrq)            toast.success('Guardado. Alerta de aplicación periódica creada.')
       else                        toast.success(modal === 'edit' ? 'Actualizado.' : 'Agregado al plan.')
-      setModal(null); fetch()
+      setModal(null); refresh()
     } catch (err) {
       const detail = err?.response?.data
       const msg = detail ? Object.values(detail).flat().join(' · ') : 'Error al guardar.'
@@ -760,7 +762,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
     } catch { toast.error('Error al actualizar.') }
   }
 
-  const delPlan = (item) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/fitosanitario/${item.id}/`); fetch() }, msg: `¿Eliminar "${item.producto_nombre}" del plan?` })
+  const delPlan = (item) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/fitosanitario/${item.id}/`); refresh() }, msg: `¿Eliminar "${item.producto_nombre}" del plan?` })
 
   const ist = ist_(dark); const lst = lst_(dark)
 
@@ -1065,7 +1067,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
 /* ══════════════════════════════════════════════════════
    TAB: RIEGO & FERTIRRIGACIÓN
 ══════════════════════════════════════════════════════ */
-function RiegoTab({ dark, campanaId, campana }) {
+function RiegoTab({ dark, campanaId, campana, onRefreshCampana }) {
   const [planes, setPlanes]         = useState([])
   const [prods, setProds]           = useState([])
   const [viewPlan, setViewPlan]     = useState(null)
@@ -1085,6 +1087,7 @@ function RiegoTab({ dark, campanaId, campana }) {
     ])
     setPlanes(p.data); setProds(pr.data)
   }, [campanaId])
+  const refresh = useCallback(() => { fetch(); onRefreshCampana?.() }, [fetch, onRefreshCampana])
   useEffect(() => { fetch() }, [fetch])
 
   useEffect(() => {
@@ -1101,11 +1104,11 @@ function RiegoTab({ dark, campanaId, campana }) {
       const payload = { ...form, duracion_minutos: form.duracion_minutos || null, fertilizante: form.fertilizante || null, dosis_fertilizante: form.dosis_fertilizante || null, fecha_inicio: form.fecha_inicio || null, fecha_fin: form.fecha_fin || null, costo_agua_total: form.costo_agua_total || null }
       if (modal === 'edit') { await api.patch(`/campanas/plan-riego/${form.id}/`, payload); toast.success('Plan actualizado.') }
       else { await api.post(`/campanas/${campanaId}/plan-riego/`, payload); toast.success('Plan agregado.') }
-      setModal(null); fetch()
+      setModal(null); refresh()
     } catch { toast.error('Error.') } finally { setLoading(false) }
   }
 
-  const delPlan    = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`); fetch() }, msg: '¿Eliminar este plan de riego?' })
+  const delPlan    = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`); refresh() }, msg: '¿Eliminar este plan de riego?' })
 
   const toggleSostenibleRiego = async plan => {
     try {
@@ -1116,8 +1119,8 @@ function RiegoTab({ dark, campanaId, campana }) {
   const togglePlan = async (p) => {
     if (p.completado) {
       try {
-        const res = await api.patch(`/campanas/plan-riego/${p.id}/`, { completado: false })
-        setPlanes(prev => prev.map(x => x.id === p.id ? { ...x, completado: res.data.completado } : x))
+        await api.patch(`/campanas/plan-riego/${p.id}/`, { completado: false })
+        refresh()
       } catch { toast.error('Error al actualizar.') }
       return
     }
@@ -1132,9 +1135,8 @@ function RiegoTab({ dark, campanaId, campana }) {
   const confirmCompletar = async e => {
     e.preventDefault(); setLoading(true)
     try {
-      const res = await api.patch(`/campanas/plan-riego/${completarModal.id}/`, { completado: true, operario: completarForm.operario })
-      setPlanes(prev => prev.map(x => x.id === completarModal.id ? { ...x, completado: res.data.completado, operario: res.data.operario } : x))
-      toast.success('Plan marcado como completado.'); setCompletarModal(null)
+      await api.patch(`/campanas/plan-riego/${completarModal.id}/`, { completado: true, operario: completarForm.operario })
+      toast.success('Plan marcado como completado.'); setCompletarModal(null); refresh()
     } catch { toast.error('Error al actualizar.') } finally { setLoading(false) }
   }
   const ist = ist_(dark); const lst = lst_(dark)
@@ -2622,9 +2624,9 @@ export default function CampanaDetailPage() {
       {/* ── Contenido de sección ── */}
       <div style={{ ...cardStyle, overflow: 'hidden' }}>
         <div className="p-5">
-          {tab === 'labores'       && <LaboresTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} campana={campana} />}
-          {tab === 'fitosanitario' && <FitosanitarioTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} campana={campana} />}
-          {tab === 'riego'         && <RiegoTab dark={dark} campanaId={id} campana={campana} />}
+          {tab === 'labores'       && <LaboresTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} campana={campana} onRefreshCampana={fetch} />}
+          {tab === 'fitosanitario' && <FitosanitarioTab dark={dark} campanaId={id} etapaFilter={etapaFilter} etapasValidas={etapasValidas} campana={campana} onRefreshCampana={fetch} />}
+          {tab === 'riego'         && <RiegoTab dark={dark} campanaId={id} campana={campana} onRefreshCampana={fetch} />}
           {tab === 'presupuesto'   && <PresupuestoTab dark={dark} campanaId={id} campana={campana} />}
           {tab === 'trazabilidad'  && <TrazabilidadTab dark={dark} campanaId={id} campana={campana} />}
           {tab === 'alertas'       && <AlertasTab dark={dark} campanaId={id} />}

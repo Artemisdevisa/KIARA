@@ -49,6 +49,7 @@ export default function AlertasPage() {
   const [soloActivas, setSoloActivas] = useState(true)
   const [search, setSearch]         = useState('')
   const [filtroOrigen, setFiltroOrigen] = useState('')
+  const [filtroBiohuerto, setFiltroBiohuerto] = useState('')
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -73,6 +74,7 @@ export default function AlertasPage() {
   }
 
   const filtered = alertas.filter(a => {
+    if (filtroBiohuerto && a.biohuerto_nombre !== filtroBiohuerto) return false
     if (!search) return true
     const q = search.toLowerCase()
     return (
@@ -82,6 +84,8 @@ export default function AlertasPage() {
       a.biohuerto_nombre?.toLowerCase().includes(q)
     )
   })
+
+  const biohuertosUnicos = [...new Set(alertas.map(a => a.biohuerto_nombre).filter(Boolean))].sort()
 
   const vencidas = filtered.filter(a => a.dias_restantes < 0 && !a.completada).length
 
@@ -183,6 +187,25 @@ export default function AlertasPage() {
             </button>
           ))}
         </div>
+
+        {biohuertosUnicos.length > 1 && (
+          <select
+            value={filtroBiohuerto}
+            onChange={e => setFiltroBiohuerto(e.target.value)}
+            style={{
+              height: '36px', fontSize: '12px', fontWeight: 700,
+              borderRadius: '10px', paddingLeft: '10px', paddingRight: '28px',
+              outline: 'none', cursor: 'pointer',
+              backgroundColor: filtroBiohuerto ? (dark ? 'rgba(16,185,129,0.18)' : '#ecfdf5') : (dark ? D.btnIdle : '#f3f4f6'),
+              border: `1px solid ${filtroBiohuerto ? (dark ? 'rgba(52,211,153,0.4)' : '#6ee7b7') : (dark ? D.btnBorder : '#e5e7eb')}`,
+              color: filtroBiohuerto ? (dark ? '#34d399' : '#059669') : (dark ? D.sub : '#6b7280'),
+            }}>
+            <option value="">Todos los biohuertos</option>
+            {biohuertosUnicos.map(b => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Lista */}

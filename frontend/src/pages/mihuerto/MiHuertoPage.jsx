@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, TreePine, CalendarRange, Sprout, Leaf, FlaskConical, Wrench } from 'lucide-react'
+import { ArrowRight, TreePine, CalendarRange, Leaf, FlaskConical, Wrench } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
 import Breadcrumb from '../../components/ui/Breadcrumb'
 
@@ -12,12 +12,6 @@ const SECTIONS = [
         desc: 'Registra y gestiona tus parcelas: ubicación, área, documentos y datos del productor.',
         to: '/biohuertos',
         color: { dark: '#4ade80', light: '#15803d', bg: { dark: 'rgba(22,163,74,0.12)', light: '#f0fdf4' } },
-      },
-      {
-        icon: Sprout, label: 'Cultivos',
-        desc: 'Lleva el seguimiento de cada planta: etapa, tipo de ciclo, fechas de siembra y cosecha.',
-        to: '/cultivos',
-        color: { dark: '#86efac', light: '#16a34a', bg: { dark: 'rgba(134,239,172,0.10)', light: '#f0fdf4' } },
       },
       {
         icon: CalendarRange, label: 'Campañas',
