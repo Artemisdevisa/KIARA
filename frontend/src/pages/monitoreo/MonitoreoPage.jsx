@@ -359,7 +359,7 @@ export default function MonitoreoPage() {
   }
 
   return (
-    <div className="space-y-5 max-w-4xl">
+    <div className="space-y-5">
 
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -387,7 +387,7 @@ export default function MonitoreoPage() {
             Último registro — {ultimo.fecha} · {ultimo.biohuerto_nombre}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3">
 
             {/* Temperatura */}
             <div className="rounded-xl p-4" style={{
@@ -412,7 +412,7 @@ export default function MonitoreoPage() {
               </p>
               {tempData.length >= 2 && (
                 <div className="mt-3">
-                  <Sparkline data={tempData} color={dark ? ec(tEstado, dark, 'light') : ec(tEstado, false, 'light')} min={0} max={50} width={110} height={32}/>
+                  <Sparkline data={tempData} color={dark ? ec(tEstado, dark, 'light') : ec(tEstado, false, 'light')} min={0} max={50} width={160} height={36}/>
                   <p className="text-[9px] mt-1" style={{ color: dark ? D.sub : '#9ca3af' }}>Últimas {tempData.length} lecturas</p>
                 </div>
               )}
@@ -441,7 +441,7 @@ export default function MonitoreoPage() {
               </p>
               {humData.length >= 2 && (
                 <div className="mt-3">
-                  <Sparkline data={humData} color={dark ? ec(hEstado, dark, 'light') : ec(hEstado, false, 'light')} min={0} max={100} width={110} height={32}/>
+                  <Sparkline data={humData} color={dark ? ec(hEstado, dark, 'light') : ec(hEstado, false, 'light')} min={0} max={100} width={160} height={36}/>
                   <p className="text-[9px] mt-1" style={{ color: dark ? D.sub : '#9ca3af' }}>Últimas {humData.length} lecturas</p>
                 </div>
               )}
