@@ -460,7 +460,10 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                     <td className="px-4 py-3">
-                      <button onClick={() => openEjModal(l)} title={l.estado === 'ejecutada' ? 'Revertir a pendiente' : 'Marcar ejecutada'}>
+                      <button
+                        onClick={() => campana?.estado !== 'cerrada' && openEjModal(l)}
+                        title={campana?.estado === 'cerrada' ? 'Campaña cerrada' : l.estado === 'ejecutada' ? 'Revertir a pendiente' : 'Marcar ejecutada'}
+                        style={{ opacity: campana?.estado === 'cerrada' ? 0.3 : 1, cursor: campana?.estado === 'cerrada' ? 'not-allowed' : 'pointer' }}>
                         {l.estado === 'ejecutada'
                           ? <CheckCircle2 size={18} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
                           : <Circle size={18} style={{ color: dark ? D.sub : '#d1d5db' }} />}
@@ -804,7 +807,10 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                     <td className="px-4 py-3">
-                      <button onClick={() => openApModal(item)} title={aplicado ? 'Revertir a pendiente' : 'Marcar como aplicado'}>
+                      <button
+                        onClick={() => campana?.estado !== 'cerrada' && openApModal(item)}
+                        title={campana?.estado === 'cerrada' ? 'Campaña cerrada' : aplicado ? 'Revertir a pendiente' : 'Marcar como aplicado'}
+                        style={{ opacity: campana?.estado === 'cerrada' ? 0.3 : 1, cursor: campana?.estado === 'cerrada' ? 'not-allowed' : 'pointer' }}>
                         {aplicado
                           ? <CheckCircle2 size={18} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
                           : <Circle size={18} style={{ color: dark ? D.sub : '#d1d5db' }} />}
@@ -1100,7 +1106,10 @@ function RiegoTab({ dark, campanaId, campana }) {
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                     <td className="px-4 py-3">
-                      <button onClick={() => togglePlan(p)} title={p.completado ? 'Revertir a pendiente' : 'Marcar como hecho'}>
+                      <button
+                        onClick={() => campana?.estado !== 'cerrada' && togglePlan(p)}
+                        title={campana?.estado === 'cerrada' ? 'Campaña cerrada' : p.completado ? 'Revertir a pendiente' : 'Marcar como hecho'}
+                        style={{ opacity: campana?.estado === 'cerrada' ? 0.3 : 1, cursor: campana?.estado === 'cerrada' ? 'not-allowed' : 'pointer' }}>
                         {p.completado
                           ? <CheckCircle2 size={18} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
                           : <Circle size={18} style={{ color: dark ? D.sub : '#d1d5db' }} />}
