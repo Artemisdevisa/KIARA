@@ -30,6 +30,46 @@ class CosechaDetail(generics.RetrieveUpdateDestroyAPIView):
         return {'request': self.request}
 
 
+class CosechaPublicaDetailView(generics.RetrieveAPIView):
+    """Detalle público de cosecha + trazabilidad de campaña."""
+    serializer_class   = CosechaSerializer
+    permission_classes = [permissions.AllowAny]
+    queryset           = Cosecha.objects.all()
+
+    def get_serializer_context(self):
+        return {'request': self.request}
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        data     = self.get_serializer(instance).data
+        traz     = {'practicas': [], 'labores': [], 'fito': []}
+
+        if instance.campana:
+            from apps.campanas.models import PracticaSostenible, LaborCampana, ItemFitosanitario
+            for p in PracticaSostenible.objects.filter(campana=instance.campana):
+                traz['practicas'].append({
+                    'tipo_display': p.get_tipo_display(), 'descripcion': p.descripcion,
+                    'fecha': str(p.fecha),
+                    'cantidad': str(p.cantidad) if p.cantidad else None, 'unidad': p.unidad,
+                })
+            for l in LaborCampana.objects.filter(campana=instance.campana, estado='ejecutada').select_related('tipo_labor'):
+                traz['labores'].append({
+                    'nombre': l.tipo_labor.nombre,
+                    'fecha': str(l.fecha_ejecutada) if l.fecha_ejecutada else None,
+                    'cantidad': str(l.cantidad_ejecutada or l.cantidad_programada),
+                    'unidad': l.tipo_labor.unidad_default,
+                })
+            for f in ItemFitosanitario.objects.filter(campana=instance.campana, estado='aplicado').select_related('producto'):
+                traz['fito'].append({
+                    'producto': f.producto.nombre, 'es_sostenible': f.es_sostenible,
+                    'fecha': str(f.fecha_aplicada) if f.fecha_aplicada else None,
+                    'dosis': str(f.dosis),
+                })
+
+        data['trazabilidad'] = traz
+        return Response(data)
+
+
 class CategoriasPublicasView(generics.ListAPIView):
     """Devuelve todas las categorías con sus tipos. Sin autenticación."""
     permission_classes = [permissions.AllowAny]

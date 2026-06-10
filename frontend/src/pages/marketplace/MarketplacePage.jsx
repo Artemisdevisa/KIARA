@@ -1,20 +1,29 @@
 import { useState, useEffect, useRef } from 'react'
-import axios from 'axios'
+import { Link } from 'react-router-dom'
+import api from '../../api/axios'
 import {
   Search, Leaf, Phone, ShoppingBasket, Sprout,
-  MapPin, CalendarDays, Package, Scale, X, SlidersHorizontal,
-  Wheat, Apple, FlowerIcon, Salad, Bean,
+  MapPin, CalendarDays, Scale, X,
+  Wheat, Apple, Salad, Bean, ChevronRight,
 } from 'lucide-react'
 
-/* ── Categorías de filtro ── */
+/* ── Categorías de filtro (palabras clave para buscar en nombre_producto) ── */
 const CATEGORIAS = [
-  { key: '',          label: 'Todos',      Icon: ShoppingBasket },
-  { key: 'hortaliza', label: 'Hortalizas', Icon: Salad          },
-  { key: 'fruta',     label: 'Frutas',     Icon: Apple          },
-  { key: 'grano',     label: 'Granos',     Icon: Wheat          },
-  { key: 'hierba',    label: 'Hierbas',    Icon: Leaf           },
-  { key: 'legumbre',  label: 'Legumbres',  Icon: Bean           },
+  { key: '',          label: 'Todos',      Icon: ShoppingBasket, keywords: [] },
+  { key: 'hortaliza', label: 'Hortalizas', Icon: Salad,          keywords: ['lechuga','espinaca','zanahoria','tomate','pepino','acelga','betarraga','pimiento','cebolla','ajo','brocoli','coliflor','nabo','rabanito','apio'] },
+  { key: 'fruta',     label: 'Frutas',     Icon: Apple,          keywords: ['fresa','mango','papaya','naranja','limon','palta','manzana','pera','uva','maracuya','pepino dulce','zapallito'] },
+  { key: 'grano',     label: 'Granos',     Icon: Wheat,          keywords: ['trigo','maiz','quinua','arroz','avena','kiwicha','cebada'] },
+  { key: 'hierba',    label: 'Hierbas',    Icon: Leaf,           keywords: ['culantro','perejil','albahaca','menta','huacatay','romero','oregano','hierbabuena','tomillo'] },
+  { key: 'legumbre',  label: 'Legumbres',  Icon: Bean,           keywords: ['frijol','lenteja','garbanzo','arveja','soya','haba'] },
 ]
+
+function matchCategoria(c, key) {
+  if (!key) return true
+  const cat = CATEGORIAS.find(ct => ct.key === key)
+  if (!cat) return true
+  const nombre = (c.nombre_producto || '').toLowerCase()
+  return cat.keywords.some(kw => nombre.includes(kw))
+}
 
 /* ── Colores por unidad ── */
 const UNIDAD_COLOR = {
@@ -33,30 +42,30 @@ function unidadStyle(unidad) {
 /* ── Tarjeta de producto ── */
 function ProductCard({ c }) {
   const us = unidadStyle(c.unidad_display)
-  const telefono = c.contacto?.replace(/\D/g, '')
-  const whatsapp = `https://wa.me/51${telefono}`
-
   return (
-    <article className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col group">
+    <Link to={`/marketplace/${c.id}`}
+      className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-200 flex flex-col group hover:-translate-y-1">
       {/* Imagen */}
-      <div className="relative overflow-hidden h-44 bg-gradient-to-br from-emerald-50 to-green-100">
+      <div className="relative overflow-hidden h-48 bg-gradient-to-br from-emerald-50 to-green-100">
         {c.foto_url ? (
-          <img
-            src={c.foto_url}
-            alt={c.nombre_producto}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+          <img src={c.foto_url} alt={c.nombre_producto}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2">
             <Sprout size={40} className="text-emerald-300" />
             <span className="text-xs text-emerald-400 font-medium">Sin imagen</span>
           </div>
         )}
-        {/* Badge precio */}
         <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm rounded-xl px-2.5 py-1 shadow-sm">
           <span className="text-emerald-700 font-extrabold text-sm">S/ {c.precio}</span>
           <span className="text-gray-400 text-[10px] ml-1">/ {c.unidad_display}</span>
         </div>
+        {c.campana_nombre && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold text-white"
+            style={{ background: 'rgba(22,101,52,0.85)', backdropFilter: 'blur(6px)' }}>
+            🌿 Trazable
+          </div>
+        )}
       </div>
 
       {/* Cuerpo */}
@@ -67,8 +76,6 @@ function ProductCard({ c }) {
             <MapPin size={10} /> {c.biohuerto_nombre}
           </p>
         </div>
-
-        {/* Atributos */}
         <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg"
             style={{ backgroundColor: us.bg, color: us.text, border: `1px solid ${us.border}` }}>
@@ -78,22 +85,12 @@ function ProductCard({ c }) {
             <CalendarDays size={10} /> {c.fecha_cosecha}
           </span>
         </div>
-
-        {/* Botón contacto */}
-        <a
-          href={whatsapp}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-auto flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold text-white transition-all duration-150 active:scale-95"
-          style={{ backgroundColor: '#16a34a' }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#15803d'}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#16a34a'}
-        >
-          <Phone size={14} />
-          Contactar al productor
-        </a>
+        <div className="mt-auto flex items-center justify-between pt-2 border-t border-gray-50">
+          <span className="text-xs text-emerald-600 font-bold">Ver detalle</span>
+          <ChevronRight size={14} className="text-emerald-500" />
+        </div>
       </div>
-    </article>
+    </Link>
   )
 }
 
@@ -106,29 +103,32 @@ export default function MarketplacePage() {
   const [showFilters, setShowFilters] = useState(false)
   const inputRef = useRef()
 
-  const buscar = (texto = busqueda, cat = categoria) => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    if (texto) params.set('producto', texto)
-    if (cat)   params.set('categoria', cat)
-    axios.get(`/api/cosechas/publicas/?${params}`)
-      .then(r => setCosechas(r.data))
+  const [todos, setTodos] = useState([])
+
+  useEffect(() => {
+    api.get('/cosechas/publicas/')
+      .then(r => { setTodos(r.data); setCosechas(r.data) })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }
+  }, [])
 
-  useEffect(() => { buscar('', '') }, [])
+  // Filtrado 100% en frontend
+  useEffect(() => {
+    const q = busqueda.toLowerCase()
+    const filtrados = todos.filter(c => {
+      const matchTexto = !q || (c.nombre_producto || '').toLowerCase().includes(q)
+      const matchCat   = matchCategoria(c, categoria)
+      return matchTexto && matchCat
+    })
+    setCosechas(filtrados)
+  }, [busqueda, categoria, todos])
 
-  const handleSubmit = e => { e.preventDefault(); buscar() }
+  const handleSubmit = e => e.preventDefault()
 
-  const handleCategoria = cat => {
-    setCategoria(cat)
-    buscar(busqueda, cat)
-  }
+  const handleCategoria = cat => setCategoria(cat)
 
   const limpiar = () => {
     setBusqueda(''); setCategoria('')
-    buscar('', '')
     inputRef.current?.focus()
   }
 
