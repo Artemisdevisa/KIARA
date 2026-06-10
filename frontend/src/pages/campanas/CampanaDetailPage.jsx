@@ -7,7 +7,7 @@ import {
   CalendarRange, Calendar, ClipboardList, FlaskConical, Droplets,
   Wallet, Leaf, Plus, Pencil, Trash2, X, CheckCircle2, Circle,
   AlertTriangle, Printer, TrendingUp, TrendingDown, Minus, Eye, ChevronDown, ArrowLeft,
-  Bell, BellRing, RefreshCw, ShieldAlert, Droplet, Sprout, Scissors, RotateCcw, Wrench,
+  Bell, BellRing, RefreshCw, ShieldAlert, Droplet, Sprout, Scissors, RotateCcw, Wrench, Play,
 } from 'lucide-react'
 import Breadcrumb from '../../components/ui/Breadcrumb'
 
@@ -16,6 +16,7 @@ const D = {
   inputBg: 'rgba(255,255,255,0.07)', inputBorder: 'rgba(255,255,255,0.12)',
   divider: 'rgba(255,255,255,0.07)', hoverRow: 'rgba(255,255,255,0.04)',
   text: 'rgba(255,255,255,0.90)', sub: 'rgba(255,255,255,0.45)',
+  btnIdle: 'rgba(255,255,255,0.07)', btnBorder: 'rgba(255,255,255,0.12)',
 }
 
 const ETAPAS = [
@@ -35,6 +36,23 @@ const ETAPAS_POR_CICLO = {
 const etapasPorCiclo = tipoCiclo =>
   ETAPAS.filter(e => (ETAPAS_POR_CICLO[tipoCiclo] ?? ETAPAS.map(x => x.key)).includes(e.key))
 const etapaOf = key => ETAPAS.find(e => e.key === key) || { label: 'General', dc: '#94a3b8', lc: '#6b7280', dbg: 'rgba(148,163,184,0.10)', lbg: '#f9fafb' }
+
+// Devuelve mensaje de error si hay etapas anteriores con ítems pendientes, null si está despejado
+const checkEtapaOrder = (items, targetEtapa, isDoneFn) => {
+  if (!targetEtapa) return null
+  const order = ETAPAS.map(e => e.key)
+  const targetIdx = order.indexOf(targetEtapa)
+  if (targetIdx <= 0) return null
+  for (let i = 0; i < targetIdx; i++) {
+    const key     = order[i]
+    const pending = items.filter(item => item.etapa === key && !isDoneFn(item))
+    if (pending.length > 0) {
+      const etapa = etapaOf(key)
+      return `Hay ${pending.length} ${pending.length === 1 ? 'tarea pendiente' : 'tareas pendientes'} en "${etapa.label}". Completa esa etapa primero.`
+    }
+  }
+  return null
+}
 const groupByEtapa = items => {
   const order = ETAPAS.map(e => e.key)
   const groups = {}
@@ -314,6 +332,8 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
         .then(fetch).catch(() => toast.error('Error.'))
       return
     }
+    const blocker = checkEtapaOrder(data, item.etapa, i => i.estado === 'ejecutada')
+    if (blocker) { toast.error(blocker); return }
     setEjForm({ fecha_ejecutada: new Date().toISOString().slice(0, 10), cantidad_ejecutada: item.cantidad_programada })
     setEjModal(item)
   }
@@ -636,6 +656,8 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
         .then(fetch).catch(() => toast.error('Error.'))
       return
     }
+    const blocker = checkEtapaOrder(plan, item.etapa, i => i.estado === 'aplicado')
+    if (blocker) { toast.error(blocker); return }
     setApForm({ fecha_aplicada: new Date().toISOString().slice(0, 10) })
     setApModal(item)
   }
@@ -1058,6 +1080,10 @@ function RiegoTab({ dark, campanaId, campana }) {
   const delPlan    = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`);       fetch() }, msg: '¿Eliminar este plan de riego?' })
   const delReg     = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/registros-riego/${id}/`); fetch() }, msg: '¿Eliminar este registro de riego?' })
   const togglePlan = async (p) => {
+    if (!p.completado && p.fecha_inicio) {
+      const hayAnterior = planes.some(x => !x.completado && x.id !== p.id && x.fecha_inicio && x.fecha_inicio < p.fecha_inicio)
+      if (hayAnterior) { toast.error('Hay planes de riego anteriores sin completar. Complétalos primero.'); return }
+    }
     try {
       const res = await api.patch(`/campanas/plan-riego/${p.id}/`, { completado: !p.completado })
       setPlanes(prev => prev.map(x => x.id === p.id ? { ...x, completado: res.data.completado } : x))
@@ -1067,10 +1093,12 @@ function RiegoTab({ dark, campanaId, campana }) {
     }
   }
   const toggleReg = async (r) => {
-    console.log('[toggleReg] click en registro id:', r.id, '| completado actual:', r.completado)
+    if (!r.completado && r.fecha) {
+      const hayAnterior = regs.some(x => !x.completado && x.id !== r.id && x.fecha < r.fecha)
+      if (hayAnterior) { toast.error('Hay registros de riego/fertirrigación anteriores sin completar. Complétalos primero.'); return }
+    }
     try {
       const res = await api.patch(`/campanas/registros-riego/${r.id}/`, { completado: !r.completado })
-      console.log('[toggleReg] respuesta backend:', res.data)
       setRegs(prev => prev.map(x => x.id === r.id ? { ...x, completado: res.data.completado } : x))
     } catch (err) {
       console.error('[toggleReg] ERROR:', err?.response?.status, err?.response?.data)
@@ -2054,6 +2082,7 @@ export default function CampanaDetailPage() {
   const [etapaFilter, setEtapaFilter] = useState('')
   const [showEtapaBar, setShowEtapaBar] = useState(false)
   const [cicloConfirm, setCicloConfirm] = useState(null)
+  const [estadoModal, setEstadoModal]   = useState(null)
 
   const fetch = useCallback(async () => {
     try { const r = await api.get(`/campanas/${id}/`); setCampana(r.data) }
@@ -2096,6 +2125,16 @@ export default function CampanaDetailPage() {
     } catch { toast.error('Error al cambiar ciclo.') }
   }
 
+  const changeEstado = async nuevoEstado => {
+    try {
+      await api.patch(`/campanas/${id}/`, { estado: nuevoEstado })
+      const labels = { planificada: 'Planificada', activa: 'Activa', cerrada: 'Cerrada', cancelada: 'Cancelada' }
+      setCampana(c => ({ ...c, estado: nuevoEstado, estado_display: labels[nuevoEstado] }))
+      setEstadoModal(null)
+      toast.success({ activa: 'Campaña iniciada.', cerrada: 'Campaña cerrada.', cancelada: 'Campaña cancelada.' }[nuevoEstado])
+    } catch { toast.error('Error al cambiar el estado.') }
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center py-24">
       <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
@@ -2116,73 +2155,153 @@ export default function CampanaDetailPage() {
       <Breadcrumb items={[{ label: 'Campañas', to: '/campanas' }, { label: campana.variedad_str }]} />
 
       {/* ── Encabezado ── */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div>
-            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-              <span className="font-mono text-xs font-bold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{campana.codigo}</span>
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: ec?.bg, color: ec?.c }}>{campana.estado_display}</span>
-            </div>
-            <h1 className="text-xl font-extrabold" style={{ color: dark ? D.text : '#111827' }}>{campana.variedad_str}</h1>
-            <div className="flex flex-wrap items-center gap-3 mt-1.5">
-              <div className="flex items-center gap-1.5 text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>
-                <Leaf size={12} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
-                <span className="font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.75)' : '#374151' }}>{campana.biohuerto_nombre}</span>
+      <div style={{ ...cardStyle, padding: '20px 24px 18px' }}>
+
+        {/* Fila 1: código + estado + botones de acción */}
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg"
+              style={{ backgroundColor: dark ? 'rgba(96,165,250,0.12)' : '#eff6ff', color: dark ? '#60a5fa' : '#2563eb' }}>
+              {campana.codigo}
+            </span>
+            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
+              style={{ backgroundColor: ec?.bg, color: ec?.c }}>
+              {campana.estado_display}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {campana.estado === 'planificada' && (
+              <button onClick={() => setEstadoModal('activa')}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
+                style={{ backgroundColor: '#16a34a', color: '#fff', border: '1px solid #16a34a' }}>
+                <Play size={12} fill="currentColor" /> Iniciar campaña
+              </button>
+            )}
+            {campana.estado === 'activa' && (
+              <>
+                <button onClick={() => setEstadoModal('cancelada')}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                  style={{ backgroundColor: dark ? 'rgba(239,68,68,0.10)' : '#fef2f2', color: dark ? '#f87171' : '#dc2626', border: `1px solid ${dark ? 'rgba(239,68,68,0.25)' : '#fecaca'}` }}>
+                  <X size={12} /> Cancelar
+                </button>
+                <button onClick={() => setEstadoModal('cerrada')}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                  style={{ backgroundColor: dark ? D.btnIdle : '#f3f4f6', color: dark ? D.sub : '#374151', border: `1px solid ${dark ? D.btnBorder : '#e5e7eb'}` }}>
+                  <CheckCircle2 size={12} /> Cerrar campaña
+                </button>
+              </>
+            )}
+            {campana.lista_para_cosechar ? (
+              <Link to={`/cosechas/nueva?campana=${id}`}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                style={{ backgroundColor: dark ? 'rgba(22,163,74,0.20)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d', border: `1px solid ${dark ? 'rgba(22,163,74,0.4)' : '#86efac'}` }}>
+                <Scissors size={13} /> Registrar cosecha
+              </Link>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
+                title={`Pendiente: ${[campana.labores_pendientes > 0 && `${campana.labores_pendientes} labor(es)`, campana.fito_pendientes > 0 && `${campana.fito_pendientes} fitosanitario(s)`, campana.riego_pendientes > 0 && `${campana.riego_pendientes} plan(es) de riego`].filter(Boolean).join(', ')}`}
+                style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f3f4f6', color: dark ? 'rgba(255,255,255,0.25)' : '#d1d5db', border: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#e5e7eb'}`, cursor: 'not-allowed' }}>
+                <Scissors size={13} /> Registrar cosecha
               </div>
-              <div className="flex items-center gap-1.5 text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>
-                <Calendar size={12} />
-                {campana.fecha_inicio}{campana.fecha_fin ? ` → ${campana.fecha_fin}` : ''}
-              </div>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-lg"
-                style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? 'rgba(255,255,255,0.65)' : '#374151' }}>
-                {campana.area} {campana.unidad_area}
-              </span>
-              {/* Selector de ciclo inline */}
-              <div className="flex items-center gap-0.5 rounded-lg overflow-hidden"
-                style={{ border: `1px solid ${dark ? 'rgba(255,255,255,0.10)' : '#e5e7eb'}` }}>
-                {[['', 'Auto'], ['anual', 'Anual'], ['perenne', 'Perenne']].map(([val, label]) => {
-                  const active = (campana.tipo_ciclo || '') === val
-                  return (
-                    <button key={val} onClick={() => changeCiclo(val)}
-                      className="text-[11px] font-bold px-2 py-1 transition-all"
-                      style={{
-                        backgroundColor: active ? (dark ? 'rgba(22,163,74,0.25)' : '#dcfce7') : 'transparent',
-                        color: active ? (dark ? '#4ade80' : '#15803d') : (dark ? 'rgba(255,255,255,0.35)' : '#9ca3af'),
-                      }}>
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+            )}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
+
+        {/* Fila 2: nombre + biohuerto */}
+        <div className="mt-3 mb-4">
+          <h1 className="text-xl font-extrabold leading-tight" style={{ color: dark ? D.text : '#111827' }}>
+            {campana.variedad_str}
+          </h1>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <Leaf size={13} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
+            <span className="text-sm font-semibold" style={{ color: dark ? '#4ade80' : '#16a34a' }}>
+              {campana.biohuerto_nombre}
+            </span>
+          </div>
+        </div>
+
+        {/* Divisor */}
+        <div style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6'}`, marginBottom: '16px' }} />
+
+        {/* Fila 3: datos en chips */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+          {[
+            { label: 'Inicio',  value: campana.fecha_inicio,           ico: Calendar, dim: false },
+            { label: 'Fin',     value: campana.fecha_fin || '—',        ico: Calendar, dim: !campana.fecha_fin },
+            { label: 'Área',    value: `${campana.area} ${campana.unidad_area}`, ico: null,     dim: false },
+          ].map(({ label, value, ico: Ico, dim }) => (
+            <div key={label} style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f9fafb', borderRadius: '12px', padding: '10px 14px', border: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6'}` }}>
+              <p className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: dark ? D.sub : '#9ca3af' }}>{label}</p>
+              <div className="flex items-center gap-1.5">
+                {Ico && <Ico size={13} style={{ color: dark ? '#60a5fa' : '#2563eb' }} />}
+                <span className="text-sm font-bold" style={{ color: dim ? (dark ? 'rgba(255,255,255,0.20)' : '#d1d5db') : (dark ? D.text : '#111827') }}>{value}</span>
+              </div>
+            </div>
+          ))}
+          {/* Selector de ciclo */}
+          <div style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f9fafb', borderRadius: '12px', padding: '10px 14px', border: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6'}` }}>
+            <p className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: dark ? D.sub : '#9ca3af' }}>Ciclo</p>
+            <div className="flex items-center gap-0.5 rounded-lg overflow-hidden"
+              style={{ border: `1px solid ${dark ? 'rgba(255,255,255,0.10)' : '#e5e7eb'}`, width: 'fit-content' }}>
+              {[['', 'Auto'], ['anual', 'Anual'], ['perenne', 'Perenne']].map(([val, lbl]) => {
+                const active = (campana.tipo_ciclo || '') === val
+                return (
+                  <button key={val} onClick={() => changeCiclo(val)}
+                    className="text-[11px] font-bold px-2 py-1 transition-all"
+                    style={{
+                      backgroundColor: active ? (dark ? 'rgba(22,163,74,0.25)' : '#dcfce7') : 'transparent',
+                      color: active ? (dark ? '#4ade80' : '#15803d') : (dark ? 'rgba(255,255,255,0.35)' : '#9ca3af'),
+                    }}>
+                    {lbl}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
           {campana.objetivo_cosecha && (
-            <div className="text-right px-4 py-2.5 rounded-xl"
-              style={{ backgroundColor: dark ? 'rgba(22,163,74,0.08)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(22,163,74,0.2)' : '#bbf7d0'}` }}>
-              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: dark ? '#4ade80' : '#16a34a' }}>Meta cosecha</p>
-              <p className="text-base font-extrabold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{campana.objetivo_cosecha} {campana.unidad_cosecha}</p>
-              {campana.precio_venta_estimado && (
-                <p className="text-xs" style={{ color: dark ? D.sub : '#9ca3af' }}>S/. {parseFloat(campana.precio_venta_estimado).toFixed(2)}/{campana.unidad_cosecha}</p>
-              )}
+            <div style={{ backgroundColor: dark ? 'rgba(22,163,74,0.06)' : '#f0fdf4', borderRadius: '12px', padding: '10px 14px', border: `1px solid ${dark ? 'rgba(22,163,74,0.15)' : '#bbf7d0'}` }}>
+              <p className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: dark ? '#4ade80' : '#16a34a' }}>Meta cosecha</p>
+              <span className="text-sm font-bold" style={{ color: dark ? '#4ade80' : '#15803d' }}>
+                {campana.objetivo_cosecha} {campana.unidad_cosecha}
+              </span>
             </div>
           )}
-          {campana.lista_para_cosechar ? (
-            <Link to={`/cosechas/nueva?campana=${id}`}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all"
-              style={{ backgroundColor: dark ? 'rgba(22,163,74,0.20)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d', border: `1px solid ${dark ? 'rgba(22,163,74,0.4)' : '#86efac'}` }}>
-              <Scissors size={14} />
-              Registrar cosecha
-            </Link>
-          ) : (
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold"
-              title={`Pendiente: ${[campana.labores_pendientes > 0 && `${campana.labores_pendientes} labor(es)`, campana.fito_pendientes > 0 && `${campana.fito_pendientes} fitosanitario(s)`, campana.riego_pendientes > 0 && `${campana.riego_pendientes} plan(es) de riego`].filter(Boolean).join(', ')}`}
-              style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f3f4f6', color: dark ? 'rgba(255,255,255,0.25)' : '#d1d5db', border: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#e5e7eb'}`, cursor: 'not-allowed' }}>
-              <Scissors size={14} />
-              Registrar cosecha
+          {campana.precio_venta_estimado && (
+            <div style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f9fafb', borderRadius: '12px', padding: '10px 14px', border: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6'}` }}>
+              <p className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: dark ? D.sub : '#9ca3af' }}>Precio est.</p>
+              <span className="text-sm font-bold" style={{ color: dark ? D.text : '#111827' }}>
+                S/. {parseFloat(campana.precio_venta_estimado).toFixed(2)}/{campana.unidad_cosecha}
+              </span>
             </div>
           )}
+        </div>
+
+        {/* Divisor */}
+        <div style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6'}`, margin: '16px 0 14px' }} />
+
+        {/* Fila 4: contadores de pendientes */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {[
+            { icon: ClipboardList, label: 'Labores',       count: campana.labores_count, pending: campana.labores_pendientes, unit: 'labor' },
+            { icon: FlaskConical,  label: 'Fitosanitario', count: null,                  pending: campana.fito_pendientes,    unit: 'item'  },
+            { icon: Droplets,      label: 'Riego',         count: null,                  pending: campana.riego_pendientes,   unit: 'plan'  },
+          ].map(({ icon: Icon, label, count, pending, unit }) => {
+            const ok = pending === 0
+            return (
+              <div key={label} className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                style={{
+                  backgroundColor: ok ? (dark ? 'rgba(22,163,74,0.07)' : '#f0fdf4') : (dark ? 'rgba(251,191,36,0.07)' : '#fffbeb'),
+                  border: `1px solid ${ok ? (dark ? 'rgba(22,163,74,0.15)' : '#bbf7d0') : (dark ? 'rgba(251,191,36,0.18)' : '#fde68a')}`,
+                }}>
+                <Icon size={13} style={{ color: ok ? (dark ? '#4ade80' : '#16a34a') : (dark ? '#fbbf24' : '#d97706') }} />
+                <span className="text-xs font-bold" style={{ color: dark ? D.text : '#374151' }}>{label}</span>
+                {count !== null && <span className="text-xs font-semibold" style={{ color: dark ? D.sub : '#9ca3af' }}>· {count}</span>}
+                <span className="text-xs font-semibold" style={{ color: ok ? (dark ? '#4ade80' : '#16a34a') : (dark ? '#fbbf24' : '#d97706') }}>
+                  {ok ? '✓ Al día' : `${pending} pend.`}
+                </span>
+              </div>
+            )
+          })}
         </div>
       </div>
 
@@ -2264,6 +2383,35 @@ export default function CampanaDetailPage() {
           {tab === 'alertas'       && <AlertasTab dark={dark} campanaId={id} />}
         </div>
       </div>
+
+      {/* ── Modal: confirmar cambio de estado ── */}
+      {estadoModal && (() => {
+        const MSGS = {
+          activa:    { title: 'Iniciar campaña',  body: 'Marcarás esta campaña como activa. Podrás registrar ejecuciones de labores, aplicaciones y riegos.', btn: 'Iniciar campaña',  Ico: Play,         iconBg: '#dcfce7', iconC: '#16a34a', btnCls: 'btn-primary' },
+          cerrada:   { title: 'Cerrar campaña',   body: 'La campaña quedará cerrada. Se conservará todo el historial registrado.',                             btn: 'Cerrar campaña',   Ico: CheckCircle2, iconBg: '#f3f4f6', iconC: '#6b7280', btnCls: 'btn-secondary' },
+          cancelada: { title: 'Cancelar campaña', body: 'La campaña se marcará como cancelada. Úsalo solo si no se llevará a cabo.',                           btn: 'Sí, cancelar',     Ico: X,            iconBg: '#fee2e2', iconC: '#dc2626', btnCls: 'btn-danger' },
+        }
+        const m  = MSGS[estadoModal]
+        const ps = { backgroundColor: dark ? '#1e2a3a' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb' }
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setEstadoModal(null)} />
+            <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-6 z-10" style={ps}>
+              <div className="flex flex-col items-center text-center gap-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: m.iconBg }}>
+                  <m.Ico size={20} style={{ color: m.iconC }} fill={estadoModal === 'activa' ? m.iconC : 'none'} />
+                </div>
+                <h3 className="font-extrabold text-base" style={{ color: dark ? D.text : '#111827' }}>{m.title}</h3>
+                <p className="text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{m.body}</p>
+                <div className="flex gap-3 w-full pt-1">
+                  <button onClick={() => setEstadoModal(null)} className="flex-1 btn-secondary text-sm">Cancelar</button>
+                  <button onClick={() => changeEstado(estadoModal)} className={`flex-1 ${m.btnCls} text-sm`}>{m.btn}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Modal: confirmar cambio de ciclo ── */}
       {cicloConfirm && (() => {
