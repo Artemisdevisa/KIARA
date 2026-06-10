@@ -215,7 +215,8 @@ class FitosanitarioListCreate(CampanaMixin, generics.ListCreateAPIView):
         return ItemFitosanitario.objects.filter(campana=self._campana()).select_related('producto', 'objetivo', 'plaga', 'unidad', 'condicion')
 
     def perform_create(self, serializer):
-        serializer.save(campana=self._campana())
+        item = serializer.save(campana=self._campana())
+        _generar_alertas_campana(item.campana)
 
 
 class FitosanitarioDetail(generics.RetrieveUpdateDestroyAPIView):
@@ -224,6 +225,15 @@ class FitosanitarioDetail(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return ItemFitosanitario.objects.filter(campana__biohuerto__productor=self.request.user)
+
+    def perform_update(self, serializer):
+        item = serializer.save()
+        _generar_alertas_campana(item.campana)
+
+    def perform_destroy(self, instance):
+        campana = instance.campana
+        instance.delete()
+        _generar_alertas_campana(campana)
 
 
 # ── Registros de aplicación ───────────────────────────────────────
@@ -409,99 +419,193 @@ class CampanaAlertaDetail(generics.RetrieveUpdateDestroyAPIView):
         return CampanaAlerta.objects.filter(campana__biohuerto__productor=self.request.user)
 
 
+def _generar_alertas_campana(campana):
+    """
+    Regenera todas las alertas automáticas de una campaña.
+    Llamado tanto desde GenerarAlertasView como al guardar ítems
+    fitosanitarios, riego y labores.
+    """
+    today     = datetime.date.today()
+    fecha_ref = campana.fecha_inicio or today
+    nuevas    = []
+
+    campana.alertas.filter(completada=False).delete()
+
+    # Fecha fin real o estimada (fecha_inicio + dias_ciclo de la variedad)
+    fecha_fin = campana.fecha_fin
+    if not fecha_fin and campana.fecha_inicio:
+        try:
+            dias_ciclo = campana.variedad.dias_ciclo
+            if dias_ciclo:
+                fecha_fin = campana.fecha_inicio + datetime.timedelta(days=dias_ciclo)
+        except Exception:
+            pass
+
+    # 1. Cosecha
+    if fecha_fin:
+        dias = (fecha_fin - today).days
+        prioridad = 'alta' if dias <= 7 else ('media' if dias <= 21 else 'baja')
+        desc_extra = '' if campana.fecha_fin else ' (fecha estimada por ciclo de variedad)'
+        CampanaAlerta.objects.create(
+            campana=campana, tipo='cosecha', origen='sistema',
+            titulo='Cosecha programada',
+            descripcion=f'La campaña finaliza el {fecha_fin.strftime("%d/%m/%Y")}{desc_extra}. Preparar herramientas y empaques.',
+            fecha_programada=fecha_fin,
+            prioridad=prioridad,
+        )
+        nuevas.append('cosecha')
+
+        if -30 <= dias <= 30:
+            CampanaAlerta.objects.create(
+                campana=campana, tipo='rotacion', origen='sistema',
+                titulo='Planificar rotación de cultivos',
+                descripcion='La campaña finaliza pronto. Considerar rotación con leguminosas o raíces para recuperar el suelo.',
+                fecha_programada=fecha_fin + datetime.timedelta(days=7),
+                prioridad='baja',
+            )
+            nuevas.append('rotacion')
+
+    # 2. Intervalos de seguridad fitosanitarios
+    # Solo ítems activos y pendientes (no aplicados aún)
+    fito_pendientes = campana.plan_fitosanitario.filter(
+        dias_antes_cosecha__isnull=False,
+        activo=True,
+        estado='programado',
+    ).select_related('producto')
+
+    for item in fito_pendientes:
+        if fecha_fin:
+            fecha_limite = fecha_fin - datetime.timedelta(days=item.dias_antes_cosecha)
+            dias_para_limite = (fecha_limite - today).days
+            prioridad = 'alta' if dias_para_limite <= 3 else ('media' if dias_para_limite <= 10 else 'baja')
+            origen_fecha = '' if campana.fecha_fin else ' (fecha cosecha estimada)'
+            CampanaAlerta.objects.create(
+                campana=campana, tipo='seguridad', origen='sistema',
+                titulo=f'Límite de aplicación: {item.producto.nombre}',
+                descripcion=(
+                    f'Intervalo de seguridad: {item.dias_antes_cosecha} días antes de cosecha{origen_fecha}. '
+                    f'No aplicar después del {fecha_limite.strftime("%d/%m/%Y")}.'
+                ),
+                fecha_programada=fecha_limite,
+                prioridad=prioridad,
+            )
+            nuevas.append('seguridad')
+
+    # 2b. Recordatorio de primera aplicación para ítems con fecha_inicio y sin frecuencia
+    fito_unica = campana.plan_fitosanitario.filter(
+        fecha_inicio__isnull=False,
+        frecuencia_dias__isnull=True,
+        estado='programado',
+        activo=True,
+    ).select_related('producto', 'objetivo')
+
+    for item in fito_unica:
+        if item.fecha_inicio >= today:
+            objetivo_txt = item.objetivo.nombre if item.objetivo else ''
+            tipo = 'fertilizacion' if 'fertili' in objetivo_txt.lower() else 'control'
+            dias_para_app = (item.fecha_inicio - today).days
+            prioridad = 'alta' if dias_para_app <= 2 else ('media' if dias_para_app <= 7 else 'baja')
+            CampanaAlerta.objects.create(
+                campana=campana, tipo=tipo, origen='sistema',
+                titulo=f'Aplicación programada: {item.producto.nombre}',
+                descripcion=f'Etapa: {item.get_etapa_display()}. Aplicar el {item.fecha_inicio.strftime("%d/%m/%Y")}.',
+                fecha_programada=item.fecha_inicio,
+                prioridad=prioridad,
+            )
+            nuevas.append(tipo)
+
+    # 3. Próximo riego por plan
+    for plan in campana.plan_riego.filter(activo=True):
+        base = plan.fecha_inicio or fecha_ref
+        while base < today:
+            base += datetime.timedelta(days=plan.frecuencia_dias)
+        fert_txt = f' con {plan.fertilizante.nombre}' if plan.fertilizante else ''
+        CampanaAlerta.objects.create(
+            campana=campana, tipo='riego', origen='sistema',
+            titulo=f'Riego: {plan.nombre}',
+            descripcion=f'Método {plan.get_metodo_display()}{fert_txt}. '
+                        f'{plan.litros_por_m2} L/m². Frecuencia: cada {plan.frecuencia_dias} días.',
+            fecha_programada=base,
+            prioridad='media',
+        )
+        nuevas.append('riego')
+
+    # 4. Aplicaciones fitosanitarias/fertilización con frecuencia recurrente
+    for item in campana.plan_fitosanitario.filter(frecuencia_dias__isnull=False, activo=True).select_related('producto', 'objetivo'):
+        base = item.fecha_inicio or fecha_ref
+        while base < today:
+            base += datetime.timedelta(days=item.frecuencia_dias)
+        objetivo_txt = item.objetivo.nombre if item.objetivo else ''
+        tipo = 'fertilizacion' if 'fertili' in objetivo_txt.lower() or 'biol' in item.producto.nombre.lower() else 'control'
+        estado_txt = ' (ya aplicado — próxima repetición)' if item.estado == 'aplicado' else ''
+        CampanaAlerta.objects.create(
+            campana=campana, tipo=tipo, origen='sistema',
+            titulo=f'Aplicación: {item.producto.nombre}',
+            descripcion=f'Etapa: {item.get_etapa_display()}. Aplicar cada {item.frecuencia_dias} días{estado_txt}.',
+            fecha_programada=base,
+            prioridad='media',
+        )
+        nuevas.append(tipo)
+
+    # 5. Labores no ejecutadas
+    # 5a. Atrasadas (fecha pasada, aún programadas) — prioridad alta
+    for labor in campana.labores.filter(estado='programada', fecha_programada__lt=today).select_related('tipo_labor').order_by('fecha_programada')[:5]:
+        dias_atraso = (today - labor.fecha_programada).days
+        CampanaAlerta.objects.create(
+            campana=campana, tipo='labor', origen='sistema',
+            titulo=f'Labor atrasada: {labor.tipo_labor.nombre}',
+            descripcion=f'Debía ejecutarse el {labor.fecha_programada.strftime("%d/%m/%Y")} (hace {dias_atraso} día{"s" if dias_atraso != 1 else ""}). Etapa: {labor.etapa or "sin etapa"}.',
+            fecha_programada=labor.fecha_programada,
+            prioridad='alta',
+        )
+        nuevas.append('labor')
+
+    # 5b. Próximas (hasta 5 futuras)
+    for labor in campana.labores.filter(estado='programada', fecha_programada__gte=today).select_related('tipo_labor').order_by('fecha_programada')[:5]:
+        dias_para = (labor.fecha_programada - today).days
+        prioridad = 'alta' if dias_para <= 1 else ('media' if dias_para <= 5 else 'baja')
+        CampanaAlerta.objects.create(
+            campana=campana, tipo='labor', origen='sistema',
+            titulo=f'Labor: {labor.tipo_labor.nombre}',
+            descripcion=f'Etapa: {labor.etapa or "sin etapa"}. Programada para el {labor.fecha_programada.strftime("%d/%m/%Y")}. {labor.descripcion or ""}',
+            fecha_programada=labor.fecha_programada,
+            prioridad=prioridad,
+        )
+        nuevas.append('labor')
+
+    # 6. Riego: plan activo cuya próxima fecha ya pasó (incumplimiento)
+    for plan in campana.plan_riego.filter(activo=True, completado=False):
+        base = plan.fecha_inicio or fecha_ref
+        if base > today:
+            continue
+        while base + datetime.timedelta(days=plan.frecuencia_dias) <= today:
+            base += datetime.timedelta(days=plan.frecuencia_dias)
+        # base es la última fecha prevista; si ya pasó y no está completado → alerta
+        if base <= today:
+            dias_atraso = (today - base).days
+            fert_txt = f' con {plan.fertilizante.nombre}' if plan.fertilizante else ''
+            CampanaAlerta.objects.create(
+                campana=campana, tipo='riego', origen='sistema',
+                titulo=f'Riego pendiente: {plan.nombre}',
+                descripcion=(
+                    f'El riego ({plan.get_metodo_display()}{fert_txt}, {plan.litros_por_m2} L/m²) '
+                    f'debía realizarse el {base.strftime("%d/%m/%Y")}'
+                    f'{f" (hace {dias_atraso} día{"s" if dias_atraso != 1 else ""})" if dias_atraso > 0 else " (hoy)"}.'
+                ),
+                fecha_programada=base,
+                prioridad='alta' if dias_atraso > 1 else 'media',
+            )
+            nuevas.append('riego')
+
+    return nuevas
+
+
 class GenerarAlertasView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, campana_pk):
         campana = get_object_or_404(Campana, pk=campana_pk, biohuerto__productor=request.user)
-        today = datetime.date.today()
-        fecha_ref = campana.fecha_inicio or today
-        nuevas = []
-
-        # Borrar alertas no completadas y regenerar
-        campana.alertas.filter(completada=False).delete()
-
-        # 1. Cosecha
-        if campana.fecha_fin:
-            dias = (campana.fecha_fin - today).days
-            prioridad = 'alta' if dias <= 7 else ('media' if dias <= 21 else 'baja')
-            CampanaAlerta.objects.create(
-                campana=campana, tipo='cosecha', origen='sistema',
-                titulo='Cosecha programada',
-                descripcion=f'La campaña finaliza el {campana.fecha_fin.strftime("%d/%m/%Y")}. Preparar herramientas y empaques.',
-                fecha_programada=campana.fecha_fin,
-                prioridad=prioridad,
-            )
-            nuevas.append('cosecha')
-
-            # Rotación de cultivos si la campaña termina dentro de ±30 días
-            if -30 <= dias <= 30:
-                CampanaAlerta.objects.create(
-                    campana=campana, tipo='rotacion', origen='sistema',
-                    titulo='Planificar rotación de cultivos',
-                    descripcion='La campaña finaliza pronto. Considerar rotación con leguminosas o raíces para recuperar el suelo.',
-                    fecha_programada=campana.fecha_fin + datetime.timedelta(days=7),
-                    prioridad='baja',
-                )
-                nuevas.append('rotacion')
-
-        # 2. Intervalos de seguridad fitosanitarios
-        for item in campana.plan_fitosanitario.filter(dias_antes_cosecha__isnull=False, activo=True):
-            if campana.fecha_fin:
-                fecha_limite = campana.fecha_fin - datetime.timedelta(days=item.dias_antes_cosecha)
-                CampanaAlerta.objects.create(
-                    campana=campana, tipo='seguridad', origen='sistema',
-                    titulo=f'Límite de aplicación: {item.producto.nombre}',
-                    descripcion=f'Intervalo de seguridad de {item.dias_antes_cosecha} días antes de cosecha. '
-                                f'No aplicar después del {fecha_limite.strftime("%d/%m/%Y")}.',
-                    fecha_programada=fecha_limite,
-                    prioridad='alta',
-                )
-                nuevas.append('seguridad')
-
-        # 3. Próximo riego por plan
-        for plan in campana.plan_riego.filter(activo=True):
-            base = plan.fecha_inicio or fecha_ref
-            while base < today:
-                base += datetime.timedelta(days=plan.frecuencia_dias)
-            fert_txt = f' con {plan.fertilizante.nombre}' if plan.fertilizante else ''
-            CampanaAlerta.objects.create(
-                campana=campana, tipo='riego', origen='sistema',
-                titulo=f'Riego: {plan.nombre}',
-                descripcion=f'Método {plan.get_metodo_display()}{fert_txt}. '
-                            f'{plan.litros_por_m2} L/m². Frecuencia: cada {plan.frecuencia_dias} días.',
-                fecha_programada=base,
-                prioridad='media',
-            )
-            nuevas.append('riego')
-
-        # 4. Aplicaciones fitosanitarias/fertilización con frecuencia
-        for item in campana.plan_fitosanitario.filter(frecuencia_dias__isnull=False, activo=True):
-            base = item.fecha_inicio or fecha_ref
-            while base < today:
-                base += datetime.timedelta(days=item.frecuencia_dias)
-            objetivo_txt = item.objetivo.nombre if item.objetivo else ''
-            tipo = 'fertilizacion' if 'fertili' in objetivo_txt.lower() or 'biol' in item.producto.nombre.lower() else 'control'
-            CampanaAlerta.objects.create(
-                campana=campana, tipo=tipo, origen='sistema',
-                titulo=f'Aplicación: {item.producto.nombre}',
-                descripcion=f'Etapa: {item.get_etapa_display()}. Aplicar cada {item.frecuencia_dias} días.',
-                fecha_programada=base,
-                prioridad='media',
-            )
-            nuevas.append(tipo)
-
-        # 5. Labores programadas próximas (hasta 5)
-        for labor in campana.labores.filter(estado='programada', fecha_programada__gte=today).order_by('fecha_programada')[:5]:
-            CampanaAlerta.objects.create(
-                campana=campana, tipo='labor', origen='sistema',
-                titulo=f'Labor: {labor.tipo_labor.nombre}',
-                descripcion=f'Etapa: {labor.etapa or "sin etapa"}. {labor.descripcion or ""}',
-                fecha_programada=labor.fecha_programada,
-                prioridad='baja',
-            )
-            nuevas.append('labor')
-
+        nuevas  = _generar_alertas_campana(campana)
         alertas = CampanaAlerta.objects.filter(campana=campana)
         return Response({
             'generadas': len(nuevas),

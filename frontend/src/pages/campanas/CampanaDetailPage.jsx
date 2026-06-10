@@ -272,7 +272,7 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
   const [modal, setModal]           = useState(null)
   const [delConfirm, setDelConfirm] = useState(null)
   const [ejModal, setEjModal]       = useState(null)
-  const [ejForm, setEjForm]         = useState({ fecha_ejecutada: '', cantidad_ejecutada: '' })
+  const [ejForm, setEjForm]         = useState({ fecha_ejecutada: '', cantidad_ejecutada: '', operario: '' })
   const [viewItem, setViewItem]     = useState(null)
   const [form, setForm]             = useState({ tipo_labor: '', nombre_libre: '', unidad_libre: '', descripcion: '', fecha_programada: '', cantidad_programada: '', costo_unitario: '', operario: '', notas: '' })
   const [loading, setLoading]       = useState(false)
@@ -337,7 +337,7 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
     }
     const blocker = checkEtapaOrder(data, item.etapa, i => i.estado === 'ejecutada')
     if (blocker) { toast.error(blocker); return }
-    setEjForm({ fecha_ejecutada: new Date().toISOString().slice(0, 10), cantidad_ejecutada: item.cantidad_programada })
+    setEjForm({ fecha_ejecutada: new Date().toISOString().slice(0, 10), cantidad_ejecutada: item.cantidad_programada, operario: item.operario || '' })
     setEjModal(item)
   }
 
@@ -627,6 +627,10 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
                 onChange={e => setEjForm(f => ({ ...f, cantidad_ejecutada: e.target.value }))} style={ist} required />
             </div>
           </div>
+          <div>
+            <label style={lst}>Operario</label>
+            <OperarioSelect dark={dark} value={ejForm.operario} ist={ist} onChange={v => setEjForm(f => ({ ...f, operario: v }))} miembros={miembros} />
+          </div>
           <p className="text-[11px]" style={{ color: dark ? 'rgba(255,255,255,0.3)' : '#9ca3af' }}>
             Programado: {ejModal.cantidad_programada} {ejModal.tipo_labor_unidad} · {ejModal.fecha_programada}
           </p>
@@ -666,6 +670,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
   const [viewItem, setViewItem]     = useState(null)
   const [form, setForm]             = useState({ producto: '', objetivo: '', dosis: '', unidad: '', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' })
   const [loading, setLoading]       = useState(false)
+  const [miembros, setMiembros]     = useState([])
 
   const fetch = useCallback(async () => {
     const [p, pr, un] = await Promise.all([
@@ -676,6 +681,12 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
     setPlan(p.data); setProds(pr.data); setUnidades(un.data)
   }, [campanaId])
   useEffect(() => { fetch() }, [fetch])
+
+  useEffect(() => {
+    if (campana?.biohuerto) {
+      api.get(`/biohuertos/${campana.biohuerto}/miembros/`).then(r => setMiembros(r.data)).catch(() => {})
+    }
+  }, [campana?.biohuerto])
 
   const h  = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
   const ha = e => setApForm(f => ({ ...f, [e.target.name]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
@@ -726,8 +737,14 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
         dias_antes_cosecha: form.dias_antes_cosecha || null,
         frecuencia_dias:    form.frecuencia_dias    || null,
       }
-      if (modal === 'edit') { await api.patch(`/campanas/fitosanitario/${form.id}/`, payload); toast.success('Actualizado.') }
-      else { await api.post(`/campanas/${campanaId}/fitosanitario/`, payload); toast.success('Agregado al plan.') }
+      if (modal === 'edit') { await api.patch(`/campanas/fitosanitario/${form.id}/`, payload) }
+      else { await api.post(`/campanas/${campanaId}/fitosanitario/`, payload) }
+      const hasSeg = !!payload.dias_antes_cosecha
+      const hasFrq = !!payload.frecuencia_dias
+      if (hasSeg && hasFrq)       toast.success('Guardado. Alertas de seguridad y aplicación actualizadas.')
+      else if (hasSeg)            toast.success('Guardado. Alerta de intervalo de seguridad creada.')
+      else if (hasFrq)            toast.success('Guardado. Alerta de aplicación periódica creada.')
+      else                        toast.success(modal === 'edit' ? 'Actualizado.' : 'Agregado al plan.')
       setModal(null); fetch()
     } catch (err) {
       const detail = err?.response?.data
@@ -747,19 +764,19 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
 
   const ist = ist_(dark); const lst = lst_(dark)
 
-  const alertas = plan.filter(item => {
-    if (!item.dias_antes_cosecha || !item.fecha_inicio) return false
-    return true
-  })
+  const segCount = plan.filter(i => i.dias_antes_cosecha && i.estado === 'programado').length
+  const frqCount = plan.filter(i => i.frecuencia_dias).length
 
   return (
     <div className="space-y-5">
-      {/* Alertas */}
-      {plan.some(i => i.dias_antes_cosecha) && (
-        <div className="flex items-start gap-2 p-3 rounded-xl" style={{ backgroundColor: dark ? 'rgba(234,179,8,0.12)' : '#fefce8', border: `1px solid ${dark ? 'rgba(234,179,8,0.3)' : '#fde68a'}` }}>
+      {/* Banner de alertas automáticas */}
+      {(segCount > 0 || frqCount > 0) && (
+        <div className="flex items-start gap-2 p-3 rounded-xl" style={{ backgroundColor: dark ? 'rgba(234,179,8,0.10)' : '#fefce8', border: `1px solid ${dark ? 'rgba(234,179,8,0.25)' : '#fde68a'}` }}>
           <AlertTriangle size={14} style={{ color: dark ? '#fbbf24' : '#d97706', marginTop: 1, flexShrink: 0 }} />
-          <p className="text-xs" style={{ color: dark ? '#fbbf24' : '#d97706' }}>
-            Algunos productos tienen intervalo de seguridad. No aplicar dentro de los días indicados antes de la cosecha.
+          <p className="text-xs" style={{ color: dark ? '#fbbf24' : '#92400e' }}>
+            {segCount > 0 && <><strong>{segCount} producto{segCount !== 1 ? 's' : ''}</strong> con intervalo de seguridad — se creará alerta automática de límite de aplicación. </>}
+            {frqCount > 0 && <><strong>{frqCount} aplicación{frqCount !== 1 ? 'es' : ''}</strong> periódica{frqCount !== 1 ? 's' : ''} — se recordará la próxima fecha. </>}
+            Ver en la pestaña <strong>Alertas</strong>.
           </p>
         </div>
       )}
@@ -924,7 +941,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
           </div>
           <div>
             <label style={lst_(dark)}>Operario</label>
-            <input name="operario" value={apForm.operario} onChange={ha} style={ist_(dark)} />
+            <OperarioSelect dark={dark} value={apForm.operario} ist={ist_(dark)} onChange={v => setApForm(f => ({ ...f, operario: v }))} miembros={miembros} />
           </div>
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
             style={{ backgroundColor: apForm.es_sostenible ? (dark ? 'rgba(22,163,74,0.12)' : '#f0fdf4') : (dark ? 'rgba(255,255,255,0.04)' : '#f9fafb'), border: `1px solid ${apForm.es_sostenible ? (dark ? 'rgba(22,163,74,0.3)' : '#bbf7d0') : (dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb')}` }}>
@@ -1021,6 +1038,9 @@ function RiegoTab({ dark, campanaId, campana }) {
   const [delConfirm, setDelConfirm] = useState(null)
   const [form, setForm]             = useState({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '', operario: '', costo_agua_total: '' })
   const [loading, setLoading]       = useState(false)
+  const [miembros, setMiembros]     = useState([])
+  const [completarModal, setCompletarModal] = useState(null)
+  const [completarForm, setCompletarForm]   = useState({ operario: '' })
   const METODOS = [['goteo','Goteo'],['aspersion','Aspersión'],['gravedad','Gravedad'],['manual','Manual']]
 
   const fetch = useCallback(async () => {
@@ -1031,6 +1051,12 @@ function RiegoTab({ dark, campanaId, campana }) {
     setPlanes(p.data); setProds(pr.data)
   }, [campanaId])
   useEffect(() => { fetch() }, [fetch])
+
+  useEffect(() => {
+    if (campana?.biohuerto) {
+      api.get(`/biohuertos/${campana.biohuerto}/miembros/`).then(r => setMiembros(r.data)).catch(() => {})
+    }
+  }, [campana?.biohuerto])
 
   const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
@@ -1053,17 +1079,28 @@ function RiegoTab({ dark, campanaId, campana }) {
     } catch { toast.error('Error al actualizar.') }
   }
   const togglePlan = async (p) => {
-    if (!p.completado && p.fecha_inicio) {
+    if (p.completado) {
+      try {
+        const res = await api.patch(`/campanas/plan-riego/${p.id}/`, { completado: false })
+        setPlanes(prev => prev.map(x => x.id === p.id ? { ...x, completado: res.data.completado } : x))
+      } catch { toast.error('Error al actualizar.') }
+      return
+    }
+    if (p.fecha_inicio) {
       const hayAnterior = planes.some(x => !x.completado && x.id !== p.id && x.fecha_inicio && x.fecha_inicio < p.fecha_inicio)
       if (hayAnterior) { toast.error('Hay planes de riego anteriores sin completar. Complétalos primero.'); return }
     }
+    setCompletarForm({ operario: p.operario || '' })
+    setCompletarModal(p)
+  }
+
+  const confirmCompletar = async e => {
+    e.preventDefault(); setLoading(true)
     try {
-      const res = await api.patch(`/campanas/plan-riego/${p.id}/`, { completado: !p.completado })
-      setPlanes(prev => prev.map(x => x.id === p.id ? { ...x, completado: res.data.completado } : x))
-    } catch (err) {
-      console.error('[togglePlan] ERROR:', err?.response?.status, err?.response?.data)
-      toast.error('Error al actualizar.')
-    }
+      const res = await api.patch(`/campanas/plan-riego/${completarModal.id}/`, { completado: true, operario: completarForm.operario })
+      setPlanes(prev => prev.map(x => x.id === completarModal.id ? { ...x, completado: res.data.completado, operario: res.data.operario } : x))
+      toast.success('Plan marcado como completado.'); setCompletarModal(null)
+    } catch { toast.error('Error al actualizar.') } finally { setLoading(false) }
   }
   const ist = ist_(dark); const lst = lst_(dark)
 
@@ -1265,6 +1302,17 @@ function RiegoTab({ dark, campanaId, campana }) {
             <IR dark={dark} label="Costo agua total" value={viewPlan.costo_agua_total ? fmt(viewPlan.costo_agua_total) : null} color={dark ? '#60a5fa' : '#2563eb'} />
           </>}
         </InfoModal>
+      )}
+      {completarModal && (
+        <MiniModal dark={dark} title={`Completar: ${completarModal.nombre}`} onClose={() => setCompletarModal(null)} onSubmit={confirmCompletar} loading={loading}>
+          <p className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
+            Asigna el operario que realizó este plan de riego (opcional).
+          </p>
+          <div>
+            <label style={lst}>Operario</label>
+            <OperarioSelect dark={dark} value={completarForm.operario} ist={ist} onChange={v => setCompletarForm(f => ({ ...f, operario: v }))} miembros={miembros} />
+          </div>
+        </MiniModal>
       )}
       {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
     </div>
