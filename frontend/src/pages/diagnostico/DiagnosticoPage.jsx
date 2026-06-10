@@ -541,7 +541,7 @@ export default function DiagnosticoPage() {
 
   /* ══════════════════════════════ */
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="space-y-5">
 
       {/* Encabezado */}
       <div className="flex items-center gap-3">
@@ -558,6 +558,12 @@ export default function DiagnosticoPage() {
           </p>
         </div>
       </div>
+
+      {/* Grid 2 columnas: formulario | historial */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+
+      {/* ── COLUMNA IZQUIERDA: Tabs + Form ── */}
+      <div className="space-y-5">
 
       {/* Tabs */}
       <div style={cardStyle} className="p-1 flex gap-1">
@@ -813,8 +819,10 @@ export default function DiagnosticoPage() {
         </div>
       )}
 
-      {/* ══ HISTORIAL ══ */}
-      <div>
+      </div>{/* fin columna izquierda */}
+
+      {/* ── COLUMNA DERECHA: Historial ── */}
+      <div className="lg:sticky lg:top-4">
         {/* Cabecera historial */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -905,13 +913,16 @@ export default function DiagnosticoPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-[70vh] overflow-y-auto thin-scroll pr-1">
             {histFiltrado.map(d => (
               <DiagCard key={d.id} dark={dark} diag={d} onVer={setDetalleItem} onDelete={eliminarDiag}/>
             ))}
           </div>
         )}
       </div>
+
+      </div>{/* fin columna derecha */}
+      </div>{/* fin grid */}
 
       {detalleItem && (
         <DetalleModal dark={dark} diag={detalleItem} onClose={() => setDetalleItem(null)} onDelete={eliminarDiag}/>

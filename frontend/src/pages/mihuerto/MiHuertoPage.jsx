@@ -102,7 +102,7 @@ export default function MiHuertoPage() {
           <h2 className="text-sm font-extrabold uppercase tracking-wide" style={{ color: dark ? 'rgba(255,255,255,0.35)' : '#9ca3af' }}>
             {section.title}
           </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {section.cards.map(card => (
               <Card key={card.to} {...card} dark={dark} navigate={navigate} />
             ))}
