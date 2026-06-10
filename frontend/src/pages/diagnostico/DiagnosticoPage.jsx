@@ -819,7 +819,7 @@ export default function DiagnosticoPage() {
         </div>
       )}
 
-      </div>{/* fin columna izquierda */}
+      </div>
 
       {/* ── COLUMNA DERECHA: Historial ── */}
       <div className="lg:sticky lg:top-4">
@@ -921,8 +921,8 @@ export default function DiagnosticoPage() {
         )}
       </div>
 
-      </div>{/* fin columna derecha */}
-      </div>{/* fin grid */}
+      </div>
+      </div>
 
       {detalleItem && (
         <DetalleModal dark={dark} diag={detalleItem} onClose={() => setDetalleItem(null)} onDelete={eliminarDiag}/>
