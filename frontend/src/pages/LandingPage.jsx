@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Heart, MapPin, ChevronLeft, ChevronRight,
@@ -6,6 +6,7 @@ import {
   Star, CheckCircle,
 } from 'lucide-react'
 import { useCart } from '../context/CartContext'
+import api from '../api/axios'
 
 /* ────────────────────────────────────────────
    DATOS
@@ -26,57 +27,6 @@ const FEATURES = [
   { Icon: ShoppingBag, color: '#10B981', titulo: 'Marketplace',  desc: 'Publica tus cosechas y conecta con consumidores locales.'           },
   { Icon: TrendingUp,  color: '#F97316', titulo: 'Trazabilidad', desc: 'Prácticas sostenibles y costeo de producción.'                      },
   { Icon: FileText,    color: '#8B5CF6', titulo: 'Reportes PDF', desc: 'Exporta resúmenes visuales de tu campaña productiva.'               },
-]
-
-const COSECHAS_DEMO = [
-  {
-    id: 'd1', nombre_producto: 'Lechuga Crespa', biohuerto: 'Biohuerto USAT Norte',
-    precio: '3.50', unidad: 'atado',
-    foto_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80',
-    contact: '979123456', rating: 4.9, ventas: 128,
-  },
-  {
-    id: 'd2', nombre_producto: 'Tomate Cherry', biohuerto: 'Biohuerto Las Gardenias',
-    precio: '8.00', unidad: 'kg',
-    foto_url: 'https://images.unsplash.com/photo-1567306226416-28f0efdc88ce?w=600&auto=format&fit=crop&q=80',
-    contact: '979654321', rating: 4.8, ventas: 95,
-  },
-  {
-    id: 'd3', nombre_producto: 'Culantro Fresco', biohuerto: 'Biohuerto San Miguel',
-    precio: '1.00', unidad: 'atado',
-    foto_url: 'https://images.unsplash.com/photo-1574316071802-0d684efa7bf5?w=600&auto=format&fit=crop&q=80',
-    contact: '979789012', rating: 4.7, ventas: 210,
-  },
-  {
-    id: 'd4', nombre_producto: 'Espinaca Baby', biohuerto: 'Biohuerto USAT Centro',
-    precio: '2.50', unidad: 'atado',
-    foto_url: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=600&auto=format&fit=crop&q=80',
-    contact: '979111222', rating: 4.8, ventas: 72,
-  },
-  {
-    id: 'd5', nombre_producto: 'Pepino Fresco', biohuerto: 'Biohuerto El Verde',
-    precio: '4.00', unidad: 'kg',
-    foto_url: 'https://images.unsplash.com/photo-1449300079323-02e209d9d3a6?w=600&auto=format&fit=crop&q=80',
-    contact: '979333444', rating: 4.7, ventas: 56,
-  },
-  {
-    id: 'd6', nombre_producto: 'Albahaca Fresca', biohuerto: 'Biohuerto San Pedro',
-    precio: '1.50', unidad: 'atado',
-    foto_url: 'https://images.unsplash.com/photo-1618090584126-129cd1dde8f4?w=600&auto=format&fit=crop&q=80',
-    contact: '979555666', rating: 4.9, ventas: 143,
-  },
-  {
-    id: 'd7', nombre_producto: 'Zanahoria Orgánica', biohuerto: 'Biohuerto USAT Sur',
-    precio: '3.00', unidad: 'kg',
-    foto_url: 'https://images.unsplash.com/photo-1445282768818-728615cc910a?w=600&auto=format&fit=crop&q=80',
-    contact: '979777888', rating: 4.6, ventas: 89,
-  },
-  {
-    id: 'd8', nombre_producto: 'Rabanito Fresco', biohuerto: 'Biohuerto Las Flores',
-    precio: '1.50', unidad: 'atado',
-    foto_url: 'https://images.unsplash.com/photo-1582284540020-8acbe03f4924?w=600&auto=format&fit=crop&q=80',
-    contact: '979999000', rating: 4.7, ventas: 61,
-  },
 ]
 
 const STATS = [
@@ -337,12 +287,14 @@ function ProductCard({ item }) {
           ✓ Disponible
         </span>
 
-        <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full"
-          style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}>
-          <Star size={11} fill="#F59E0B" style={{ color: '#F59E0B' }} />
-          <span className="text-white text-[10px] font-black">{item.rating}</span>
-          <span className="text-white/60 text-[10px]">({item.ventas})</span>
-        </div>
+        {item.rating && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full"
+            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}>
+            <Star size={11} fill="#F59E0B" style={{ color: '#F59E0B' }} />
+            <span className="text-white text-[10px] font-black">{item.rating}</span>
+            {item.ventas && <span className="text-white/60 text-[10px]">({item.ventas})</span>}
+          </div>
+        )}
       </div>
 
       {/* Info */}
@@ -386,20 +338,40 @@ function ProductCard({ item }) {
    COSECHAS CAROUSEL  (fondo beige)
 ──────────────────────────────────────────── */
 function CosechasCarousel() {
-  const [page,   setPage]   = useState(0)
-  const [paused, setPaused] = useState(false)
+  const [page,     setPage]     = useState(0)
+  const [paused,   setPaused]   = useState(false)
+  const [cosechas, setCosechas] = useState([])
+  const [loading,  setLoading]  = useState(true)
+
+  const loadCosechas = useCallback(async () => {
+    try {
+      const res = await api.get('/cosechas/')
+      const items = res.data.map(c => ({
+        id:             c.id,
+        nombre_producto: c.nombre_producto,
+        foto_url:        c.foto_url,
+        precio:          c.precio,
+        unidad:          c.unidad,
+        biohuerto:       c.biohuerto_nombre || '—',
+        contact:         c.contacto,
+      }))
+      setCosechas(items)
+    } catch { /* silencioso en landing */ } finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { loadCosechas() }, [loadCosechas])
 
   const pageSize  = 4
-  const pageCount = Math.ceil(COSECHAS_DEMO.length / pageSize)
+  const pageCount = Math.max(1, Math.ceil(cosechas.length / pageSize))
   const pages     = Array.from({ length: pageCount }, (_, pi) =>
-    COSECHAS_DEMO.slice(pi * pageSize, pi * pageSize + pageSize)
+    cosechas.slice(pi * pageSize, pi * pageSize + pageSize)
   )
 
   useEffect(() => {
-    if (paused) return
+    if (paused || cosechas.length === 0) return
     const id = setInterval(() => setPage(p => (p + 1) % pageCount), 5000)
     return () => clearInterval(id)
-  }, [paused, pageCount])
+  }, [paused, pageCount, cosechas.length])
 
   const prev = () => setPage(p => Math.max(0, p - 1))
   const next = () => setPage(p => Math.min(pageCount - 1, p + 1))
@@ -446,29 +418,54 @@ function CosechasCarousel() {
         </div>
 
         {/* Carousel track */}
-        <div className="overflow-hidden">
-          <div className="flex transition-transform duration-500"
-            style={{ transform: `translateX(-${page * 100}%)` }}>
-            {pages.map((group, pi) => (
-              <div key={pi} className="w-full shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-6">
-                {group.map(item => <ProductCard key={item.id} item={item} />)}
+        {loading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="rounded-3xl overflow-hidden animate-pulse" style={{ border: '1px solid #e5e7eb' }}>
+                <div className="h-56 bg-gray-100" />
+                <div className="p-5 space-y-3">
+                  <div className="h-4 bg-gray-100 rounded w-3/4" />
+                  <div className="h-3 bg-gray-100 rounded w-1/2" />
+                  <div className="h-8 bg-gray-100 rounded" />
+                </div>
               </div>
             ))}
           </div>
-        </div>
+        ) : cosechas.length === 0 ? (
+          <div className="text-center py-16" style={{ color: '#9CA3AF' }}>
+            <ShoppingBag size={40} className="mx-auto mb-3 opacity-30" />
+            <p className="font-semibold">Aún no hay cosechas publicadas.</p>
+            <Link to="/cosechas/nueva" className="text-sm font-bold mt-2 inline-block" style={{ color: '#2D6A4F' }}>
+              Publica la primera →
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-hidden">
+              <div className="flex transition-transform duration-500"
+                style={{ transform: `translateX(-${page * 100}%)` }}>
+                {pages.map((group, pi) => (
+                  <div key={pi} className="w-full shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-6">
+                    {group.map(item => <ProductCard key={item.id} item={item} />)}
+                  </div>
+                ))}
+              </div>
+            </div>
 
-        {/* Dots */}
-        <div className="flex justify-center gap-2 mt-8">
-          {pages.map((_, i) => (
-            <button key={i} onClick={() => setPage(i)}
-              className="rounded-full transition-all duration-300"
-              style={{
-                width:      i === page ? '24px' : '8px',
-                height:     '8px',
-                background: i === page ? '#2D6A4F' : 'rgba(45,106,79,0.25)',
-              }} />
-          ))}
-        </div>
+            {/* Dots */}
+            <div className="flex justify-center gap-2 mt-8">
+              {pages.map((_, i) => (
+                <button key={i} onClick={() => setPage(i)}
+                  className="rounded-full transition-all duration-300"
+                  style={{
+                    width:      i === page ? '24px' : '8px',
+                    height:     '8px',
+                    background: i === page ? '#2D6A4F' : 'rgba(45,106,79,0.25)',
+                  }} />
+              ))}
+            </div>
+          </>
+        )}
 
         {/* CTA */}
         <div className="mt-10 text-center">
