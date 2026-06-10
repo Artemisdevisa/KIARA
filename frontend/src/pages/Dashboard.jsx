@@ -494,25 +494,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Accesos rápidos — sin fondos de burbuja */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-50 dark:border-gray-800/80">
-              <Activity size={14} className="text-gray-400 dark:text-gray-500" />
-              <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Acciones rápidas</h3>
-            </div>
-            <div className="p-2 space-y-0.5">
-              {QUICK.map(({ to, icon: Icon, label, hov }) => (
-                <Link
-                  key={to} to={to}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors duration-150 group"
-                >
-                  <Icon size={15} className={`text-gray-350 dark:text-gray-600 transition-colors duration-150 shrink-0 ${hov}`} />
-                  <span className="text-xs font-medium text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors flex-1">{label}</span>
-                  <ArrowRight size={11} className="text-gray-200 dark:text-gray-700 group-hover:text-gray-400 group-hover:translate-x-0.5 transition-all duration-150" />
-                </Link>
-              ))}
-            </div>
-          </div>
 
         </div>
       </div>
