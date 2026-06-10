@@ -141,9 +141,14 @@ export default function Register() {
         <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 rounded-full opacity-15 blur-3xl"
           style={{ background: '#52B788' }} />
 
-        <div className="relative z-10 flex items-center">
-          <img src="/sinfondo.png" alt="Kiara logo" style={{ height: 64, width: 'auto', objectFit: 'contain' }} />
-          <span className="font-black tracking-[0.12em] text-2xl text-white" style={{ marginLeft: '-12px' }}>KIARA</span>
+        <div className="relative z-10 flex items-center gap-3">
+          <svg width="40" height="40" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="18" fill="rgba(255,255,255,0.15)" />
+            <path d="M18 28 C18 28 8 22 9 14 C12 12 16 15 18 28Z" fill="white" opacity="0.9" />
+            <path d="M18 24 C18 24 28 18 27 10 C24 8 20 11 18 24Z" fill="white" />
+            <path d="M18 28 L18 30" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+          </svg>
+          <span className="font-black tracking-[0.12em] text-2xl text-white">KIARA</span>
         </div>
 
         <div className="relative z-10">
@@ -180,9 +185,18 @@ export default function Register() {
         style={{ background: '#FAFAFA' }}>
 
         {/* Logo móvil */}
-        <div className="lg:hidden flex items-center mb-10">
-          <img src="/sinfondo.png" alt="Kiara logo" style={{ height: 56, width: 'auto', objectFit: 'contain' }} />
-          <span className="font-black tracking-[0.10em] text-xl" style={{ marginLeft: '-12px', background: 'linear-gradient(135deg,#1B4332,#2D6A4F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+        <div className="lg:hidden flex items-center gap-2 mb-10">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="18" fill="url(#lgr)" />
+            <path d="M18 28 C18 28 8 22 9 14 C12 12 16 15 18 28Z" fill="white" opacity="0.9" />
+            <path d="M18 24 C18 24 28 18 27 10 C24 8 20 11 18 24Z" fill="white" />
+            <path d="M18 28 L18 30" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+            <defs><linearGradient id="lgr" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#2D6A4F" /><stop offset="100%" stopColor="#1B4332" />
+            </linearGradient></defs>
+          </svg>
+          <span className="font-black tracking-[0.10em] text-xl"
+            style={{ background: 'linear-gradient(135deg,#1B4332,#2D6A4F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             KIARA
           </span>
         </div>
