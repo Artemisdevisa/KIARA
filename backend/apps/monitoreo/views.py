@@ -4,9 +4,10 @@ from rest_framework.response import Response
 from .models import MonitoreoRegistro
 from .serializers import MonitoreoRegistroSerializer
 
-# Rangos óptimos para biohuertos en Lambayeque
-TEMP_MIN, TEMP_MAX = 15.0, 35.0   # °C
-HUM_MIN,  HUM_MAX  = 40.0, 90.0   # %
+# Rangos óptimos para biohuertos en Lambayeque (costa norte, clima subtropical árido)
+# Referencia: INIA Estación Experimental Vista Florida, Lambayeque
+TEMP_MIN, TEMP_MAX = 18.0, 32.0   # °C
+HUM_MIN,  HUM_MAX  = 50.0, 85.0   # %
 
 
 def _generar_alertas(biohuerto, temperatura, humedad):
@@ -28,14 +29,14 @@ def _generar_alertas(biohuerto, temperatura, humedad):
                 mensajes.append({
                     'tipo': 'control',
                     'titulo': f'Temperatura alta ({temperatura}°C) — riesgo para el cultivo',
-                    'descripcion': f'Se registró {temperatura}°C en el biohuerto. Temperatura óptima: {TEMP_MIN}–{TEMP_MAX}°C. Considera sombrear o ventilar.',
+                    'descripcion': f'Se registró {temperatura}°C en el biohuerto. Rango óptimo para Lambayeque: {TEMP_MIN}–{TEMP_MAX}°C. Considera sombrear o ventilar.',
                     'prioridad': 'alta',
                 })
             elif float(temperatura) < TEMP_MIN:
                 mensajes.append({
                     'tipo': 'control',
                     'titulo': f'Temperatura baja ({temperatura}°C) — riesgo de helada',
-                    'descripcion': f'Se registró {temperatura}°C en el biohuerto. Temperatura óptima: {TEMP_MIN}–{TEMP_MAX}°C. Considera cubrir los cultivos.',
+                    'descripcion': f'Se registró {temperatura}°C en el biohuerto. Rango óptimo para Lambayeque: {TEMP_MIN}–{TEMP_MAX}°C. Considera cubrir los cultivos.',
                     'prioridad': 'alta',
                 })
 
@@ -44,14 +45,14 @@ def _generar_alertas(biohuerto, temperatura, humedad):
                 mensajes.append({
                     'tipo': 'riego',
                     'titulo': f'Humedad baja ({humedad}%) — revisar riego urgente',
-                    'descripcion': f'Se registró {humedad}% de humedad. Rango óptimo: {HUM_MIN}–{HUM_MAX}%. El cultivo puede estar en estrés hídrico.',
+                    'descripcion': f'Se registró {humedad}% de humedad. Rango óptimo para Lambayeque: {HUM_MIN}–{HUM_MAX}%. El cultivo puede estar en estrés hídrico.',
                     'prioridad': 'alta',
                 })
             elif float(humedad) > HUM_MAX:
                 mensajes.append({
                     'tipo': 'control',
                     'titulo': f'Humedad alta ({humedad}%) — riesgo de hongos',
-                    'descripcion': f'Se registró {humedad}% de humedad. Rango óptimo: {HUM_MIN}–{HUM_MAX}%. Condiciones favorables para enfermedades fúngicas.',
+                    'descripcion': f'Se registró {humedad}% de humedad. Rango óptimo para Lambayeque: {HUM_MIN}–{HUM_MAX}%. Condiciones favorables para enfermedades fúngicas.',
                     'prioridad': 'media',
                 })
 

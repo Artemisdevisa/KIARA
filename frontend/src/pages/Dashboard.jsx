@@ -68,8 +68,8 @@ const STATS = (d) => [
     num: 'text-teal-700 dark:text-teal-300',
   },
   {
-    icon: Sprout, label: 'Cultivos activos', value: d?.cultivos_activos, desc: 'en producción',
-    to: '/cultivos',
+    icon: CalendarRange, label: 'Campañas activas', value: d?.campanas_activas, desc: 'en producción',
+    to: '/campanas',
     iconCls: 'text-emerald-500 dark:text-emerald-400',
     border: 'border-l-emerald-500',
     num: 'text-emerald-700 dark:text-emerald-300',

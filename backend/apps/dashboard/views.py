@@ -25,6 +25,9 @@ class DashboardView(APIView):
         cultivos_activos = Cultivo.objects.filter(
             biohuerto__in=biohuertos, estado='activo'
         ).count()
+        campanas_activas = Campana.objects.filter(
+            biohuerto__in=biohuertos, estado='activa'
+        ).count()
 
         proximas_cosechas = list(
             Campana.objects.filter(
@@ -103,6 +106,7 @@ class DashboardView(APIView):
 
         return Response({
             'cultivos_activos': cultivos_activos,
+            'campanas_activas': campanas_activas,
             'proximas_cosechas': list(proximas_cosechas),
             'alertas_pendientes': alertas_pendientes,
             'cosechas_activas': cosechas_activas,

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import Loading from '../../components/ui/Loading'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Droplets, Leaf, AlertTriangle, RotateCcw, Clock } from 'lucide-react'
+import { ArrowLeft, Droplets, Leaf, AlertTriangle, RotateCcw, Clock, CheckCircle, XCircle } from 'lucide-react'
 
 const ETAPAS = ['germinacion', 'crecimiento', 'floracion', 'cosecha']
 const ETAPA_LABEL = { germinacion: 'Germinación', crecimiento: 'Crecimiento', floracion: 'Floración', cosecha: 'Cosecha' }
@@ -75,8 +75,8 @@ export default function CultivosDetail() {
           {/* Cambiar estado */}
           {cultivo.estado === 'activo' && (
             <div className="flex gap-2 pt-2">
-              <button onClick={() => cambiarEstado('cosechado')} className="btn-secondary text-xs flex-1">✅ Marcar cosechado</button>
-              <button onClick={() => cambiarEstado('perdido')} className="btn-danger text-xs flex-1">❌ Marcar perdido</button>
+              <button onClick={() => cambiarEstado('cosechado')} className="btn-secondary text-xs flex-1 flex items-center justify-center gap-1.5"><CheckCircle size={14} /> Marcar cosechado</button>
+              <button onClick={() => cambiarEstado('perdido')} className="btn-danger text-xs flex-1 flex items-center justify-center gap-1.5"><XCircle size={14} /> Marcar perdido</button>
             </div>
           )}
         </div>
