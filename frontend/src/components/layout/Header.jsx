@@ -14,7 +14,7 @@ import api from '../../api/axios'
 ──────────────────────────────────────────── */
 function KiaraLogomark({ size = 80 }) {
   return (
-    <img src="/sinfondo.png" alt="Kiara logo" width={size} height={size} style={{ objectFit: 'contain' }} />
+    <img src="/sinfondo.png" alt="Kiara logo" style={{ height: size, width: 'auto', objectFit: 'contain', display: 'block' }} />
   )
 }
 
@@ -495,7 +495,7 @@ export default function Header() {
         }}>
 
         <div className="max-w-[1480px] mx-auto px-4 sm:px-6 xl:px-10">
-          <div className="flex items-center h-16 gap-2">
+          <div className="flex items-center h-24 gap-2">
 
             {/* 1 · Logo */}
             <Link to="/" onClick={closeDrawer} className="flex items-center gap-2.5 group shrink-0">
