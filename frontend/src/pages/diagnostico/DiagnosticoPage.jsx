@@ -922,7 +922,6 @@ export default function DiagnosticoPage() {
       </div>
 
       </div>
-      </div>
 
       {detalleItem && (
         <DetalleModal dark={dark} diag={detalleItem} onClose={() => setDetalleItem(null)} onDelete={eliminarDiag}/>
@@ -930,3 +929,4 @@ export default function DiagnosticoPage() {
     </div>
   )
 }
+
