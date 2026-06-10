@@ -165,15 +165,24 @@ function FormModal({ dark, biohuertos, onClose, onSaved }) {
       const alertas = res.data.alertas_generadas || []
       if (alertas.length > 0) {
         toast((t) => (
-          <div>
-            <p className="font-bold text-sm">⚠ {alertas.length} alerta{alertas.length > 1 ? 's' : ''} generada{alertas.length > 1 ? 's' : ''}</p>
-            {alertas.map((a, i) => (
-              <p key={i} className="text-xs mt-1 opacity-80">
-                [{a.campana_codigo}] {a.titulo}
+          <div className="flex gap-3 items-start">
+            <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(239,68,68,0.12)' }}>
+              <AlertTriangle size={16} className="text-red-500" />
+            </div>
+            <div>
+              <p className="font-bold text-sm text-gray-800">
+                {alertas.length} alerta{alertas.length > 1 ? 's' : ''} generada{alertas.length > 1 ? 's' : ''}
               </p>
-            ))}
+              {alertas.map((a, i) => (
+                <p key={i} className="text-xs mt-1 text-gray-500 flex items-center gap-1">
+                  <span className="font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">{a.campana_codigo}</span>
+                  {a.titulo}
+                </p>
+              ))}
+            </div>
           </div>
-        ), { duration: 6000, icon: '🔔' })
+        ), { duration: 6000, icon: null })
       } else {
         toast.success('Registro guardado. Condiciones en rango óptimo.')
       }

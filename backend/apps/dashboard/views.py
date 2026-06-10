@@ -131,33 +131,53 @@ class DashboardView(APIView):
             d['cultivo__nombre'] = d.pop('variedad__nombre') or ''
             d['campana_codigo']  = d.pop('campana__codigo') or ''
 
-        # Gasto por campaña (PresupuestoItem)
-        from apps.campanas.models import PresupuestoItem
-        from django.db.models import F, ExpressionWrapper, DecimalField as DDecField
+        # Gasto por campaña (Labores + Fitosanitario aplicado)
+        from apps.campanas.models import LaborCampana as LaborM
 
         campanas_activas_qs = Campana.objects.filter(
             biohuerto__in=biohuertos, estado__in=['activa', 'planificada']
-        ).select_related('variedad', 'biohuerto')
+        ).select_related('variedad', 'biohuerto').prefetch_related(
+            'labores',
+            'plan_fitosanitario__producto',
+            'plan_fitosanitario__unidad',
+        )
 
-        pres_map = {
-            r['campana_id']: {'presupuestado': float(r['total_pres'] or 0), 'ejecutado': float(r['total_ej'] or 0)}
-            for r in PresupuestoItem.objects.filter(campana__in=campanas_activas_qs)
-            .annotate(monto_pres=ExpressionWrapper(F('cantidad') * F('precio_unitario'), output_field=DDecField(max_digits=12, decimal_places=2)))
-            .values('campana_id')
-            .annotate(total_pres=Sum('monto_pres'), total_ej=Sum('monto_ejecutado'))
-        }
+        def _fito_factor(codigo):
+            s = (codigo or '').lower()
+            return 0.001 if (s.startswith('ml') or s.startswith('cc') or s.startswith('g/') or s == 'g') else 1
 
-        campanas_costos = [
-            {
+        campanas_costos = []
+        for c in campanas_activas_qs:
+            area = float(c.area or 0)
+
+            # Labores
+            labor_pres = sum(
+                float(l.cantidad_programada or 0) * float(l.costo_unitario or 0)
+                for l in c.labores.all()
+            )
+            labor_ej = sum(
+                float(l.cantidad_ejecutada or 0) * float(l.costo_unitario or 0)
+                for l in c.labores.all() if l.estado == 'ejecutada'
+            )
+
+            # Fitosanitario
+            fito_pres = fito_ej = 0.0
+            for item in c.plan_fitosanitario.all():
+                precio  = float(getattr(item.producto, 'precio_unitario', 0) or 0)
+                codigo  = getattr(item.unidad, 'codigo', '') or ''
+                cost    = float(item.dosis or 0) * area * precio * _fito_factor(codigo)
+                fito_pres += cost
+                if item.estado == 'aplicado':
+                    fito_ej += cost
+
+            campanas_costos.append({
                 'codigo':        c.codigo,
                 'variedad':      c.variedad.nombre if c.variedad else '',
                 'biohuerto':     c.biohuerto.nombre if c.biohuerto else '',
-                'presupuestado': pres_map.get(c.id, {}).get('presupuestado', 0),
-                'ejecutado':     pres_map.get(c.id, {}).get('ejecutado', 0),
+                'presupuestado': round(labor_pres + fito_pres, 2),
+                'ejecutado':     round(labor_ej + fito_ej, 2),
                 'estado':        c.estado,
-            }
-            for c in campanas_activas_qs
-        ]
+            })
 
         # Campañas activas con detalle
         campanas_detalle = list(

@@ -51,9 +51,15 @@ function ProductCard({ c }) {
           <img src={c.foto_url} alt={c.nombre_producto}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-            <Sprout size={40} className="text-emerald-300" />
-            <span className="text-xs text-emerald-400 font-medium">Sin imagen</span>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-3"
+            style={{ background: 'linear-gradient(135deg,#d1fae5 0%,#a7f3d0 40%,#6ee7b7 100%)' }}>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center shadow-inner"
+              style={{ backgroundColor: 'rgba(255,255,255,0.5)' }}>
+              <span className="text-3xl font-black text-emerald-700 uppercase leading-none">
+                {(c.nombre_producto || 'P').charAt(0)}
+              </span>
+            </div>
+            <span className="text-xs font-semibold text-emerald-600 tracking-wide">Producto fresco</span>
           </div>
         )}
         <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm rounded-xl px-2.5 py-1 shadow-sm">

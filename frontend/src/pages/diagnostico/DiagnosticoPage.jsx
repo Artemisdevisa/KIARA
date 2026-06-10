@@ -554,7 +554,7 @@ export default function DiagnosticoPage() {
             Diagnóstico Fitosanitario IA
           </h1>
           <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color:dark?D.sub:'#9ca3af' }}>
-            <Zap size={11}/> Asistido por Claude + Gemini
+            <Zap size={11}/> Asistido por  Gemini
           </p>
         </div>
       </div>
@@ -774,7 +774,7 @@ export default function DiagnosticoPage() {
             </p>
           </div>
           <div className="space-y-2">
-            <CampanaSelector campanas={campanas} value={imgCampanaId} onChange={setImgCampanaId} dark={dark} ist={ist} lst={lst} opcional/>
+            <CampanaSelector campanas={campanas} value={imgCampanaId} onChange={setImgCampanaId} dark={dark} ist={ist} lst={lst} />
             <VariedadBadge campana={campanaObj(imgCampanaId)} dark={dark}/>
           </div>
           <div>
