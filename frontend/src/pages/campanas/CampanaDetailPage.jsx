@@ -963,52 +963,36 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
 ══════════════════════════════════════════════════════ */
 function RiegoTab({ dark, campanaId, campana }) {
   const [planes, setPlanes]         = useState([])
-  const [regs, setRegs]             = useState([])
   const [prods, setProds]           = useState([])
   const [viewPlan, setViewPlan]     = useState(null)
-  const [viewReg, setViewReg]       = useState(null)
   const [modal, setModal]           = useState(null)
-  const [regModal, setRegModal]     = useState(false)
   const [delConfirm, setDelConfirm] = useState(null)
-  const [form, setForm]             = useState({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '' })
-  const [regForm, setRegForm]       = useState({ plan: '', fecha: '', litros_aplicados: '', area_regada: '', costo_agua: '', fertilizante: '', dosis_fertilizante: '', operario: '', observaciones: '' })
+  const [form, setForm]             = useState({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '', operario: '', costo_agua_total: '' })
   const [loading, setLoading]       = useState(false)
   const METODOS = [['goteo','Goteo'],['aspersion','Aspersión'],['gravedad','Gravedad'],['manual','Manual']]
 
   const fetch = useCallback(async () => {
-    const [p, r, pr] = await Promise.all([
+    const [p, pr] = await Promise.all([
       api.get(`/campanas/${campanaId}/plan-riego/`),
-      api.get(`/campanas/${campanaId}/registros-riego/`),
       api.get('/campanas/productos/'),
     ])
-    setPlanes(p.data); setRegs(r.data); setProds(pr.data)
+    setPlanes(p.data); setProds(pr.data)
   }, [campanaId])
   useEffect(() => { fetch() }, [fetch])
 
   const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
-  const hr = e => setRegForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
   const submitPlan = async e => {
     e.preventDefault(); setLoading(true)
     try {
-      const payload = { ...form, duracion_minutos: form.duracion_minutos || null, fertilizante: form.fertilizante || null, dosis_fertilizante: form.dosis_fertilizante || null, fecha_inicio: form.fecha_inicio || null, fecha_fin: form.fecha_fin || null }
+      const payload = { ...form, duracion_minutos: form.duracion_minutos || null, fertilizante: form.fertilizante || null, dosis_fertilizante: form.dosis_fertilizante || null, fecha_inicio: form.fecha_inicio || null, fecha_fin: form.fecha_fin || null, costo_agua_total: form.costo_agua_total || null }
       if (modal === 'edit') { await api.patch(`/campanas/plan-riego/${form.id}/`, payload); toast.success('Plan actualizado.') }
       else { await api.post(`/campanas/${campanaId}/plan-riego/`, payload); toast.success('Plan agregado.') }
       setModal(null); fetch()
     } catch { toast.error('Error.') } finally { setLoading(false) }
   }
 
-  const submitReg = async e => {
-    e.preventDefault(); setLoading(true)
-    try {
-      const payload = { ...regForm, plan: regForm.plan || null, fertilizante: regForm.fertilizante || null, dosis_fertilizante: regForm.dosis_fertilizante || null }
-      await api.post(`/campanas/${campanaId}/registros-riego/`, payload)
-      toast.success('Riego registrado.'); setRegModal(false); fetch()
-    } catch { toast.error('Error.') } finally { setLoading(false) }
-  }
-
-  const delPlan    = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`);       fetch() }, msg: '¿Eliminar este plan de riego?' })
-  const delReg     = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/registros-riego/${id}/`); fetch() }, msg: '¿Eliminar este registro de riego?' })
+  const delPlan    = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/plan-riego/${id}/`); fetch() }, msg: '¿Eliminar este plan de riego?' })
   const togglePlan = async (p) => {
     if (!p.completado && p.fecha_inicio) {
       const hayAnterior = planes.some(x => !x.completado && x.id !== p.id && x.fecha_inicio && x.fecha_inicio < p.fecha_inicio)
@@ -1022,23 +1006,7 @@ function RiegoTab({ dark, campanaId, campana }) {
       toast.error('Error al actualizar.')
     }
   }
-  const toggleReg = async (r) => {
-    if (!r.completado && r.fecha) {
-      const hayAnterior = regs.some(x => !x.completado && x.id !== r.id && x.fecha < r.fecha)
-      if (hayAnterior) { toast.error('Hay registros de riego/fertirrigación anteriores sin completar. Complétalos primero.'); return }
-    }
-    try {
-      const res = await api.patch(`/campanas/registros-riego/${r.id}/`, { completado: !r.completado })
-      setRegs(prev => prev.map(x => x.id === r.id ? { ...x, completado: res.data.completado } : x))
-    } catch (err) {
-      console.error('[toggleReg] ERROR:', err?.response?.status, err?.response?.data)
-      toast.error('Error al actualizar.')
-    }
-  }
-
   const ist = ist_(dark); const lst = lst_(dark)
-  const total_litros = regs.reduce((s, r) => s + parseFloat(r.litros_aplicados || 0), 0)
-  const total_costo  = regs.reduce((s, r) => s + parseFloat(r.costo_total || 0), 0)
 
   const METODO_BADGE = {
     goteo:     { dbg: 'rgba(59,130,246,0.15)',  lbg: '#dbeafe', dc: '#60a5fa', lc: '#2563eb' },
@@ -1064,7 +1032,7 @@ function RiegoTab({ dark, campanaId, campana }) {
               </span>
             )}
           </div>
-          <button onClick={() => { setForm({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '' }); setModal('new') }}
+          <button onClick={() => { setForm({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '', operario: '', costo_agua_total: '' }); setModal('new') }}
             className="flex items-center gap-1.5 btn-primary text-sm">
             <Plus size={13} /> Nuevo plan
           </button>
@@ -1126,7 +1094,7 @@ function RiegoTab({ dark, campanaId, campana }) {
                         <button onClick={() => setViewPlan(p)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
                           onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
                           onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={13} /></button>
-                        <button onClick={() => { setForm({ ...p, fertilizante: p.fertilizante || '' }); setModal('edit') }}
+                        <button onClick={() => { setForm({ ...p, fertilizante: p.fertilizante || '', operario: p.operario || '', costo_agua_total: p.costo_agua_total || '' }); setModal('edit') }}
                           className="p-1.5 rounded-lg" style={{ color: dark ? '#60a5fa' : '#2563eb' }}
                           onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(59,130,246,0.15)' : '#eff6ff'}
                           onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Pencil size={13} /></button>
@@ -1139,79 +1107,6 @@ function RiegoTab({ dark, campanaId, campana }) {
                   </tr>
                 )
               })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── Riegos ejecutados ────────────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: dark ? D.sub : '#9ca3af' }}>
-              {regs.length} riego{regs.length !== 1 ? 's' : ''} ejecutado{regs.length !== 1 ? 's' : ''}
-            </p>
-            {regs.length > 0 && (
-              <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
-                style={{ backgroundColor: dark ? 'rgba(59,130,246,0.12)' : '#eff6ff', color: dark ? '#60a5fa' : '#2563eb' }}>
-                {total_litros.toFixed(0)} L · {fmt(total_costo)}
-              </span>
-            )}
-          </div>
-          <button onClick={() => { setRegForm({ plan: '', fecha: '', litros_aplicados: '', area_regada: '', costo_agua: '0', fertilizante: '', dosis_fertilizante: '', operario: '', observaciones: '' }); setRegModal(true) }}
-            className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg"
-            style={{ backgroundColor: dark ? 'rgba(59,130,246,0.15)' : '#eff6ff', color: dark ? '#60a5fa' : '#2563eb' }}>
-            <Plus size={12} /> Registrar riego
-          </button>
-        </div>
-        <div style={{ borderRadius: '14px', overflow: 'hidden', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, backgroundColor: dark ? D.cardBg : '#fff' }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                {['', 'Fecha', 'Plan', 'Litros', 'Área', 'Fertirrigación', 'Costo total', ''].map((col, i) => (
-                  <th key={i} className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide"
-                    style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {regs.map(r => (
-                <tr key={r.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                  <td className="px-4 py-2.5">
-                    <button onClick={() => toggleReg(r)} title={r.completado ? 'Revertir a pendiente' : 'Marcar como hecho'}>
-                      {r.completado
-                        ? <CheckCircle2 size={18} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
-                        : <Circle size={18} style={{ color: dark ? D.sub : '#d1d5db' }} />}
-                    </button>
-                  </td>
-                  <td className="px-4 py-2.5 text-sm"
-                    style={{ color: dark ? D.sub : '#6b7280', textDecoration: r.completado ? 'line-through' : 'none', opacity: r.completado ? 0.6 : 1 }}>
-                    {r.fecha}
-                  </td>
-                  <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: dark ? D.sub : '#6b7280', opacity: r.completado ? 0.6 : 1 }}>{r.plan_nombre || '—'}</td>
-                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.text : '#374151', opacity: r.completado ? 0.6 : 1 }}>{r.litros_aplicados} L</td>
-                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280', opacity: r.completado ? 0.6 : 1 }}>{r.area_regada} m²</td>
-                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? '#4ade80' : '#15803d', opacity: r.completado ? 0.6 : 1 }}>
-                    {r.fertilizante_nombre ? `${r.fertilizante_nombre} ${r.dosis_fertilizante}` : '—'}
-                  </td>
-                  <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb', opacity: r.completado ? 0.6 : 1 }}>{fmt(r.costo_total)}</td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button onClick={() => setViewReg(r)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={12} /></button>
-                      <button onClick={() => delReg(r.id)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {regs.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin registros de riego</td></tr>
-              )}
             </tbody>
           </table>
         </div>
@@ -1259,40 +1154,16 @@ function RiegoTab({ dark, campanaId, campana }) {
             <div><label style={lst}>Fecha inicio</label><input name="fecha_inicio" type="date" value={form.fecha_inicio} onChange={h} style={ist} /></div>
             <div><label style={lst}>Fecha fin</label><input name="fecha_fin" type="date" value={form.fecha_fin} onChange={h} style={ist} /></div>
           </div>
+          <div style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6'}`, paddingTop: '10px' }}>
+            <p className="text-[11px] font-extrabold uppercase tracking-widest mb-2" style={{ color: dark ? 'rgba(255,255,255,0.28)' : '#9ca3af' }}>Ejecución</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label style={lst}>Operario</label><input name="operario" value={form.operario} onChange={h} style={ist} /></div>
+              <div><label style={lst}>Costo agua total (S/.)</label><input name="costo_agua_total" type="number" step="0.01" value={form.costo_agua_total} onChange={h} style={ist} placeholder="0.00" /></div>
+            </div>
+          </div>
         </MiniModal>
       )}
 
-      {/* ── Modal: registrar riego ───────────────────────── */}
-      {regModal && (
-        <MiniModal dark={dark} title="Registrar riego ejecutado" onClose={() => setRegModal(false)} onSubmit={submitReg} loading={loading}>
-          <div><label style={lst}>Plan asociado</label>
-            <select name="plan" value={regForm.plan} onChange={hr} style={ist}>
-              <option value="">Sin plan</option>
-              {planes.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label style={lst}>Fecha *</label><input name="fecha" type="date" value={regForm.fecha} onChange={hr} style={ist} required /></div>
-            <div><label style={lst}>Área regada (m²) *</label><input name="area_regada" type="number" step="0.01" value={regForm.area_regada} onChange={hr} style={ist} required /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label style={lst}>Litros aplicados *</label><input name="litros_aplicados" type="number" step="0.01" value={regForm.litros_aplicados} onChange={hr} style={ist} required /></div>
-            <div><label style={lst}>Costo agua (S/.)</label><input name="costo_agua" type="number" step="0.01" value={regForm.costo_agua} onChange={hr} style={ist} /></div>
-          </div>
-          <div><label style={lst}>Fertilizante aplicado</label>
-            <select name="fertilizante" value={regForm.fertilizante} onChange={hr} style={ist}>
-              <option value="">Sin fertilizante</option>
-              {prods.filter(p => p.tipo === 'fertilizante').map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-            </select>
-          </div>
-          {regForm.fertilizante && (
-            <div><label style={lst}>Dosis (kg/m²)</label>
-              <input name="dosis_fertilizante" type="number" step="0.001" value={regForm.dosis_fertilizante} onChange={hr} style={ist} />
-            </div>
-          )}
-          <div><label style={lst}>Operario</label><input name="operario" value={regForm.operario} onChange={hr} style={ist} /></div>
-        </MiniModal>
-      )}
       {viewPlan && (
         <InfoModal dark={dark} title="Detalle del plan de riego" onClose={() => setViewPlan(null)}>
           <IR dark={dark} label="Nombre"         value={viewPlan.nombre} />
@@ -1304,20 +1175,10 @@ function RiegoTab({ dark, campanaId, campana }) {
           <IR dark={dark} label="Dosis fert."    value={viewPlan.dosis_fertilizante ? `${viewPlan.dosis_fertilizante} ${viewPlan.fertilizante_unidad || 'u.'}/m²` : null} />
           <IR dark={dark} label="Fecha inicio"   value={viewPlan.fecha_inicio} />
           <IR dark={dark} label="Fecha fin"      value={viewPlan.fecha_fin} />
-        </InfoModal>
-      )}
-      {viewReg && (
-        <InfoModal dark={dark} title="Detalle de riego ejecutado" onClose={() => setViewReg(null)}>
-          <IR dark={dark} label="Fecha"          value={viewReg.fecha} />
-          <IR dark={dark} label="Plan"           value={viewReg.plan_nombre} />
-          <IR dark={dark} label="Litros aplic."  value={`${viewReg.litros_aplicados} L`} />
-          <IR dark={dark} label="Área regada"    value={`${viewReg.area_regada} m²`} />
-          <IR dark={dark} label="Costo agua"     value={fmt(viewReg.costo_agua)} color={dark ? '#60a5fa' : '#2563eb'} />
-          <IR dark={dark} label="Costo total"    value={fmt(viewReg.costo_total)} color={dark ? '#4ade80' : '#15803d'} />
-          <IR dark={dark} label="Fertirrigación" value={viewReg.fertilizante_nombre} color={dark ? '#4ade80' : '#15803d'} />
-          <IR dark={dark} label="Dosis fert."    value={viewReg.dosis_fertilizante ? `${viewReg.dosis_fertilizante} kg/m²` : null} />
-          <IR dark={dark} label="Operario"       value={viewReg.operario} />
-          <IR dark={dark} label="Observaciones"  value={viewReg.observaciones} />
+          {viewPlan.completado && <>
+            <IR dark={dark} label="Operario"         value={viewPlan.operario || null} />
+            <IR dark={dark} label="Costo agua total" value={viewPlan.costo_agua_total ? fmt(viewPlan.costo_agua_total) : null} color={dark ? '#60a5fa' : '#2563eb'} />
+          </>}
         </InfoModal>
       )}
       {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
@@ -1341,11 +1202,10 @@ function PresupuestoTab({ dark, campanaId, campana }) {
   const CATS = [['insumo','Insumo'],['agua','Agua'],['mano_obra','Mano de obra'],['otro','Otro']]
 
   const fetch = useCallback(async () => {
-    const [r, l, f, rr, pr] = await Promise.all([
+    const [r, l, f, pr] = await Promise.all([
       api.get(`/campanas/${campanaId}/presupuesto/`),
       api.get(`/campanas/${campanaId}/labores/`),
       api.get(`/campanas/${campanaId}/fitosanitario/`),
-      api.get(`/campanas/${campanaId}/registros-riego/`),
       api.get(`/campanas/${campanaId}/plan-riego/`),
     ])
     setItems(r.data)
@@ -1361,11 +1221,12 @@ function PresupuestoTab({ dark, campanaId, campana }) {
         return s + costo
       }, 0)
     setFitoEj(totalFitoEj)
-    const totalRiegoEj = [
-      ...rr.data.filter(reg => reg.completado).map(reg => parseFloat(reg.costo_total || 0)),
-      ...pr.data.filter(pl => pl.completado && pl.fertilizante_precio && pl.dosis_fertilizante && pl.litros_por_m2)
-        .map(pl => parseFloat(pl.dosis_fertilizante) * parseFloat(pl.litros_por_m2) * area * parseFloat(pl.fertilizante_precio) / 1000),
-    ].reduce((s, v) => s + v, 0)
+    const totalRiegoEj = pr.data.filter(pl => pl.completado).reduce((s, pl) => {
+      const fertCost = (pl.fertilizante_precio && pl.dosis_fertilizante && pl.litros_por_m2)
+        ? parseFloat(pl.dosis_fertilizante) * parseFloat(pl.litros_por_m2) * area * parseFloat(pl.fertilizante_precio) / 1000
+        : 0
+      return s + fertCost + parseFloat(pl.costo_agua_total || 0)
+    }, 0)
     setRiegoEj(totalRiegoEj)
   }, [campanaId, campana?.area])
   useEffect(() => { fetch() }, [fetch])
@@ -1586,7 +1447,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
 function TrazabilidadTab({ dark, campanaId, campana }) {
   const [practicas, setPracticas]   = useState([])
   const [fito, setFito]             = useState([])
-  const [riegos, setRiegos]         = useState([])
+  const [riegoPlanes, setRiegoPlanes] = useState([])
   const [labores, setLabores]       = useState([])
   const [modal, setModal]           = useState(false)
   const [delConfirm, setDelConfirm] = useState(null)
@@ -1603,10 +1464,10 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
     const [p, f, r, l] = await Promise.all([
       api.get(`/campanas/${campanaId}/practicas/`),
       api.get(`/campanas/${campanaId}/fitosanitario/`),
-      api.get(`/campanas/${campanaId}/registros-riego/`),
+      api.get(`/campanas/${campanaId}/plan-riego/`),
       api.get(`/campanas/${campanaId}/labores/`),
     ])
-    setPracticas(p.data); setFito(f.data); setRiegos(r.data); setLabores(l.data)
+    setPracticas(p.data); setFito(f.data); setRiegoPlanes(r.data); setLabores(l.data)
   }, [campanaId])
   useEffect(() => { fetch() }, [fetch])
 
@@ -1626,7 +1487,7 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
   const timeline = [
     ...labores.filter(l => l.fecha_ejecutada).map(l => ({ fecha: l.fecha_ejecutada, tipo: 'labor', label: l.tipo_labor_nombre, detalle: `${l.cantidad_ejecutada ?? l.cantidad_programada} ${l.tipo_labor_unidad}` })),
     ...fito.filter(a => a.estado === 'aplicado' && a.fecha_aplicada).map(a => ({ fecha: a.fecha_aplicada, tipo: 'aplicacion', label: `Aplicación: ${a.producto_nombre}`, detalle: `${a.dosis} ${a.unidad_codigo || ''}${a.area_aplicada ? ` · ${a.area_aplicada} m²` : ''}`, sostenible: a.es_sostenible })),
-    ...riegos.map(r => ({ fecha: r.fecha, tipo: 'riego', label: 'Riego', detalle: `${r.litros_aplicados} L · ${r.area_regada} m²` })),
+    ...riegoPlanes.filter(r => r.completado && (r.fecha_fin || r.fecha_inicio)).map(r => ({ fecha: r.fecha_fin || r.fecha_inicio, tipo: 'riego', label: `Riego: ${r.nombre}`, detalle: `${r.litros_por_m2} L/m² · ${r.metodo_display}${r.operario ? ' · ' + r.operario : ''}` })),
     ...practicas.map(p => ({ fecha: p.fecha, tipo: 'practica', label: p.tipo_display, detalle: p.descripcion })),
   ].sort((a, b) => b.fecha.localeCompare(a.fecha))
 
@@ -1670,9 +1531,9 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
     ${fito.filter(a => a.estado === 'aplicado').length ? fito.filter(a => a.estado === 'aplicado').map(a => `<tr><td>${a.fecha_aplicada ?? '—'}</td><td>${a.producto_nombre}</td><td>${a.dosis} ${a.unidad_codigo ?? ''}</td><td>${a.area_aplicada ? a.area_aplicada + ' m²' : '—'}</td><td>${a.operario || '—'}</td><td>${a.es_sostenible ? '<span class="badge verde">Sí</span>' : '—'}</td></tr>`).join('') : '<tr><td colspan="6" style="color:#9ca3af;text-align:center">Sin aplicaciones</td></tr>'}
     </tbody></table>
 
-    <h2>Registros de Riego</h2>
-    <table><thead><tr><th>Fecha</th><th>Litros</th><th>Área</th><th>Fertirrigación</th><th>Costo agua</th></tr></thead><tbody>
-    ${riegos.length ? riegos.map(r => `<tr><td>${r.fecha}</td><td>${r.litros_aplicados} L</td><td>${r.area_regada} m²</td><td>${r.fertilizante_nombre ?? '—'}</td><td>S/. ${parseFloat(r.costo_agua).toFixed(2)}</td></tr>`).join('') : '<tr><td colspan="5" style="color:#9ca3af;text-align:center">Sin registros</td></tr>'}
+    <h2>Planes de Riego Completados</h2>
+    <table><thead><tr><th>Nombre</th><th>Método</th><th>L/m²</th><th>Fertirrigación</th><th>Operario</th><th>Costo agua</th></tr></thead><tbody>
+    ${riegoPlanes.filter(r => r.completado).length ? riegoPlanes.filter(r => r.completado).map(r => `<tr><td>${r.nombre}</td><td>${r.metodo_display}</td><td>${r.litros_por_m2} L</td><td>${r.fertilizante_nombre ?? '—'}</td><td>${r.operario || '—'}</td><td>${r.costo_agua_total ? 'S/. ' + parseFloat(r.costo_agua_total).toFixed(2) : '—'}</td></tr>`).join('') : '<tr><td colspan="6" style="color:#9ca3af;text-align:center">Sin planes completados</td></tr>'}
     </tbody></table>
 
     <h2>Labores Ejecutadas</h2>

@@ -280,6 +280,8 @@ class PlanRiego(models.Model):
     dosis_fertilizante = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     fecha_inicio       = models.DateField(null=True, blank=True)
     fecha_fin          = models.DateField(null=True, blank=True)
+    operario           = models.CharField(max_length=100, blank=True)
+    costo_agua_total   = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     activo             = models.BooleanField(default=True)
     completado         = models.BooleanField(default=False)
 
