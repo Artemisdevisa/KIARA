@@ -623,32 +623,27 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
    TAB: FITOSANITARIO
 ══════════════════════════════════════════════════════ */
 function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
-  const [plan, setPlan]       = useState([])
-  const [regs, setRegs]       = useState([])
+  const [plan, setPlan]             = useState([])
   const [prods, setProds]           = useState([])
   const [modal, setModal]           = useState(null)
-  const [regModal, setRegModal]     = useState(false)
   const [apModal, setApModal]       = useState(null)
-  const [apForm, setApForm]         = useState({ fecha_aplicada: '' })
+  const [apForm, setApForm]         = useState({ fecha_aplicada: '', area_aplicada: '', operario: '', es_sostenible: false, observaciones: '' })
   const [delConfirm, setDelConfirm] = useState(null)
   const [viewItem, setViewItem]     = useState(null)
-  const [viewReg, setViewReg]       = useState(null)
   const [form, setForm]             = useState({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' })
-  const [regForm, setRegForm]       = useState({ producto: '', fecha: '', dosis_aplicada: '', area_aplicada: '', operario: '', es_sostenible: false, observaciones: '' })
   const [loading, setLoading]       = useState(false)
 
   const fetch = useCallback(async () => {
-    const [p, r, pr] = await Promise.all([
+    const [p, pr] = await Promise.all([
       api.get(`/campanas/${campanaId}/fitosanitario/`),
-      api.get(`/campanas/${campanaId}/aplicaciones/`),
       api.get('/campanas/productos/'),
     ])
-    setPlan(p.data); setRegs(r.data); setProds(pr.data)
+    setPlan(p.data); setProds(pr.data)
   }, [campanaId])
   useEffect(() => { fetch() }, [fetch])
 
-  const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
-  const hr = e => setRegForm(f => ({ ...f, [e.target.name]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
+  const h  = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+  const ha = e => setApForm(f => ({ ...f, [e.target.name]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
 
   const openApModal = item => {
     if (item.estado === 'aplicado') {
@@ -658,14 +653,29 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
     }
     const blocker = checkEtapaOrder(plan, item.etapa, i => i.estado === 'aplicado')
     if (blocker) { toast.error(blocker); return }
-    setApForm({ fecha_aplicada: new Date().toISOString().slice(0, 10) })
+    const prod = prods.find(p => String(p.id) === String(item.producto))
+    const esSos = prod ? ['enmienda', 'biologico', 'bioestimulante'].includes(prod.tipo) : false
+    setApForm({
+      fecha_aplicada: new Date().toISOString().slice(0, 10),
+      area_aplicada:  campana?.area ?? '',
+      operario:       '',
+      es_sostenible:  esSos,
+      observaciones:  '',
+    })
     setApModal(item)
   }
 
   const confirmAplicacion = async e => {
     e.preventDefault(); setLoading(true)
     try {
-      await api.patch(`/campanas/fitosanitario/${apModal.id}/`, { estado: 'aplicado', fecha_aplicada: apForm.fecha_aplicada })
+      await api.patch(`/campanas/fitosanitario/${apModal.id}/`, {
+        estado: 'aplicado',
+        fecha_aplicada: apForm.fecha_aplicada,
+        area_aplicada:  apForm.area_aplicada  || null,
+        operario:       apForm.operario,
+        es_sostenible:  apForm.es_sostenible,
+        observaciones:  apForm.observaciones,
+      })
       toast.success('Marcado como aplicado.'); setApModal(null); fetch()
     } catch { toast.error('Error.') } finally { setLoading(false) }
   }
@@ -680,16 +690,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
     } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
   }
 
-  const submitReg = async e => {
-    e.preventDefault(); setLoading(true)
-    try {
-      await api.post(`/campanas/${campanaId}/aplicaciones/`, regForm)
-      toast.success('Aplicación registrada.'); setRegModal(false); fetch()
-    } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
-  }
-
   const delPlan = (item) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/fitosanitario/${item.id}/`); fetch() }, msg: `¿Eliminar "${item.producto_nombre}" del plan?` })
-  const delReg  = (id)   => setDelConfirm({ fn: async () => { await api.delete(`/campanas/aplicaciones/${id}/`);      fetch() }, msg: '¿Eliminar este registro de aplicación?' })
 
   const ist = ist_(dark); const lst = lst_(dark)
 
@@ -827,71 +828,37 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
         </table>
       </div>
 
-      {/* Registros de aplicación */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-extrabold uppercase tracking-wide" style={{ color: dark ? D.sub : '#6b7280' }}>Aplicaciones ejecutadas</p>
-          <button onClick={() => { setRegForm({ producto: '', fecha: new Date().toISOString().slice(0,10), dosis_aplicada: '', area_aplicada: campana?.area ?? '', operario: '', es_sostenible: false, observaciones: '' }); setRegModal(true) }}
-            className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg"
-            style={{ backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: dark ? '#4ade80' : '#15803d' }}>
-            <Plus size={12} /> Registrar aplicación
-          </button>
-        </div>
-        <div style={{ borderRadius: '14px', overflow: 'hidden', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, backgroundColor: dark ? D.cardBg : '#fff' }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                {['Fecha', 'Producto', 'Dosis', 'Área', 'Costo', ''].map((h, i) => (
-                  <th key={i} className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide" style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {regs.map(r => (
-                <tr key={r.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{r.fecha}</td>
-                  <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? D.text : '#111827' }}>
-                    {r.producto_nombre}
-                    {r.es_sostenible && <span className="ml-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }}>sostenible</span>}
-                  </td>
-                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{r.dosis_aplicada} {r.producto_unidad}</td>
-                  <td className="px-4 py-2.5 text-sm" style={{ color: dark ? D.sub : '#6b7280' }}>{r.area_aplicada} m²</td>
-                  <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{fmt(r.costo_total)}</td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button onClick={() => setViewReg(r)} className="p-1.5 rounded-lg" style={{ color: dark ? D.sub : '#9ca3af' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Eye size={12} /></button>
-                      <button onClick={() => delReg(r.id)} className="p-1.5 rounded-lg" style={{ color: dark ? '#f87171' : '#dc2626' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fef2f2'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={12} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {regs.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin aplicaciones registradas</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {apModal && (
-        <MiniModal dark={dark} title={`Confirmar: ${apModal.producto_nombre}`} onClose={() => setApModal(null)} onSubmit={confirmAplicacion} loading={loading}>
-          <p className="text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
-            Indica la fecha en que se realizó esta aplicación fitosanitaria.
-          </p>
-          <div>
-            <label style={lst_(dark)}>Fecha de aplicación *</label>
-            <input type="date" value={apForm.fecha_aplicada}
-              onChange={e => setApForm(f => ({ ...f, fecha_aplicada: e.target.value }))}
-              style={ist_(dark)} required />
-          </div>
-          <p className="text-[11px]" style={{ color: dark ? 'rgba(255,255,255,0.3)' : '#9ca3af' }}>
-            Dosis planificada: {apModal.dosis} {apModal.unidad_codigo || apModal.unidad}
+        <MiniModal dark={dark} title={`Aplicar: ${apModal.producto_nombre}`} onClose={() => setApModal(null)} onSubmit={confirmAplicacion} loading={loading}>
+          <p className="text-[11px] font-semibold px-3 py-2 rounded-lg" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f9fafb', color: dark ? D.sub : '#6b7280' }}>
+            Plan: {apModal.dosis} {apModal.unidad_codigo || apModal.unidad}
             {campana?.area ? ` · Total campo: ${(parseFloat(apModal.dosis) * parseFloat(campana.area)).toFixed(2)} ${apModal.unidad_codigo || apModal.unidad}` : ''}
           </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label style={lst_(dark)}>Fecha de aplicación *</label>
+              <input type="date" name="fecha_aplicada" value={apForm.fecha_aplicada} onChange={ha} style={ist_(dark)} required />
+            </div>
+            <div>
+              <label style={lst_(dark)}>Área aplicada (m²)</label>
+              <input type="number" step="0.01" name="area_aplicada" value={apForm.area_aplicada} onChange={ha} style={ist_(dark)} placeholder={campana?.area ?? ''} />
+            </div>
+          </div>
+          <div>
+            <label style={lst_(dark)}>Operario</label>
+            <input name="operario" value={apForm.operario} onChange={ha} style={ist_(dark)} />
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
+            style={{ backgroundColor: apForm.es_sostenible ? (dark ? 'rgba(22,163,74,0.12)' : '#f0fdf4') : (dark ? 'rgba(255,255,255,0.04)' : '#f9fafb'), border: `1px solid ${apForm.es_sostenible ? (dark ? 'rgba(22,163,74,0.3)' : '#bbf7d0') : (dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb')}` }}>
+            <input type="checkbox" id="ap-sos" name="es_sostenible" checked={apForm.es_sostenible} onChange={ha} />
+            <label htmlFor="ap-sos" className="text-xs font-bold cursor-pointer" style={{ color: apForm.es_sostenible ? (dark ? '#4ade80' : '#15803d') : (dark ? D.sub : '#6b7280') }}>
+              {apForm.es_sostenible ? '✓ Producto orgánico / biológico' : 'Marcar como práctica sostenible'}
+            </label>
+          </div>
+          <div>
+            <label style={lst_(dark)}>Observaciones</label>
+            <textarea name="observaciones" value={apForm.observaciones} onChange={ha} rows={2} style={{ ...ist_(dark), resize: 'none' }} />
+          </div>
         </MiniModal>
       )}
 
@@ -939,88 +906,25 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
         </MiniModal>
       )}
 
-      {regModal && (
-        <MiniModal dark={dark} title="Registrar aplicación" onClose={() => setRegModal(false)} onSubmit={submitReg} loading={loading}>
-          <div><label style={lst}>Producto *</label>
-            <select name="producto" value={regForm.producto} style={ist} required
-              onChange={e => {
-                const prod = prods.find(p => String(p.id) === e.target.value)
-                const esSos = prod ? ['enmienda','biologico','bioestimulante'].includes(prod.tipo) : false
-                const planItem = plan.find(pi => String(pi.producto) === e.target.value)
-                const fechaSug = planItem?.etapa ? sugerirFecha(planItem.etapa, campana?.fecha_inicio, campana?.variedad_dias_ciclo) : ''
-                const area = campana?.area ? parseFloat(campana.area) : null
-                const dosisTotal = planItem?.dosis && area
-                  ? (parseFloat(planItem.dosis) * area).toFixed(3)
-                  : planItem?.dosis || ''
-                setRegForm(f => ({
-                  ...f,
-                  producto: e.target.value,
-                  es_sostenible: esSos,
-                  dosis_aplicada: dosisTotal || f.dosis_aplicada,
-                  area_aplicada: area ?? f.area_aplicada,
-                  fecha: fechaSug || f.fecha,
-                }))
-              }}>
-              <option value="">Selecciona</option>
-              {[
-                ['enmienda',       'Enmiendas orgánicas'],
-                ['biologico',      'Control biológico'],
-                ['bioestimulante', 'Bioestimulantes'],
-                ['fertilizante',   'Fertilizantes'],
-                ['fitosanitario',  'Fitosanitarios'],
-              ].map(([tipo, label]) => {
-                const grupo = prods.filter(p => p.tipo === tipo)
-                if (!grupo.length) return null
-                return (
-                  <optgroup key={tipo} label={`— ${label} —`}>
-                    {grupo.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                  </optgroup>
-                )
-              })}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label style={lst}>Fecha *</label><input name="fecha" type="date" value={regForm.fecha} onChange={hr} style={ist} required /></div>
-            <div><label style={lst}>Área aplicada (m²) *</label><input name="area_aplicada" type="number" step="0.01" value={regForm.area_aplicada} onChange={hr} style={ist} required /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label style={lst}>Dosis total aplicada *{campana?.area ? <span style={{ fontWeight: 400, color: dark ? '#a78bfa' : '#7c3aed', marginLeft: 4 }}>({campana.area} {campana.unidad_area})</span> : ''}</label><input name="dosis_aplicada" type="number" step="0.001" value={regForm.dosis_aplicada} onChange={hr} style={ist} required /></div>
-            <div><label style={lst}>Operario</label><input name="operario" value={regForm.operario} onChange={hr} style={ist} /></div>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
-            style={{ backgroundColor: regForm.es_sostenible ? (dark ? 'rgba(22,163,74,0.12)' : '#f0fdf4') : (dark ? 'rgba(255,255,255,0.04)' : '#f9fafb'), border: `1px solid ${regForm.es_sostenible ? (dark ? 'rgba(22,163,74,0.3)' : '#bbf7d0') : (dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb')}` }}>
-            <input type="checkbox" id="sos" name="es_sostenible" checked={regForm.es_sostenible} onChange={hr} />
-            <label htmlFor="sos" className="text-xs font-bold cursor-pointer" style={{ color: regForm.es_sostenible ? (dark ? '#4ade80' : '#15803d') : (dark ? D.sub : '#6b7280') }}>
-              {regForm.es_sostenible ? '✓ Producto orgánico / biológico' : 'Marcar como práctica sostenible'}
-            </label>
-          </div>
-          <div><label style={lst}>Observaciones</label><textarea name="observaciones" value={regForm.observaciones} onChange={hr} rows={2} style={{ ...ist, resize: 'none' }} /></div>
-        </MiniModal>
-      )}
       {viewItem && (
-        <InfoModal dark={dark} title="Detalle del plan fitosanitario" onClose={() => setViewItem(null)}>
+        <InfoModal dark={dark} title="Detalle fitosanitario" onClose={() => setViewItem(null)}>
           <IR dark={dark} label="Producto"       value={viewItem.producto_nombre} />
           <IR dark={dark} label="Tipo"           value={viewItem.producto_tipo} />
           <IR dark={dark} label="Etapa"          value={etapaOf(viewItem.etapa)?.label} />
           <IR dark={dark} label="Dosis/m²"       value={`${viewItem.dosis} ${viewItem.unidad_codigo || viewItem.unidad}`} />
-          {campana?.area && viewItem.producto_precio && <IR dark={dark} label="Costo est."   value={fmt(parseFloat(viewItem.dosis) * parseFloat(campana.area) * parseFloat(viewItem.producto_precio) * fitoCostFactor(viewItem.unidad_codigo || viewItem.unidad))} color={dark ? '#4ade80' : '#15803d'} />}
+          {campana?.area && viewItem.producto_precio && <IR dark={dark} label="Costo est." value={fmt(parseFloat(viewItem.dosis) * parseFloat(campana.area) * parseFloat(viewItem.producto_precio) * fitoCostFactor(viewItem.unidad_codigo || viewItem.unidad))} color={dark ? '#4ade80' : '#15803d'} />}
           <IR dark={dark} label="Objetivo"       value={viewItem.objetivo_nombre} />
           <IR dark={dark} label="Plaga"          value={viewItem.plaga_nombre} />
           <IR dark={dark} label="Condición"      value={viewItem.condicion_nombre} />
           <IR dark={dark} label="Frecuencia"     value={viewItem.frecuencia_dias ? `c/ ${viewItem.frecuencia_dias} días` : null} />
           <IR dark={dark} label="Seg. cosecha"   value={viewItem.dias_antes_cosecha ? `${viewItem.dias_antes_cosecha} días` : null} color={dark ? '#fbbf24' : '#d97706'} />
-        </InfoModal>
-      )}
-      {viewReg && (
-        <InfoModal dark={dark} title="Detalle de aplicación" onClose={() => setViewReg(null)}>
-          <IR dark={dark} label="Producto"       value={viewReg.producto_nombre} />
-          <IR dark={dark} label="Fecha"          value={viewReg.fecha} />
-          <IR dark={dark} label="Dosis total"    value={`${viewReg.dosis_aplicada} ${viewReg.producto_unidad}`} />
-          <IR dark={dark} label="Área"           value={`${viewReg.area_aplicada} m²`} />
-          <IR dark={dark} label="Costo"          value={fmt(viewReg.costo_total)} color={dark ? '#4ade80' : '#15803d'} />
-          <IR dark={dark} label="Operario"       value={viewReg.operario} />
-          <IR dark={dark} label="Sostenible"     value={viewReg.es_sostenible ? 'Sí' : null} color={dark ? '#4ade80' : '#15803d'} />
-          <IR dark={dark} label="Observaciones"  value={viewReg.observaciones} />
+          {viewItem.estado === 'aplicado' && <>
+            <IR dark={dark} label="Fecha aplic." value={viewItem.fecha_aplicada} />
+            <IR dark={dark} label="Área aplic."  value={viewItem.area_aplicada ? `${viewItem.area_aplicada} m²` : null} />
+            <IR dark={dark} label="Operario"     value={viewItem.operario} />
+            <IR dark={dark} label="Sostenible"   value={viewItem.es_sostenible ? 'Sí' : null} color={dark ? '#4ade80' : '#15803d'} />
+            <IR dark={dark} label="Observaciones" value={viewItem.observaciones} />
+          </>}
         </InfoModal>
       )}
       {delConfirm && <ConfirmModal dark={dark} message={delConfirm.msg} onConfirm={() => { delConfirm.fn(); setDelConfirm(null) }} onCancel={() => setDelConfirm(null)} />}
@@ -1655,7 +1559,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
 ══════════════════════════════════════════════════════ */
 function TrazabilidadTab({ dark, campanaId, campana }) {
   const [practicas, setPracticas]   = useState([])
-  const [aplicaciones, setApls]     = useState([])
+  const [fito, setFito]             = useState([])
   const [riegos, setRiegos]         = useState([])
   const [labores, setLabores]       = useState([])
   const [modal, setModal]           = useState(false)
@@ -1670,13 +1574,13 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
   ]
 
   const fetch = useCallback(async () => {
-    const [p, a, r, l] = await Promise.all([
+    const [p, f, r, l] = await Promise.all([
       api.get(`/campanas/${campanaId}/practicas/`),
-      api.get(`/campanas/${campanaId}/aplicaciones/`),
+      api.get(`/campanas/${campanaId}/fitosanitario/`),
       api.get(`/campanas/${campanaId}/registros-riego/`),
       api.get(`/campanas/${campanaId}/labores/`),
     ])
-    setPracticas(p.data); setApls(a.data); setRiegos(r.data); setLabores(l.data)
+    setPracticas(p.data); setFito(f.data); setRiegos(r.data); setLabores(l.data)
   }, [campanaId])
   useEffect(() => { fetch() }, [fetch])
 
@@ -1695,7 +1599,7 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
   // Build unified timeline
   const timeline = [
     ...labores.filter(l => l.fecha_ejecutada).map(l => ({ fecha: l.fecha_ejecutada, tipo: 'labor', label: l.tipo_labor_nombre, detalle: `${l.cantidad_ejecutada ?? l.cantidad_programada} ${l.tipo_labor_unidad}` })),
-    ...aplicaciones.map(a => ({ fecha: a.fecha, tipo: 'aplicacion', label: `Aplicación: ${a.producto_nombre}`, detalle: `${a.dosis_aplicada} · ${a.area_aplicada} m²`, sostenible: a.es_sostenible })),
+    ...fito.filter(a => a.estado === 'aplicado' && a.fecha_aplicada).map(a => ({ fecha: a.fecha_aplicada, tipo: 'aplicacion', label: `Aplicación: ${a.producto_nombre}`, detalle: `${a.dosis} ${a.unidad_codigo || ''}${a.area_aplicada ? ` · ${a.area_aplicada} m²` : ''}`, sostenible: a.es_sostenible })),
     ...riegos.map(r => ({ fecha: r.fecha, tipo: 'riego', label: 'Riego', detalle: `${r.litros_aplicados} L · ${r.area_regada} m²` })),
     ...practicas.map(p => ({ fecha: p.fecha, tipo: 'practica', label: p.tipo_display, detalle: p.descripcion })),
   ].sort((a, b) => b.fecha.localeCompare(a.fecha))
@@ -1736,8 +1640,8 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
     </tbody></table>
 
     <h2>Aplicaciones Fitosanitarias</h2>
-    <table><thead><tr><th>Fecha</th><th>Producto</th><th>Dosis</th><th>Área</th><th>Costo</th><th>Sostenible</th></tr></thead><tbody>
-    ${aplicaciones.length ? aplicaciones.map(a => `<tr><td>${a.fecha}</td><td>${a.producto_nombre}</td><td>${a.dosis_aplicada} ${a.producto_unidad}</td><td>${a.area_aplicada} m²</td><td>S/. ${parseFloat(a.costo_total).toFixed(2)}</td><td>${a.es_sostenible ? '<span class="badge verde">Sí</span>' : '—'}</td></tr>`).join('') : '<tr><td colspan="6" style="color:#9ca3af;text-align:center">Sin aplicaciones</td></tr>'}
+    <table><thead><tr><th>Fecha</th><th>Producto</th><th>Dosis</th><th>Área</th><th>Operario</th><th>Sostenible</th></tr></thead><tbody>
+    ${fito.filter(a => a.estado === 'aplicado').length ? fito.filter(a => a.estado === 'aplicado').map(a => `<tr><td>${a.fecha_aplicada ?? '—'}</td><td>${a.producto_nombre}</td><td>${a.dosis} ${a.unidad_codigo ?? ''}</td><td>${a.area_aplicada ? a.area_aplicada + ' m²' : '—'}</td><td>${a.operario || '—'}</td><td>${a.es_sostenible ? '<span class="badge verde">Sí</span>' : '—'}</td></tr>`).join('') : '<tr><td colspan="6" style="color:#9ca3af;text-align:center">Sin aplicaciones</td></tr>'}
     </tbody></table>
 
     <h2>Registros de Riego</h2>

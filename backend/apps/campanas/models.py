@@ -237,6 +237,10 @@ class ItemFitosanitario(models.Model):
     etapa              = models.CharField(max_length=15, choices=ETAPA_CHOICES, blank=True, default='')
     estado             = models.CharField(max_length=15, choices=ESTADO, default='programado')
     fecha_aplicada     = models.DateField(null=True, blank=True)
+    area_aplicada      = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    operario           = models.CharField(max_length=100, blank=True)
+    es_sostenible      = models.BooleanField(default=False)
+    observaciones      = models.TextField(blank=True)
     activo             = models.BooleanField(default=True)
 
     class Meta:
