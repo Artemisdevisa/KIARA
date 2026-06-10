@@ -253,7 +253,15 @@ class AplicacionListCreate(CampanaMixin, generics.ListCreateAPIView):
         dosis = serializer.validated_data['dosis_aplicada']
         area  = serializer.validated_data['area_aplicada']
         costo = float(dosis * area * prod.precio_unitario)
-        serializer.save(campana=self._campana(), costo_total=round(costo, 2))
+        instance = serializer.save(campana=self._campana(), costo_total=round(costo, 2))
+        # Auto-completar plan si se alcanzó el número de aplicaciones definido
+        item_plan = instance.item_plan
+        if item_plan and item_plan.numero_aplicaciones:
+            count = RegistroAplicacion.objects.filter(item_plan=item_plan).count()
+            if count >= item_plan.numero_aplicaciones and item_plan.estado != 'aplicado':
+                item_plan.estado = 'aplicado'
+                item_plan.fecha_aplicada = instance.fecha
+                item_plan.save()
 
 
 class AplicacionDetail(generics.RetrieveUpdateDestroyAPIView):

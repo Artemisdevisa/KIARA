@@ -203,7 +203,7 @@ function FormModal({ dark, biohuertos, onClose, onSaved }) {
   const humEstado  = preview.hum  !== null ? estadoHum(preview.hum)   : 'nd'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:pl-72">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}/>
       <div className="relative w-full max-w-lg rounded-2xl shadow-2xl z-10 flex flex-col"
         style={{ backgroundColor: dark ? '#1e2a3a' : '#fff', border: `1.5px solid ${dark ? 'rgba(255,255,255,0.10)' : '#e5e7eb'}`, maxHeight: '92vh' }}>

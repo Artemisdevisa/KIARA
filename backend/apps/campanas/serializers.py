@@ -91,13 +91,17 @@ class ItemFitosanitarioSerializer(serializers.ModelSerializer):
     plaga_nombre     = serializers.CharField(source='plaga.nombre',            read_only=True, allow_null=True)
     unidad_codigo    = serializers.CharField(source='unidad.codigo',           read_only=True, allow_null=True)
     condicion_nombre = serializers.CharField(source='condicion.nombre',        read_only=True, allow_null=True)
-    etapa_display    = serializers.CharField(source='get_etapa_display',       read_only=True)
-    estado_display   = serializers.CharField(source='get_estado_display',      read_only=True)
+    etapa_display      = serializers.CharField(source='get_etapa_display',     read_only=True)
+    estado_display     = serializers.CharField(source='get_estado_display',    read_only=True)
+    aplicaciones_count = serializers.SerializerMethodField()
 
     class Meta:
         model  = ItemFitosanitario
         fields = '__all__'
         read_only_fields = ['campana']
+
+    def get_aplicaciones_count(self, obj):
+        return RegistroAplicacion.objects.filter(item_plan=obj).count()
 
 
 class RegistroAplicacionSerializer(serializers.ModelSerializer):

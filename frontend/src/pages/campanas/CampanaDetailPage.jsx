@@ -109,7 +109,7 @@ function ConfirmModal({ dark, message = '¿Eliminar este registro?', onConfirm, 
     border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb',
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:pl-72">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-6 z-10" style={panelStyle}>
         <div className="flex flex-col items-center text-center gap-3">
@@ -131,7 +131,7 @@ function ConfirmModal({ dark, message = '¿Eliminar este registro?', onConfirm, 
 function MiniModal({ dark, title, onClose, onSubmit, loading, children }) {
   const ps = { backgroundColor: dark ? '#1e2a3a' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb' }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:pl-72">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-2xl shadow-2xl z-10 flex flex-col" style={{ ...ps, maxHeight: '92vh' }}>
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
@@ -154,7 +154,7 @@ function MiniModal({ dark, title, onClose, onSubmit, loading, children }) {
 function InfoModal({ dark, title, onClose, children }) {
   const ps = { backgroundColor: dark ? '#1e2a3a' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb' }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:pl-72">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-5 z-10" style={ps}>
         <div className="flex items-center justify-between mb-4">
@@ -694,7 +694,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
   const ha = e => setApForm(f => ({ ...f, [e.target.name]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
 
   const openApModal = item => {
-    if (item.estado === 'aplicado') {
+    if (item.estado === 'aplicado' && !item.numero_aplicaciones) {
       api.patch(`/campanas/fitosanitario/${item.id}/`, { estado: 'programado', fecha_aplicada: null })
         .then(refresh).catch(() => toast.error('Error.'))
       return
@@ -716,15 +716,32 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
   const confirmAplicacion = async e => {
     e.preventDefault(); setLoading(true)
     try {
-      await api.patch(`/campanas/fitosanitario/${apModal.id}/`, {
-        estado: 'aplicado',
-        fecha_aplicada: apForm.fecha_aplicada,
-        area_aplicada:  apForm.area_aplicada  || null,
-        operario:       apForm.operario,
-        es_sostenible:  apForm.es_sostenible,
-        observaciones:  apForm.observaciones,
-      })
-      toast.success('Marcado como aplicado.'); setApModal(null); refresh()
+      if (apModal.numero_aplicaciones) {
+        await api.post(`/campanas/${campanaId}/aplicaciones/`, {
+          item_plan:      apModal.id,
+          producto:       apModal.producto,
+          fecha:          apForm.fecha_aplicada,
+          dosis_aplicada: apModal.dosis,
+          area_aplicada:  parseFloat(apForm.area_aplicada || campana?.area || 0),
+          operario:       apForm.operario,
+          es_sostenible:  apForm.es_sostenible,
+          observaciones:  apForm.observaciones,
+        })
+        const nuevasCont = (apModal.aplicaciones_count || 0) + 1
+        if (nuevasCont >= apModal.numero_aplicaciones) toast.success(`Aplicación ${nuevasCont}/${apModal.numero_aplicaciones} registrada. ¡Plan completado!`)
+        else toast.success(`Aplicación ${nuevasCont}/${apModal.numero_aplicaciones} registrada.`)
+      } else {
+        await api.patch(`/campanas/fitosanitario/${apModal.id}/`, {
+          estado:         'aplicado',
+          fecha_aplicada: apForm.fecha_aplicada,
+          area_aplicada:  apForm.area_aplicada  || null,
+          operario:       apForm.operario,
+          es_sostenible:  apForm.es_sostenible,
+          observaciones:  apForm.observaciones,
+        })
+        toast.success('Marcado como aplicado.')
+      }
+      setApModal(null); refresh()
     } catch { toast.error('Error.') } finally { setLoading(false) }
   }
 
@@ -795,7 +812,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
           )}
         </div>
         {campana?.estado !== 'cerrada' && (
-          <button onClick={() => { setForm({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', fecha_inicio: '', etapa: '' }); setModal('new') }}
+          <button onClick={() => { setForm({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', numero_aplicaciones: '', fecha_inicio: '', etapa: '' }); setModal('new') }}
             className="flex items-center gap-1.5 btn-primary text-sm">
             <Plus size={13} /> Agregar
           </button>
@@ -913,12 +930,28 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
                         : <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                        style={aplicado
-                          ? { backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }
-                          : { backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>
-                        {aplicado ? `Aplicado${item.fecha_aplicada ? ' · ' + item.fecha_aplicada : ''}` : 'Pendiente'}
-                      </span>
+                      {item.numero_aplicaciones ? (() => {
+                        const cnt = item.aplicaciones_count || 0
+                        const tot = item.numero_aplicaciones
+                        const done = cnt >= tot
+                        return (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                            style={done
+                              ? { backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }
+                              : cnt > 0
+                                ? { backgroundColor: dark ? 'rgba(251,191,36,0.15)' : '#fef9c3', color: dark ? '#fbbf24' : '#d97706' }
+                                : { backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>
+                            {cnt}/{tot} aplic.{done ? ' ✓' : ''}
+                          </span>
+                        )
+                      })() : (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                          style={aplicado
+                            ? { backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }
+                            : { backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>
+                          {aplicado ? `Aplicado${item.fecha_aplicada ? ' · ' + item.fecha_aplicada : ''}` : 'Pendiente'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={() => toggleSostenible(item)}
@@ -957,7 +990,11 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
       </div>
 
       {apModal && (
-        <MiniModal dark={dark} title={`Aplicar: ${apModal.producto_nombre}`} onClose={() => setApModal(null)} onSubmit={confirmAplicacion} loading={loading}>
+        <MiniModal dark={dark}
+          title={apModal.numero_aplicaciones
+            ? `Registrar aplicación ${(apModal.aplicaciones_count || 0) + 1}/${apModal.numero_aplicaciones} — ${apModal.producto_nombre}`
+            : `Aplicar: ${apModal.producto_nombre}`}
+          onClose={() => setApModal(null)} onSubmit={confirmAplicacion} loading={loading}>
           <p className="text-[11px] font-semibold px-3 py-2 rounded-lg" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f9fafb', color: dark ? D.sub : '#6b7280' }}>
             Plan: {apModal.dosis} {apModal.unidad_codigo || apModal.unidad}
             {campana?.area ? ` · Total campo: ${(parseFloat(apModal.dosis) * parseFloat(campana.area)).toFixed(2)} ${apModal.unidad_codigo || apModal.unidad}` : ''}
@@ -1031,8 +1068,9 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
             <div><label style={lst}>Intervalo seguridad (días)</label><input name="dias_antes_cosecha" type="number" value={form.dias_antes_cosecha} onChange={h} style={ist} placeholder="15" /></div>
             <div><label style={lst}>Frecuencia (días)</label><input name="frecuencia_dias" type="number" value={form.frecuencia_dias} onChange={h} style={ist} placeholder="7" /></div>
           </div>
-          <div><label style={lst}>Fecha de inicio / primera aplicación</label>
-            <input name="fecha_inicio" type="date" value={form.fecha_inicio || ''} onChange={h} style={ist} />
+          <div className="grid grid-cols-2 gap-3">
+            <div><label style={lst}>N° de aplicaciones</label><input name="numero_aplicaciones" type="number" min="1" value={form.numero_aplicaciones || ''} onChange={h} style={ist} placeholder="3" /></div>
+            <div><label style={lst}>Fecha de inicio</label><input name="fecha_inicio" type="date" value={form.fecha_inicio || ''} onChange={h} style={ist} /></div>
           </div>
         </MiniModal>
       )}
@@ -2243,7 +2281,7 @@ function DiagnosticosTab({ dark, campanaId }) {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:pl-72">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelected(null)} />
           <div className="relative w-full max-w-md rounded-2xl shadow-2xl z-10 flex flex-col"
             style={{ backgroundColor: dark ? '#1e2a3a' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb', maxHeight: '90vh' }}>
@@ -2644,7 +2682,7 @@ export default function CampanaDetailPage() {
         const m  = MSGS[estadoModal]
         const ps = { backgroundColor: dark ? '#1e2a3a' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb' }
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:pl-72">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setEstadoModal(null)} />
             <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-6 z-10" style={ps}>
               <div className="flex flex-col items-center text-center gap-3">
@@ -2669,7 +2707,7 @@ export default function CampanaDetailPage() {
         const cicloLabel = cicloConfirm.ciclo || campana.variedad_tipo_ciclo
         const ps         = { backgroundColor: dark ? '#1e2a3a' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb' }
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:pl-72">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setCicloConfirm(null)} />
             <div className="relative w-full max-w-md rounded-2xl shadow-2xl z-10 flex flex-col" style={ps}>
               <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
