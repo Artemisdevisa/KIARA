@@ -53,7 +53,7 @@ function Card({ icon: Icon, label, desc, to, color, dark, navigate }) {
         <p className="text-sm leading-relaxed" style={{ color: dark ? 'rgba(255,255,255,0.45)' : '#6b7280' }}>{desc}</p>
       </div>
       <div className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: ic, opacity: 0.7 }}>
-        Abrir <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform duration-200" />
+        Ir al módulo <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform duration-200" />
       </div>
     </button>
   )
@@ -64,7 +64,7 @@ export default function CatalogosPage() {
   const { dark } = useTheme()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <Breadcrumb items={[{ label: 'Catálogos' }]} />
       <div>
         <h1 className="text-2xl font-extrabold" style={{ color: dark ? 'rgba(255,255,255,0.92)' : '#111827' }}>
@@ -75,7 +75,7 @@ export default function CatalogosPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {CARDS.map(card => (
           <Card key={card.to} {...card} dark={dark} navigate={navigate} />
         ))}
