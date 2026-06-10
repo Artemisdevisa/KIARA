@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
@@ -887,6 +888,14 @@ export default function BiohuertosPage() {
 
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-2">
+                        <Link to={`/biohuertos/${b.id}`}
+                          className="p-2 rounded-lg transition-all duration-150 inline-flex"
+                          title="Ver detalle"
+                          style={{ color: dark ? '#34d399' : '#059669', backgroundColor: 'transparent' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? 'rgba(52,211,153,0.15)' : '#ecfdf5'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                          <Eye size={16} />
+                        </Link>
                         <button onClick={() => { setEditItem(b); setModalOpen(true) }}
                           className="p-2 rounded-lg transition-all duration-150"
                           style={{ color: dark ? '#60a5fa' : '#2563eb', backgroundColor: 'transparent' }}

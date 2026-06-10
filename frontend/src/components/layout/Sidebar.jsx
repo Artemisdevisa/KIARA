@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import {
   LayoutDashboard, Thermometer, BellRing,
-  Microscope, PackageCheck, ShoppingCart, LogOut, Menu, X, ShieldCheck, BookOpen,
+  Microscope, PackageCheck, LogOut, Menu, X, ShieldCheck, BookOpen,
   TreePine, Database
 } from 'lucide-react'
 import { useState } from 'react'
@@ -16,7 +16,6 @@ const modules = [
   { to: '/alertas',        icon: BellRing,       label: 'Alertas',         desc: 'Recordatorios'         },
   { to: '/diagnostico',    icon: Microscope,     label: 'Diagnóstico',     desc: 'Fitosanitario'         },
   { to: '/cosechas',       icon: PackageCheck,   label: 'Cosechas',        desc: 'Mis productos'         },
-  { to: '/marketplace',    icon: ShoppingCart,   label: 'Marketplace',     desc: 'Mercado local'         },
   { to: '/recomendaciones',icon: BookOpen,       label: 'Guía cultivos',   desc: 'Manejo sostenible'     },
 ]
 

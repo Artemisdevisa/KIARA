@@ -344,7 +344,7 @@ export default function Dashboard() {
                   <p className="text-[10px] text-gray-400 dark:text-gray-500">Campañas activas y planificadas</p>
                 </div>
               </div>
-              <Link to="/cultivos" className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1">
+              <Link to="/campanas" className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1">
                 Ver todos <ArrowRight size={11} />
               </Link>
             </div>
