@@ -8,6 +8,7 @@ import Layout from './components/layout/Layout'
 /* Páginas públicas (landing + marketing) */
 import LandingPage from './pages/LandingPage'
 import MarketplacePage from './pages/MarketplacePage'
+import CosechaDetailPage from './pages/marketplace/CosechaDetailPage'
 import QuienesSomosPage from './pages/QuienesSomosPage'
 import ComoFuncionaPage from './pages/ComoFuncionaPage'
 import ContactoPage from './pages/ContactoPage'
@@ -66,6 +67,7 @@ export default function App() {
       <Route element={<PublicLayout />}>
         <Route index element={<LandingPage />} />
         <Route path="marketplace" element={<MarketplacePage />} />
+        <Route path="marketplace/:id" element={<CosechaDetailPage />} />
         <Route path="quienes-somos" element={<QuienesSomosPage />} />
         <Route path="como-funciona" element={<ComoFuncionaPage />} />
         <Route path="contacto" element={<ContactoPage />} />

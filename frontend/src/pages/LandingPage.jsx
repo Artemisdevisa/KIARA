@@ -182,19 +182,30 @@ function HeroCarousel() {
               </div>
             </div>
 
-            {/* Right: dual images */}
-            <div className="hidden lg:block shrink-0 relative"
-              style={{ width: 'min(42%, 500px)', height: '82%' }}>
-              {/* Main image */}
-              <div className="absolute top-0 left-0 right-[72px] bottom-[44px] rounded-3xl overflow-hidden shadow-2xl"
-                style={{ transform: 'rotate(-2deg)', border: '2px solid rgba(255,255,255,0.16)' }}>
-                <img src={slide.img} alt="" className="w-full h-full object-cover" />
+            {/* Right: diagonal split images */}
+            <div className="hidden lg:block shrink-0"
+              style={{
+                width: 'min(46%, 560px)', height: '88%',
+                position: 'relative', borderRadius: '24px', overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.45)',
+                border: '2px solid rgba(255,255,255,0.16)',
+                flexShrink: 0,
+              }}>
+              {/* Left image */}
+              <div style={{ position: 'absolute', inset: 0, clipPath: 'polygon(0 0, 62% 0, 38% 100%, 0 100%)' }}>
+                <img src={slide.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
-              {/* Second image — floating bottom-right */}
-              <div className="absolute bottom-0 right-0 w-[175px] h-[132px] rounded-2xl overflow-hidden shadow-xl"
-                style={{ transform: 'rotate(2.5deg)', border: '3px solid rgba(255,255,255,0.22)' }}>
-                <img src={slide.img2} alt="" className="w-full h-full object-cover" />
+              {/* Right image */}
+              <div style={{ position: 'absolute', inset: 0, clipPath: 'polygon(62% 0, 100% 0, 100% 100%, 38% 100%)' }}>
+                <img src={slide.img2} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
+              {/* Diagonal separator line */}
+              <div style={{
+                position: 'absolute', top: '-20%', bottom: '-20%',
+                left: 'calc(50% - 1px)', width: '2px',
+                background: 'rgba(255,255,255,0.55)',
+                transform: 'rotate(-14deg)', pointerEvents: 'none',
+              }} />
             </div>
           </div>
         </div>
