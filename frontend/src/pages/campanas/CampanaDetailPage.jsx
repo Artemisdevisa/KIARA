@@ -1615,30 +1615,35 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
       label: 'Sin agroquímicos sintéticos',
       valor: pctSostenible !== null ? `${pctSostenible}% de aplicaciones sostenibles (${fitoSostenible.length}/${fitoAplicado.length})` : 'Sin aplicaciones registradas',
       color: pctSostenible === 100 ? 'green' : pctSostenible > 0 ? 'yellow' : 'gray',
+      modulo: 'Fitosanitario',
     },
     {
       key: 'riego_eficiente', activo: tieneRiegoEfic,
       label: 'Riego eficiente',
       valor: tieneRiegoEfic ? `Usa goteo o aspersión (${riegoPlanes.filter(r => r.metodo === 'goteo' || r.metodo === 'aspersion').length} plan(es))` : 'Sin riego eficiente registrado',
       color: tieneRiegoEfic ? 'green' : 'gray',
+      modulo: 'Riego',
     },
     {
       key: 'control_biologico', activo: tieneCtrlBio,
       label: 'Control biológico',
       valor: tieneCtrlBio ? `${fitoSostenible.filter(a => a.producto_tipo === 'biologico').length} aplicación(es) de productos biológicos` : 'Sin control biológico registrado',
       color: tieneCtrlBio ? 'green' : 'gray',
+      modulo: 'Fitosanitario',
     },
     {
       key: 'labores_sostenibles', activo: laboresSostenibles.length > 0,
       label: 'Labores sostenibles',
       valor: laboresSostenibles.length > 0 ? `${laboresSostenibles.length} labor(es) ejecutadas marcadas como sostenibles` : 'Sin labores sostenibles registradas',
       color: laboresSostenibles.length > 0 ? 'green' : 'gray',
+      modulo: 'Labores',
     },
     {
       key: 'riego_sostenible', activo: riegoSostenible.length > 0,
       label: 'Prácticas de riego sostenible',
       valor: riegoSostenible.length > 0 ? `${riegoSostenible.length} plan(es) de riego marcados como sostenibles` : 'Sin planes de riego sostenibles',
       color: riegoSostenible.length > 0 ? 'green' : 'gray',
+      modulo: 'Riego',
     },
   ]
 
@@ -1658,7 +1663,15 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
   const timeline = [
     ...labores.filter(l => l.fecha_ejecutada).map(l => ({ fecha: l.fecha_ejecutada, tipo: 'labor', label: l.tipo_labor_nombre, detalle: `${l.cantidad_ejecutada ?? l.cantidad_programada} ${l.tipo_labor_unidad}`, sostenible: l.es_sostenible })),
     ...fito.filter(a => a.estado === 'aplicado' && a.fecha_aplicada).map(a => ({ fecha: a.fecha_aplicada, tipo: 'aplicacion', label: `Aplicación: ${a.producto_nombre}`, detalle: `${a.dosis} ${a.unidad_codigo || ''}${a.area_aplicada ? ` · ${a.area_aplicada} m²` : ''}`, sostenible: a.es_sostenible || ['biologico','enmienda','bioestimulante'].includes(a.producto_tipo) })),
-    ...riegoPlanes.filter(r => r.completado && (r.fecha_fin || r.fecha_inicio)).map(r => ({ fecha: r.fecha_fin || r.fecha_inicio, tipo: 'riego', label: `Riego: ${r.nombre}`, detalle: `${r.litros_por_m2} L/m² · ${r.metodo_display}${r.operario ? ' · ' + r.operario : ''}`, sostenible: r.es_sostenible })),
+    ...riegoPlanes
+      .filter(r => (r.completado || r.es_sostenible) && (r.fecha_fin || r.fecha_inicio))
+      .map(r => ({
+        fecha: r.fecha_fin || r.fecha_inicio,
+        tipo: 'riego',
+        label: `Riego: ${r.nombre}${!r.completado ? ' · en curso' : ''}`,
+        detalle: `${r.litros_por_m2} L/m² · ${r.metodo_display}${r.operario ? ' · ' + r.operario : ''}`,
+        sostenible: r.es_sostenible,
+      })),
   ].sort((a, b) => b.fecha.localeCompare(a.fecha))
 
   const TIPO_ICON_COLOR = {
@@ -1751,12 +1764,28 @@ function TrazabilidadTab({ dark, campanaId, campana }) {
                   <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: clr }}>{ind.label}</span>
                 </div>
                 <p className="text-[12px]" style={{ color: dark ? 'rgba(255,255,255,0.50)' : '#6b7280' }}>{ind.valor}</p>
-                <p className="text-[10px] mt-1 font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.22)' : '#9ca3af' }}>Derivado del módulo fitosanitario / riego</p>
+                <p className="text-[10px] mt-1 font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.22)' : '#9ca3af' }}>Módulo: {ind.modulo}</p>
               </div>
             )
           })}
         </div>
 
+        {/* Planes de riego sostenibles sin fecha (no aparecen en timeline) */}
+        {riegoSostenible.filter(r => !r.fecha_fin && !r.fecha_inicio).length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: dark ? D.sub : '#9ca3af' }}>Riego sostenible sin fecha asignada</p>
+            {riegoSostenible.filter(r => !r.fecha_fin && !r.fecha_inicio).map(r => (
+              <div key={r.id} className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                style={{ backgroundColor: dark ? 'rgba(22,163,74,0.08)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(22,163,74,0.20)' : '#bbf7d0'}` }}>
+                <Leaf size={13} style={{ color: dark ? '#4ade80' : '#16a34a', flexShrink: 0 }} />
+                <span className="text-xs font-semibold flex-1" style={{ color: dark ? '#4ade80' : '#15803d' }}>{r.nombre}</span>
+                <span className="text-[11px]" style={{ color: dark ? D.sub : '#6b7280' }}>{r.litros_por_m2} L/m² · {r.metodo_display}</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }}>sostenible</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Timeline */}

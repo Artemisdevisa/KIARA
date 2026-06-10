@@ -48,29 +48,52 @@ class CosechaPublicaDetailView(generics.RetrieveAPIView):
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         data     = self.get_serializer(instance).data
-        traz     = {'practicas': [], 'labores': [], 'fito': []}
+        traz     = {'labores': [], 'fito': [], 'riego': []}
 
         if instance.campana:
-            from apps.campanas.models import PracticaSostenible, LaborCampana, ItemFitosanitario
-            for p in PracticaSostenible.objects.filter(campana=instance.campana):
-                traz['practicas'].append({
-                    'tipo_display': p.get_tipo_display(), 'descripcion': p.descripcion,
-                    'fecha': str(p.fecha),
-                    'cantidad': str(p.cantidad) if p.cantidad else None, 'unidad': p.unidad,
-                })
+            from apps.campanas.models import LaborCampana, ItemFitosanitario, PlanRiego
+
             for l in LaborCampana.objects.filter(campana=instance.campana, estado='ejecutada').select_related('tipo_labor'):
                 traz['labores'].append({
-                    'nombre': l.tipo_labor.nombre,
-                    'fecha': str(l.fecha_ejecutada) if l.fecha_ejecutada else None,
-                    'cantidad': str(l.cantidad_ejecutada or l.cantidad_programada),
-                    'unidad': l.tipo_labor.unidad_default,
+                    'nombre':        l.tipo_labor.nombre,
+                    'fecha':         str(l.fecha_ejecutada) if l.fecha_ejecutada else None,
+                    'cantidad':      str(l.cantidad_ejecutada or l.cantidad_programada),
+                    'unidad':        l.tipo_labor.unidad_default,
+                    'es_sostenible': l.es_sostenible,
                 })
+
             for f in ItemFitosanitario.objects.filter(campana=instance.campana, estado='aplicado').select_related('producto'):
+                sostenible = f.es_sostenible or f.producto.tipo in ('biologico', 'enmienda', 'bioestimulante')
                 traz['fito'].append({
-                    'producto': f.producto.nombre, 'es_sostenible': f.es_sostenible,
-                    'fecha': str(f.fecha_aplicada) if f.fecha_aplicada else None,
-                    'dosis': str(f.dosis),
+                    'producto':      f.producto.nombre,
+                    'producto_tipo': f.producto.tipo,
+                    'es_sostenible': sostenible,
+                    'fecha':         str(f.fecha_aplicada) if f.fecha_aplicada else None,
+                    'dosis':         str(f.dosis),
                 })
+
+            for r in PlanRiego.objects.filter(campana=instance.campana, completado=True).select_related('fertilizante'):
+                traz['riego'].append({
+                    'nombre':           r.nombre,
+                    'metodo':           r.get_metodo_display(),
+                    'litros_por_m2':    str(r.litros_por_m2),
+                    'fertilizante':     r.fertilizante.nombre if r.fertilizante else None,
+                    'es_sostenible':    r.es_sostenible,
+                    'metodo_eficiente': r.metodo in ('goteo', 'aspersion'),
+                })
+
+        # Indicadores derivados
+        fito_sos     = [f for f in traz['fito'] if f['es_sostenible']]
+        pct          = round(len(fito_sos) / len(traz['fito']) * 100) if traz['fito'] else None
+        traz['indicadores'] = {
+            'pct_sostenible':      pct,
+            'fito_total':          len(traz['fito']),
+            'fito_sostenible':     len(fito_sos),
+            'riego_eficiente':     any(r['metodo_eficiente'] for r in traz['riego']),
+            'ctrl_biologico':      any(f['producto_tipo'] == 'biologico' for f in fito_sos),
+            'labores_sostenibles': sum(1 for l in traz['labores'] if l['es_sostenible']),
+            'riego_sostenible':    sum(1 for r in traz['riego'] if r['es_sostenible']),
+        }
 
         data['trazabilidad'] = traz
         return Response(data)
