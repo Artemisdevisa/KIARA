@@ -72,10 +72,10 @@ export default function Sidebar() {
       <div className="px-5 py-5" style={{ borderBottom: `1px solid ${p.border}` }}>
         <Link to="/" className="flex items-center gap-3 group">
           <div className="transition-transform duration-300 group-hover:rotate-6 shrink-0">
-            <img src="/sinfondo.png" alt="Kiara logo" width="38" height="38" style={{ objectFit: 'contain' }} />
+            <img src="/sinfondo.png" alt="Kiara logo" width="52" height="52" style={{ objectFit: 'contain' }} />
           </div>
           <span
-            className="font-black tracking-[0.12em] text-[1.35rem] leading-none"
+            className="font-black tracking-[0.12em] text-[1.55rem] leading-none"
             style={{
               background: 'linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.72) 100%)',
               WebkitBackgroundClip: 'text',

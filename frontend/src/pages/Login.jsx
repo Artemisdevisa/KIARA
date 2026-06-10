@@ -103,9 +103,9 @@ export default function Login() {
           style={{ background: '#52B788' }} />
 
         {/* Logo */}
-        <div className="relative z-10 flex items-center" style={{ gap: '-4px' }}>
-          <img src="/sinfondo.png" alt="Kiara logo" style={{ height: 100, width: 'auto', objectFit: 'contain' }} />
-          <span className="font-black tracking-[0.12em] text-2xl text-white" style={{ marginLeft: '-12px' }}>KIARA</span>
+        <div className="relative z-10 flex items-center">
+          <img src="/sinfondo.png" alt="Kiara logo" style={{ height: 148, width: 'auto', objectFit: 'contain' }} />
+          <span className="font-black tracking-[0.12em] text-4xl text-white" style={{ marginLeft: '-18px' }}>KIARA</span>
         </div>
 
         {/* Centro */}

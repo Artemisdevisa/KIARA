@@ -142,8 +142,8 @@ export default function Register() {
           style={{ background: '#52B788' }} />
 
         <div className="relative z-10 flex items-center">
-          <img src="/sinfondo.png" alt="Kiara logo" style={{ height: 64, width: 'auto', objectFit: 'contain' }} />
-          <span className="font-black tracking-[0.12em] text-2xl text-white" style={{ marginLeft: '-12px' }}>KIARA</span>
+          <img src="/sinfondo.png" alt="Kiara logo" style={{ height: 148, width: 'auto', objectFit: 'contain' }} />
+          <span className="font-black tracking-[0.12em] text-4xl text-white" style={{ marginLeft: '-18px' }}>KIARA</span>
         </div>
 
         <div className="relative z-10">
