@@ -8,9 +8,9 @@ import {
   TrendingDown, Minus, CheckCircle,
 } from 'lucide-react'
 
-/* ── Umbrales (deben coincidir con el backend) ── */
-const TEMP_MIN = 15, TEMP_MAX = 35
-const HUM_MIN  = 40, HUM_MAX  = 90
+/* ── Umbrales óptimos para Lambayeque — INIA Vista Florida (deben coincidir con el backend) ── */
+const TEMP_MIN = 18, TEMP_MAX = 32
+const HUM_MIN  = 50, HUM_MAX  = 85
 
 const D = {
   cardBg:      'rgba(255,255,255,0.05)',

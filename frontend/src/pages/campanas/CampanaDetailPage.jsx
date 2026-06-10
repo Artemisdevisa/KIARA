@@ -1825,7 +1825,7 @@ function AlertasTab({ dark, campanaId }) {
                     )}
                     <div className="flex items-center gap-3 mt-1.5">
                       <span className="text-[11px] font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.45)' : '#9ca3af' }}>
-                        📅 {a.fecha_programada}
+                        <Calendar size={11} className="inline mr-1" />{a.fecha_programada}
                         {!a.completada && a.dias_restantes !== undefined && (
                           <span style={{ color: vencida ? (dark ? '#f87171' : '#dc2626') : hoy ? (dark ? '#fb923c' : '#ea580c') : (dark ? D.sub : '#9ca3af') }}>
                             {' '}({a.dias_restantes === 0 ? 'hoy' : a.dias_restantes > 0 ? `en ${a.dias_restantes}d` : `hace ${Math.abs(a.dias_restantes)}d`})
