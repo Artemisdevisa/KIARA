@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import api from '../../api/axios'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
+import Breadcrumb from '../../components/ui/Breadcrumb'
 import {
   ArrowLeft, MapPin, Ruler, Edit, Activity, TreePine,
   CheckCircle, XCircle, Calendar, User, FileText, Leaf,
@@ -31,10 +32,10 @@ function InfoRow({ icon: Icon, label, value, dark }) {
 function StatCard({ label, value, color, dark }) {
   const d = dark ? D.dark : D.light
   return (
-    <div className="flex flex-col items-center justify-center gap-1 py-4 px-3 rounded-xl"
+    <div className="flex flex-col items-center justify-center gap-2 py-6 px-4 rounded-2xl"
       style={{ backgroundColor: dark ? 'rgba(255,255,255,0.04)' : '#f9fafb', border: `1px solid ${d.border}` }}>
-      <p className="text-2xl font-black" style={{ color }}>{value}</p>
-      <p className="text-[11px] font-semibold text-center" style={{ color: d.muted }}>{label}</p>
+      <p className="text-3xl font-black" style={{ color }}>{value}</p>
+      <p className="text-xs font-semibold text-center" style={{ color: d.muted }}>{label}</p>
     </div>
   )
 }
@@ -79,53 +80,57 @@ export default function BiohuertosDetail() {
   }
 
   return (
-    <div className="space-y-5 max-w-4xl">
+    <div className="space-y-5 w-full">
+
+      <Breadcrumb items={[{ label: 'Biohuertos', to: '/biohuertos' }, { label: bio.nombre }]} />
 
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link to="/biohuertos"
-          className="p-2 rounded-xl transition-colors"
-          style={{ color: d.sub, backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#f3f4f6' }}>
-          <ArrowLeft size={16} />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl font-black" style={{ color: d.text }}>{bio.nombre}</h1>
-            {bio.codigo && (
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: dark ? 'rgba(59,130,246,0.18)' : '#eff6ff', color: dark ? '#60a5fa' : '#2563eb' }}>
-                {bio.codigo}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Link to="/biohuertos"
+            className="p-2 rounded-xl transition-colors shrink-0"
+            style={{ color: d.sub, backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#f3f4f6' }}>
+            <ArrowLeft size={16} />
+          </Link>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-black" style={{ color: d.text }}>{bio.nombre}</h1>
+              {bio.codigo && (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: dark ? 'rgba(59,130,246,0.18)' : '#eff6ff', color: dark ? '#60a5fa' : '#2563eb' }}>
+                  {bio.codigo}
+                </span>
+              )}
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+                style={bio.activo
+                  ? { backgroundColor: dark ? 'rgba(22,163,74,0.18)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }
+                  : { backgroundColor: dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6', color: d.muted }}>
+                {bio.activo ? <CheckCircle size={10} /> : <XCircle size={10} />}
+                {bio.activo ? 'Activo' : 'Inactivo'}
               </span>
+            </div>
+            {bio.productor_nombre && (
+              <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: d.muted }}>
+                <User size={10} /> {bio.productor_nombre}
+              </p>
             )}
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
-              style={bio.activo
-                ? { backgroundColor: dark ? 'rgba(22,163,74,0.18)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }
-                : { backgroundColor: dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6', color: d.muted }}>
-              {bio.activo ? <CheckCircle size={10} /> : <XCircle size={10} />}
-              {bio.activo ? 'Activo' : 'Inactivo'}
-            </span>
           </div>
-          {bio.productor_nombre && (
-            <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: d.muted }}>
-              <User size={10} /> {bio.productor_nombre}
-            </p>
-          )}
         </div>
         <Link to={`/biohuertos/${id}/editar`}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-colors shrink-0"
           style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: d.sub }}>
           <Edit size={13} /> Editar
         </Link>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-4">
         <StatCard label="Campañas totales" value={campanas_total} color={dark ? '#60a5fa' : '#2563eb'} dark={dark} />
         <StatCard label="Campañas activas" value={campanas_activas} color={dark ? '#4ade80' : '#16a34a'} dark={dark} />
         <StatCard label="Área (m²)" value={bio.area ? parseFloat(bio.area).toLocaleString() : '—'} color={dark ? '#f59e0b' : '#d97706'} dark={dark} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 
         {/* Datos del biohuerto */}
         <div className="rounded-2xl p-5" style={{ backgroundColor: d.card, border: `1px solid ${d.border}` }}>
