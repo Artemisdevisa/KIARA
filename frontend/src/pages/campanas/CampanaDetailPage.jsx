@@ -182,6 +182,7 @@ const TABS = [
   { key: 'presupuesto',   icon: Wallet,        label: 'Presupuesto'  },
   { key: 'trazabilidad',  icon: Leaf,          label: 'Trazabilidad' },
   { key: 'alertas',       icon: Bell,          label: 'Alertas'      },
+  { key: 'diagnosticos',  icon: ShieldAlert,   label: 'Diagnósticos' },
 ]
 
 function OperarioSelect({ dark, value, onChange, miembros, ist }) {
@@ -1938,6 +1939,172 @@ function AlertasTab({ dark, campanaId }) {
 /* ══════════════════════════════════════════════════════
    PÁGINA PRINCIPAL
 ══════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════
+   TAB: DIAGNÓSTICOS
+══════════════════════════════════════════════════════ */
+function DiagnosticosTab({ dark, campanaId }) {
+  const [diagnosticos, setDiagnosticos] = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [selected, setSelected]         = useState(null)
+
+  const fetchDiagnosticos = useCallback(async () => {
+    setLoading(true)
+    try {
+      const r = await api.get(`/diagnosticos/?campana=${campanaId}`)
+      setDiagnosticos(r.data)
+    } catch { toast.error('Error al cargar diagnósticos.') }
+    finally { setLoading(false) }
+  }, [campanaId])
+
+  useEffect(() => { fetchDiagnosticos() }, [fetchDiagnosticos])
+
+  const SEV_CFG = {
+    leve:     { bg: dark ? 'rgba(74,222,128,0.15)'  : '#dcfce7', c: dark ? '#4ade80' : '#15803d', label: 'Leve'     },
+    moderado: { bg: dark ? 'rgba(251,191,36,0.15)'  : '#fef9c3', c: dark ? '#fbbf24' : '#d97706', label: 'Moderado' },
+    grave:    { bg: dark ? 'rgba(239,68,68,0.15)'   : '#fee2e2', c: dark ? '#f87171' : '#dc2626', label: 'Grave'    },
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-extrabold uppercase tracking-wide" style={{ color: dark ? D.sub : '#6b7280' }}>
+          {diagnosticos.length} diagnóstico{diagnosticos.length !== 1 ? 's' : ''} en esta campaña
+        </p>
+        <Link to="/diagnostico"
+          className="flex items-center gap-1.5 btn-primary text-sm">
+          <Plus size={13} /> Nuevo diagnóstico
+        </Link>
+      </div>
+
+      {loading ? (
+        <div className="py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Cargando...</div>
+      ) : diagnosticos.length === 0 ? (
+        <div className="py-12 flex flex-col items-center gap-3" style={{ color: dark ? D.sub : '#9ca3af' }}>
+          <ShieldAlert size={36} />
+          <p className="text-sm font-semibold">Sin diagnósticos registrados para esta campaña.</p>
+          <Link to="/diagnostico" className="btn-primary text-sm flex items-center gap-1.5">
+            <Plus size={13} /> Realizar diagnóstico
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {diagnosticos.map(d => {
+            const sev = SEV_CFG[d.severidad] || SEV_CFG.moderado
+            return (
+              <div key={d.id} onClick={() => setSelected(d)}
+                className="flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all"
+                style={{ backgroundColor: dark ? D.cardBg : '#fff', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}` }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = dark ? 'rgba(255,255,255,0.18)' : '#d1d5db'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = dark ? D.cardBorder : '#e5e7eb'}>
+                {d.imagen_url ? (
+                  <img src={d.imagen_url} alt="dx"
+                    className="w-12 h-12 rounded-lg object-cover shrink-0"
+                    style={{ border: `1px solid ${dark ? D.divider : '#e5e7eb'}` }} />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6' }}>
+                    <ShieldAlert size={20} style={{ color: dark ? D.sub : '#9ca3af' }} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="text-sm font-extrabold" style={{ color: dark ? D.text : '#111827' }}>
+                      {d.diagnostico_probable}
+                    </p>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: sev.bg, color: sev.c }}>{sev.label}</span>
+                    {d.metodo === 'imagen' && (
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: dark ? 'rgba(96,165,250,0.15)' : '#dbeafe', color: dark ? '#60a5fa' : '#2563eb' }}>
+                        Por imagen
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs truncate" style={{ color: dark ? D.sub : '#6b7280' }}>
+                    {d.parte_afectada && <span className="font-semibold">{d.parte_afectada} · </span>}
+                    {d.causa_probable}
+                  </p>
+                  <p className="text-[11px] mt-1" style={{ color: dark ? 'rgba(255,255,255,0.25)' : '#9ca3af' }}>{d.fecha_hora}</p>
+                </div>
+                <Eye size={14} style={{ color: dark ? D.sub : '#9ca3af', flexShrink: 0, marginTop: 3 }} />
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelected(null)} />
+          <div className="relative w-full max-w-md rounded-2xl shadow-2xl z-10 flex flex-col"
+            style={{ backgroundColor: dark ? '#1e2a3a' : '#fff', border: dark ? '1.5px solid rgba(255,255,255,0.10)' : '1.5px solid #e5e7eb', maxHeight: '90vh' }}>
+            {selected.imagen_url && (
+              <img src={selected.imagen_url} alt="dx" className="w-full h-44 object-cover rounded-t-2xl" />
+            )}
+            <div className="overflow-y-auto thin-scroll p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold" style={{ color: dark ? D.text : '#111827' }}>Detalle del diagnóstico</h3>
+                <button onClick={() => setSelected(null)} style={{ color: D.sub }}><X size={16} /></button>
+              </div>
+              {(() => {
+                const sev = SEV_CFG[selected.severidad] || SEV_CFG.moderado
+                return (
+                  <div className="flex gap-2 flex-wrap">
+                    <span className="text-xs font-bold px-2 py-1 rounded-full"
+                      style={{ backgroundColor: sev.bg, color: sev.c }}>{sev.label}</span>
+                    {selected.metodo === 'imagen' && (
+                      <span className="text-xs font-bold px-2 py-1 rounded-full"
+                        style={{ backgroundColor: dark ? 'rgba(96,165,250,0.15)' : '#dbeafe', color: dark ? '#60a5fa' : '#2563eb' }}>
+                        Por imagen
+                      </span>
+                    )}
+                  </div>
+                )
+              })()}
+              <IR dark={dark} label="Campaña"        value={selected.campana_codigo} />
+              <IR dark={dark} label="Variedad"       value={selected.variedad_str} />
+              <IR dark={dark} label="Parte afectada" value={selected.parte_afectada} />
+              <IR dark={dark} label="Fecha y hora"   value={selected.fecha_hora} />
+              <div className="space-y-3 pt-1">
+                <div>
+                  <p className="text-xs font-extrabold uppercase tracking-wide mb-1" style={{ color: dark ? '#fbbf24' : '#d97706' }}>
+                    Diagnóstico probable
+                  </p>
+                  <p className="text-sm font-bold" style={{ color: dark ? D.text : '#111827' }}>{selected.diagnostico_probable}</p>
+                </div>
+                {selected.causa_probable && (
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-wide mb-1" style={{ color: dark ? D.sub : '#9ca3af' }}>Causa probable</p>
+                    <p className="text-xs" style={{ color: dark ? D.text : '#374151' }}>{selected.causa_probable}</p>
+                  </div>
+                )}
+                {selected.recomendacion && (
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-wide mb-1" style={{ color: dark ? '#4ade80' : '#15803d' }}>Recomendación</p>
+                    <p className="text-xs" style={{ color: dark ? D.text : '#374151' }}>{selected.recomendacion}</p>
+                  </div>
+                )}
+                {selected.acciones_preventivas?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-wide mb-1" style={{ color: dark ? D.sub : '#9ca3af' }}>Acciones preventivas</p>
+                    <ul className="space-y-1">
+                      {selected.acciones_preventivas.map((a, i) => (
+                        <li key={i} className="flex gap-2 text-xs" style={{ color: dark ? D.text : '#374151' }}>
+                          <span style={{ color: dark ? '#4ade80' : '#15803d', flexShrink: 0 }}>·</span>{a}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function CampanaDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -2247,6 +2414,7 @@ export default function CampanaDetailPage() {
           {tab === 'presupuesto'   && <PresupuestoTab dark={dark} campanaId={id} campana={campana} />}
           {tab === 'trazabilidad'  && <TrazabilidadTab dark={dark} campanaId={id} campana={campana} />}
           {tab === 'alertas'       && <AlertasTab dark={dark} campanaId={id} />}
+          {tab === 'diagnosticos'  && <DiagnosticosTab dark={dark} campanaId={id} />}
         </div>
       </div>
 

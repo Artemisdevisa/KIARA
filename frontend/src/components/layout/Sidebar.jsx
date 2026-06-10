@@ -80,7 +80,7 @@ export default function Sidebar() {
             </svg>
           </div>
           <span
-            className="font-black tracking-[0.12em] text-[1.35rem] leading-none"
+            className="font-black tracking-[0.12em] text-[1.55rem] leading-none"
             style={{
               background: 'linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.72) 100%)',
               WebkitBackgroundClip: 'text',
