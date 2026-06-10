@@ -7,15 +7,23 @@ import {
   Wheat, Apple, Salad, Bean, ChevronRight,
 } from 'lucide-react'
 
-/* ── Categorías de filtro ── */
+/* ── Categorías de filtro (palabras clave para buscar en nombre_producto) ── */
 const CATEGORIAS = [
-  { key: '',          label: 'Todos',      Icon: ShoppingBasket },
-  { key: 'hortaliza', label: 'Hortalizas', Icon: Salad          },
-  { key: 'fruta',     label: 'Frutas',     Icon: Apple          },
-  { key: 'grano',     label: 'Granos',     Icon: Wheat          },
-  { key: 'hierba',    label: 'Hierbas',    Icon: Leaf           },
-  { key: 'legumbre',  label: 'Legumbres',  Icon: Bean           },
+  { key: '',          label: 'Todos',      Icon: ShoppingBasket, keywords: [] },
+  { key: 'hortaliza', label: 'Hortalizas', Icon: Salad,          keywords: ['lechuga','espinaca','zanahoria','tomate','pepino','acelga','betarraga','pimiento','cebolla','ajo','brocoli','coliflor','nabo','rabanito','apio'] },
+  { key: 'fruta',     label: 'Frutas',     Icon: Apple,          keywords: ['fresa','mango','papaya','naranja','limon','palta','manzana','pera','uva','maracuya','pepino dulce','zapallito'] },
+  { key: 'grano',     label: 'Granos',     Icon: Wheat,          keywords: ['trigo','maiz','quinua','arroz','avena','kiwicha','cebada'] },
+  { key: 'hierba',    label: 'Hierbas',    Icon: Leaf,           keywords: ['culantro','perejil','albahaca','menta','huacatay','romero','oregano','hierbabuena','tomillo'] },
+  { key: 'legumbre',  label: 'Legumbres',  Icon: Bean,           keywords: ['frijol','lenteja','garbanzo','arveja','soya','haba'] },
 ]
+
+function matchCategoria(c, key) {
+  if (!key) return true
+  const cat = CATEGORIAS.find(ct => ct.key === key)
+  if (!cat) return true
+  const nombre = (c.nombre_producto || '').toLowerCase()
+  return cat.keywords.some(kw => nombre.includes(kw))
+}
 
 /* ── Colores por unidad ── */
 const UNIDAD_COLOR = {
@@ -95,29 +103,32 @@ export default function MarketplacePage() {
   const [showFilters, setShowFilters] = useState(false)
   const inputRef = useRef()
 
-  const buscar = (texto = busqueda, cat = categoria) => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    if (texto) params.set('producto', texto)
-    if (cat)   params.set('categoria', cat)
-    api.get(`/cosechas/publicas/?${params}`)
-      .then(r => setCosechas(r.data))
+  const [todos, setTodos] = useState([])
+
+  useEffect(() => {
+    api.get('/cosechas/publicas/')
+      .then(r => { setTodos(r.data); setCosechas(r.data) })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }
+  }, [])
 
-  useEffect(() => { buscar('', '') }, [])
+  // Filtrado 100% en frontend
+  useEffect(() => {
+    const q = busqueda.toLowerCase()
+    const filtrados = todos.filter(c => {
+      const matchTexto = !q || (c.nombre_producto || '').toLowerCase().includes(q)
+      const matchCat   = matchCategoria(c, categoria)
+      return matchTexto && matchCat
+    })
+    setCosechas(filtrados)
+  }, [busqueda, categoria, todos])
 
-  const handleSubmit = e => { e.preventDefault(); buscar() }
+  const handleSubmit = e => e.preventDefault()
 
-  const handleCategoria = cat => {
-    setCategoria(cat)
-    buscar(busqueda, cat)
-  }
+  const handleCategoria = cat => setCategoria(cat)
 
   const limpiar = () => {
     setBusqueda(''); setCategoria('')
-    buscar('', '')
     inputRef.current?.focus()
   }
 

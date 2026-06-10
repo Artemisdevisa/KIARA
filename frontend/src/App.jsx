@@ -7,7 +7,7 @@ import Layout from './components/layout/Layout'
 
 /* Páginas públicas (landing + marketing) */
 import LandingPage from './pages/LandingPage'
-import MarketplacePage from './pages/MarketplacePage'
+import MarketplacePage from './pages/marketplace/MarketplacePage'
 import CosechaDetailPage from './pages/marketplace/CosechaDetailPage'
 import QuienesSomosPage from './pages/QuienesSomosPage'
 import ComoFuncionaPage from './pages/ComoFuncionaPage'
