@@ -773,8 +773,14 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
                     </td>
                     <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? D.text : '#111827', textDecoration: aplicado ? 'line-through' : 'none' }}>
                       {item.producto_nombre}
+                      {item.es_sostenible && (
+                        <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{ backgroundColor: dark ? 'rgba(22,163,74,0.15)' : '#dcfce7', color: dark ? '#4ade80' : '#15803d' }}>
+                          sostenible
+                        </span>
+                      )}
                       {item.dias_antes_cosecha && (
-                        <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded"
+                        <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded"
                           style={{ backgroundColor: dark ? 'rgba(234,179,8,0.15)' : '#fef9c3', color: dark ? '#fbbf24' : '#d97706' }}>
                           {item.dias_antes_cosecha}d seguridad
                         </span>
