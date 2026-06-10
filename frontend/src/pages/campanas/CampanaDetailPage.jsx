@@ -658,20 +658,22 @@ function LaboresTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
 function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana }) {
   const [plan, setPlan]             = useState([])
   const [prods, setProds]           = useState([])
+  const [unidades, setUnidades]     = useState([])
   const [modal, setModal]           = useState(null)
   const [apModal, setApModal]       = useState(null)
   const [apForm, setApForm]         = useState({ fecha_aplicada: '', area_aplicada: '', operario: '', es_sostenible: false, observaciones: '' })
   const [delConfirm, setDelConfirm] = useState(null)
   const [viewItem, setViewItem]     = useState(null)
-  const [form, setForm]             = useState({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' })
+  const [form, setForm]             = useState({ producto: '', objetivo: '', dosis: '', unidad: '', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' })
   const [loading, setLoading]       = useState(false)
 
   const fetch = useCallback(async () => {
-    const [p, pr] = await Promise.all([
+    const [p, pr, un] = await Promise.all([
       api.get(`/campanas/${campanaId}/fitosanitario/`),
       api.get('/campanas/productos/'),
+      api.get('/campanas/unidades/'),
     ])
-    setPlan(p.data); setProds(pr.data)
+    setPlan(p.data); setProds(pr.data); setUnidades(un.data)
   }, [campanaId])
   useEffect(() => { fetch() }, [fetch])
 
@@ -716,11 +718,22 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
   const submitPlan = async e => {
     e.preventDefault(); setLoading(true)
     try {
-      const payload = { ...form, dias_antes_cosecha: form.dias_antes_cosecha || null, frecuencia_dias: form.frecuencia_dias || null }
+      const payload = {
+        ...form,
+        unidad:             form.unidad             || null,
+        objetivo:           form.objetivo           || null,
+        condicion:          form.condicion          || null,
+        dias_antes_cosecha: form.dias_antes_cosecha || null,
+        frecuencia_dias:    form.frecuencia_dias    || null,
+      }
       if (modal === 'edit') { await api.patch(`/campanas/fitosanitario/${form.id}/`, payload); toast.success('Actualizado.') }
       else { await api.post(`/campanas/${campanaId}/fitosanitario/`, payload); toast.success('Agregado al plan.') }
       setModal(null); fetch()
-    } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
+    } catch (err) {
+      const detail = err?.response?.data
+      const msg = detail ? Object.values(detail).flat().join(' · ') : 'Error al guardar.'
+      toast.error(msg)
+    } finally { setLoading(false) }
   }
 
   const toggleSostenible = async item => {
@@ -764,9 +777,8 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
         </div>
         {campana?.estado !== 'cerrada' && (
           <button onClick={() => { setForm({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' }); setModal('new') }}
-            className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg"
-            style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.text : '#374151' }}>
-            <Plus size={12} /> Agregar producto
+            className="flex items-center gap-1.5 btn-primary text-sm">
+            <Plus size={13} /> Agregar
           </button>
         )}
       </div>
@@ -959,10 +971,10 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
           <div className="grid grid-cols-2 gap-3">
             <div><label style={lst}>Dosis *</label><input name="dosis" type="number" step="0.001" value={form.dosis} onChange={h} style={ist} required /></div>
             <div><label style={lst}>Unidad</label>
-              <input name="unidad" value={form.unidad} onChange={h} style={ist} list="unidades-dosis" placeholder="L/ha, g/m², mL/L…" />
-              <datalist id="unidades-dosis">
-                {['L/ha','mL/ha','L/m²','mL/m²','kg/ha','g/ha','kg/m²','g/m²','mL/L','g/L'].map(u => <option key={u} value={u} />)}
-              </datalist>
+              <select name="unidad" value={form.unidad} onChange={h} style={ist}>
+                <option value="">Sin unidad</option>
+                {unidades.map(u => <option key={u.id} value={u.id}>{u.codigo}{u.nombre ? ` — ${u.nombre}` : ''}</option>)}
+              </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -1082,7 +1094,7 @@ function RiegoTab({ dark, campanaId, campana }) {
           {campana?.estado !== 'cerrada' && (
             <button onClick={() => { setForm({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', fecha_inicio: '', fecha_fin: '', operario: '', costo_agua_total: '' }); setModal('new') }}
               className="flex items-center gap-1.5 btn-primary text-sm">
-              <Plus size={13} /> Nuevo plan
+              <Plus size={13} /> Agregar
             </button>
           )}
         </div>
@@ -1098,7 +1110,7 @@ function RiegoTab({ dark, campanaId, campana }) {
             </thead>
             <tbody>
               {planes.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin planes — usa "Nuevo plan" para agregar</td></tr>
+                <tr><td colSpan={9} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin planes — usa "Agregar" para crear uno</td></tr>
               ) : planes.map(p => {
                 const mb = METODO_BADGE[p.metodo] || METODO_BADGE.manual
                 return (
