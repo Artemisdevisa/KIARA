@@ -173,10 +173,9 @@ export default function Dashboard() {
     sectionHdr(1, 'Indicadores del biohuerto', C.teal)
     const ind = [
       ['Biohuertos activos',     String(data.total_biohuertos ?? 0)],
-      ['Cultivos en producción', String(data.cultivos_activos ?? 0)],
+      ['Campañas activas',       String(data.campanas_activas ?? 0)],
       ['Alertas pendientes',     String(data.alertas_pendientes ?? 0)],
       ['Cosechas publicadas',    String(data.cosechas_activas ?? 0)],
-      ['Costo acumulado del mes', `S/ ${(data.costo_total_mes ?? 0).toFixed(2)}`],
       ['Prácticas sostenibles',  String(data.practicas_mes ?? 0)],
       ['Semáforo ambiental',     (data.semaforo_ambiental ?? 'rojo').toUpperCase()],
     ]
@@ -190,16 +189,24 @@ export default function Dashboard() {
         C.green, { columnStyles: { 2: { halign: 'center' } } })
     else emptyMsg('No hay cosechas en los próximos 7 días.')
 
-    /* 3 — Costos por concepto */
-    sectionHdr(3, 'Costos de producción — mes actual', C.navy)
-    if (data.costos_por_concepto?.length) {
-      const tot = data.costos_por_concepto.reduce((s, c) => s + c.total, 0)
-      table(['Concepto','Monto (S/)','% total'],
-        data.costos_por_concepto.map(c => [
-          c.concepto, c.total.toFixed(2), `${((c.total / tot) * 100).toFixed(1)}%`,
-        ]),
-        C.navy, { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'center' } } })
-    } else emptyMsg('Sin costos registrados este mes.')
+    /* 3 — Gasto por campaña */
+    sectionHdr(3, 'Gasto por campaña (presupuesto vs ejecutado)', C.navy)
+    if (data.campanas_costos?.length) {
+      const totPres = data.campanas_costos.reduce((s, c) => s + c.presupuestado, 0)
+      const totEj   = data.campanas_costos.reduce((s, c) => s + c.ejecutado, 0)
+      table(
+        ['Campaña', 'Variedad', 'Presupuestado (S/)', 'Ejecutado (S/)'],
+        [
+          ...data.campanas_costos.map(c => [
+            c.codigo ?? '—', c.variedad ?? '—',
+            c.presupuestado.toFixed(2), c.ejecutado.toFixed(2),
+          ]),
+          ['', 'TOTAL', totPres.toFixed(2), totEj.toFixed(2)],
+        ],
+        C.navy,
+        { columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' } } }
+      )
+    } else emptyMsg('Sin campañas activas o planificadas.')
 
     /* 4 — Prácticas sostenibles */
     sectionHdr(4, 'Prácticas sostenibles del mes', C.green)
