@@ -9,14 +9,14 @@ import {
 import { useState } from 'react'
 
 const modules = [
-  { to: '/administrativo', icon: ShieldCheck,   label: 'Administrativo',  desc: 'Usuarios y roles'      },
   { to: '/mi-huerto',      icon: TreePine,       label: 'Mi Huerto',       desc: 'Parcelas y campañas'   },
-  { to: '/catalogos',      icon: Database,       label: 'Catálogos',       desc: 'Datos de apoyo'        },
   { to: '/monitoreo',      icon: Thermometer,    label: 'Monitoreo',       desc: 'Clima y ambiente'      },
   { to: '/alertas',        icon: BellRing,       label: 'Alertas',         desc: 'Recordatorios'         },
   { to: '/diagnostico',    icon: Microscope,     label: 'Diagnóstico',     desc: 'Fitosanitario'         },
   { to: '/cosechas',       icon: PackageCheck,   label: 'Cosechas',        desc: 'Mis productos'         },
   { to: '/recomendaciones',icon: BookOpen,       label: 'Guía cultivos',   desc: 'Manejo sostenible'     },
+  { to: '/catalogos',      icon: Database,       label: 'Catálogos',       desc: 'Datos de apoyo'        },
+  { to: '/administrativo', icon: ShieldCheck,    label: 'Administrativo',  desc: 'Usuarios y roles'      },
 ]
 
 /* Paleta sidebar: siempre verde oscuro en light, azul marino en dark */

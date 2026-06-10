@@ -47,7 +47,7 @@ def _generar_alertas(biohuerto, temperatura, humedad):
                     'titulo': f'Humedad baja ({humedad}%) — revisar riego urgente',
                     'descripcion': f'Se registró {humedad}% de humedad. Rango óptimo para Lambayeque: {HUM_MIN}–{HUM_MAX}%. El cultivo puede estar en estrés hídrico.',
                     'prioridad': 'alta',
-                })
+                })  
             elif float(humedad) > HUM_MAX:
                 mensajes.append({
                     'tipo': 'control',

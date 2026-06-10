@@ -185,7 +185,7 @@ export default function Dashboard() {
     sectionHdr(2, 'Próximas cosechas — campañas activas y planificadas', C.green)
     if (data.proximas_cosechas?.length)
       table(['Cultivo','Biohuerto','Fecha estimada'],
-        data.proximas_cosechas.map(c => [c.nombre, c['biohuerto__nombre'], c.fecha_estimada_cosecha]),
+        data.proximas_cosechas.map(c => [c.cultivo ? `${c.cultivo} — ${c.nombre}` : c.nombre, c['biohuerto__nombre'], c.fecha_estimada_cosecha]),
         C.green, { columnStyles: { 2: { halign: 'center' } } })
     else emptyMsg('No hay cosechas en los próximos 7 días.')
 
@@ -198,7 +198,7 @@ export default function Dashboard() {
         ['Campaña', 'Variedad', 'Presupuestado (S/)', 'Ejecutado (S/)'],
         [
           ...data.campanas_costos.map(c => [
-            c.codigo ?? '—', c.variedad ?? '—',
+            c.codigo ?? '—', c.cultivo ? `${c.cultivo} — ${c.variedad}` : (c.variedad ?? '—'),
             c.presupuestado.toFixed(2), c.ejecutado.toFixed(2),
           ]),
           ['', 'TOTAL', totPres.toFixed(2), totEj.toFixed(2)],
@@ -229,9 +229,9 @@ export default function Dashboard() {
     /* 6 — Campañas activas */
     sectionHdr(6, 'Campañas activas', C.teal)
     if (data.campanas_detalle?.length)
-      table(['Código','Variedad','Biohuerto','Inicio','Fin','Área (m²)'],
+      table(['Código','Cultivo — Variedad','Biohuerto','Inicio','Fin','Área (m²)'],
         data.campanas_detalle.map(c => [
-          c.codigo ?? '—', c.variedad ?? '—', c.biohuerto ?? '—',
+          c.codigo ?? '—', c.cultivo ? `${c.cultivo} — ${c.variedad}` : (c.variedad ?? '—'), c.biohuerto ?? '—',
           c.fecha_inicio ?? '—', c.fecha_fin ?? '—', c.area ?? '—',
         ]),
         C.teal, { columnStyles: { 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' } } })
@@ -358,7 +358,9 @@ export default function Dashboard() {
                         <div className="flex items-center gap-3 min-w-0">
                           <Sprout size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" />
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{c.nombre}</p>
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+                              {c.cultivo ? `${c.cultivo} — ${c.nombre}` : c.nombre}
+                            </p>
                             <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{c['biohuerto__nombre']}</p>
                           </div>
                         </div>
@@ -464,7 +466,9 @@ export default function Dashboard() {
                     <div key={i} className="space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{c.variedad}</p>
+                          <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
+                            {c.cultivo ? `${c.cultivo} — ${c.variedad}` : c.variedad}
+                          </p>
                           <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{c.biohuerto}</p>
                         </div>
                         <div className="text-right shrink-0">

@@ -31,10 +31,11 @@ class DashboardView(APIView):
             Campana.objects.filter(
                 biohuerto__in=biohuertos,
                 estado__in=['activa', 'planificada'],
-            ).order_by('fecha_fin').values('codigo', 'variedad__nombre', 'fecha_fin', 'biohuerto__nombre')
+            ).order_by('fecha_fin').values('codigo', 'variedad__nombre', 'variedad__cultivo', 'fecha_fin', 'biohuerto__nombre')
         )
         for c in proximas_cosechas:
             c['nombre']                  = c.pop('variedad__nombre') or ''
+            c['cultivo']                 = c.pop('variedad__cultivo') or ''
             c['fecha_estimada_cosecha']  = str(c.pop('fecha_fin'))
             c['biohuerto__nombre']       = c.get('biohuerto__nombre', '')
 
@@ -172,6 +173,7 @@ class DashboardView(APIView):
 
             campanas_costos.append({
                 'codigo':        c.codigo,
+                'cultivo':       c.variedad.cultivo if c.variedad else '',
                 'variedad':      c.variedad.nombre if c.variedad else '',
                 'biohuerto':     c.biohuerto.nombre if c.biohuerto else '',
                 'presupuestado': round(labor_pres + fito_pres, 2),
@@ -183,9 +185,10 @@ class DashboardView(APIView):
         campanas_detalle = list(
             Campana.objects.filter(
                 biohuerto__in=biohuertos, estado='activa'
-            ).values('codigo', 'variedad__nombre', 'biohuerto__nombre', 'fecha_inicio', 'fecha_fin', 'area')
+            ).values('codigo', 'variedad__nombre', 'variedad__cultivo', 'biohuerto__nombre', 'fecha_inicio', 'fecha_fin', 'area')
         )
         for c in campanas_detalle:
+            c['cultivo']   = c.pop('variedad__cultivo') or ''
             c['variedad']  = c.pop('variedad__nombre') or ''
             c['biohuerto'] = c.pop('biohuerto__nombre') or ''
             c['fecha_inicio'] = str(c['fecha_inicio']) if c['fecha_inicio'] else ''
