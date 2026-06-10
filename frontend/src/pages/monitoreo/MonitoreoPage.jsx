@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import {
   Activity, Plus, Search, Thermometer, Droplets, Sun, Cloud,
   CalendarDays, TreePine, X, AlertTriangle, BellRing, TrendingUp,
-  TrendingDown, Minus, CheckCircle,
+  TrendingDown, Minus, CheckCircle, Trash2,
 } from 'lucide-react'
 
 /* ── Umbrales óptimos para Lambayeque — INIA Vista Florida (deben coincidir con el backend) ── */
@@ -331,6 +331,15 @@ export default function MonitoreoPage() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
+  const handleEliminar = async (id) => {
+    if (!window.confirm('¿Eliminar este registro de monitoreo?')) return
+    try {
+      await api.delete(`/monitoreo/${id}/`)
+      toast.success('Registro eliminado.')
+      fetchAll()
+    } catch { toast.error('No se pudo eliminar.') }
+  }
+
   const filtered = registros.filter(r => {
     const q = search.toLowerCase()
     return !search || r.biohuerto_nombre?.toLowerCase().includes(q) || r.fecha?.includes(q)
@@ -514,7 +523,7 @@ export default function MonitoreoPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-                  {['Fecha', 'Biohuerto', 'Temperatura', 'Humedad', 'Luminosidad', 'Incidencias'].map((h, i) => (
+                  {['Fecha', 'Biohuerto', 'Temperatura', 'Humedad', 'Luminosidad', 'Incidencias', ''].map((h, i) => (
                     <th key={i}
                       className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide
                         ${i === 1 ? 'hidden md:table-cell' : ''}
@@ -585,6 +594,19 @@ export default function MonitoreoPage() {
                         <span className="text-xs line-clamp-1" style={{ color: dark ? D.sub : '#6b7280' }}>
                           {r.incidencias || '—'}
                         </span>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => handleEliminar(r.id)}
+                          title="Eliminar registro"
+                          className="p-1.5 rounded-lg transition-all duration-150"
+                          style={{ color: dark ? '#f87171' : '#dc2626', backgroundColor: 'transparent' }}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = dark ? 'rgba(239,68,68,0.15)' : '#fee2e2' }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
                   )
