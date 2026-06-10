@@ -129,6 +129,7 @@ class CampanaListCreate(generics.ListCreateAPIView):
         campana   = serializer.save(codigo=codigo)
 
         for pp in PlantillaProducto.objects.filter(variedad=variedad).select_related('producto', 'objetivo', 'unidad', 'condicion', 'plaga'):
+            fecha_inicio_fito = fecha_ini + datetime.timedelta(weeks=pp.semana_relativa) if pp.semana_relativa is not None else None
             ItemFitosanitario.objects.create(
                 campana=campana, producto=pp.producto,
                 objetivo=pp.objetivo, plaga=pp.plaga,
@@ -137,6 +138,7 @@ class CampanaListCreate(generics.ListCreateAPIView):
                 frecuencia_dias=pp.frecuencia_dias,
                 condicion=pp.condicion,
                 etapa=pp.etapa,
+                fecha_inicio=fecha_inicio_fito,
             )
 
         for pl in PlantillaLabor.objects.filter(variedad=variedad).select_related('tipo_labor'):
@@ -151,6 +153,7 @@ class CampanaListCreate(generics.ListCreateAPIView):
             )
 
         for pr in PlantillaRiego.objects.filter(variedad=variedad).select_related('fertilizante'):
+            fecha_inicio_riego = fecha_ini + datetime.timedelta(weeks=pr.semana_relativa) if pr.semana_relativa is not None else fecha_ini
             PlanRiego.objects.create(
                 campana=campana,
                 nombre=pr.nombre,
@@ -160,6 +163,7 @@ class CampanaListCreate(generics.ListCreateAPIView):
                 duracion_minutos=pr.duracion_minutos,
                 fertilizante=pr.fertilizante,
                 dosis_fertilizante=pr.dosis_fertilizante,
+                fecha_inicio=fecha_inicio_riego,
             )
 
 

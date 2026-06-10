@@ -793,7 +793,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
           )}
         </div>
         {campana?.estado !== 'cerrada' && (
-          <button onClick={() => { setForm({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', etapa: '' }); setModal('new') }}
+          <button onClick={() => { setForm({ producto: '', objetivo: '', dosis: '', unidad: 'L/ha', dias_antes_cosecha: '', condicion: '', frecuencia_dias: '', fecha_inicio: '', etapa: '' }); setModal('new') }}
             className="flex items-center gap-1.5 btn-primary text-sm">
             <Plus size={13} /> Agregar
           </button>
@@ -803,8 +803,8 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
         <table className="w-full text-sm">
           <thead>
             <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f3f4f6'}` }}>
-              {['', 'Producto', 'Tipo', 'Etapa', 'Dosis/m²', 'Total campo', 'Costo est.', 'Estado', 'Sost.', ''].map((h, i) => (
-                <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide${i === 9 ? ' text-right' : ''}`}
+              {['', 'Producto', 'Tipo', 'Etapa', 'Fecha', 'Dosis/m²', 'Total campo', 'Costo est.', 'Estado', 'Sost.', ''].map((h, i) => (
+                <th key={i} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide${i === 10 ? ' text-right' : ''}`}
                   style={{ color: dark ? 'rgba(255,255,255,0.30)' : '#9ca3af' }}>{h}</th>
               ))}
             </tr>
@@ -815,7 +815,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
               const visible = (etapaFilter ? plan.filter(i => i.etapa === etapaFilter) : [...plan])
                 .sort((a, b) => (ETAPA_ORDER.indexOf(a.etapa) ?? 99) - (ETAPA_ORDER.indexOf(b.etapa) ?? 99))
               if (visible.length === 0)
-                return <tr><td colSpan={10} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin productos{etapaFilter ? ' en esta etapa' : ' en el plan'}</td></tr>
+                return <tr><td colSpan={11} className="px-4 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin productos{etapaFilter ? ' en esta etapa' : ' en el plan'}</td></tr>
               return visible.map(item => {
                 const et = etapaOf(item.etapa)
                 const ec = dark ? et.dc : et.lc
@@ -867,6 +867,37 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
                     <td className="px-4 py-3">
                       {item.etapa && <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md"
                         style={{ backgroundColor: ebg, color: ec }}>{et.label}</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs" style={{ minWidth: 100 }}>
+                      {(() => {
+                        if (aplicado && item.fecha_aplicada) {
+                          return <span style={{ color: dark ? '#4ade80' : '#15803d', fontWeight: 600 }}>{item.fecha_aplicada}</span>
+                        }
+                        if (!item.fecha_inicio) return <span style={{ color: dark ? 'rgba(255,255,255,0.18)' : '#d1d5db' }}>—</span>
+                        if (!item.frecuencia_dias) {
+                          return (
+                            <span style={{ color: dark ? '#60a5fa' : '#2563eb', fontWeight: 600 }}>
+                              {item.fecha_inicio}
+                              <span className="block text-[10px] font-normal" style={{ color: dark ? D.sub : '#9ca3af' }}>única vez</span>
+                            </span>
+                          )
+                        }
+                        // Calcular próxima fecha desde fecha_inicio + N * frecuencia_dias
+                        const today = new Date(); today.setHours(0,0,0,0)
+                        let base = new Date(item.fecha_inicio + 'T00:00:00')
+                        while (base < today) base = new Date(base.getTime() + item.frecuencia_dias * 86400000)
+                        const proxima = base.toISOString().slice(0, 10)
+                        const dias = Math.round((base - today) / 86400000)
+                        const urgente = dias <= 2
+                        return (
+                          <span style={{ color: urgente ? (dark ? '#f87171' : '#dc2626') : (dark ? '#fbbf24' : '#d97706'), fontWeight: 600 }}>
+                            {proxima}
+                            <span className="block text-[10px] font-normal" style={{ color: dark ? D.sub : '#9ca3af' }}>
+                              {dias === 0 ? 'hoy' : dias === 1 ? 'mañana' : `en ${dias}d`} · c/{item.frecuencia_dias}d
+                            </span>
+                          </span>
+                        )
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-xs font-semibold" style={{ color: dark ? D.text : '#374151' }}>
                       {item.dosis} {item.unidad_codigo || item.unidad}
@@ -998,6 +1029,9 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
             <div><label style={lst}>Intervalo seguridad (días)</label><input name="dias_antes_cosecha" type="number" value={form.dias_antes_cosecha} onChange={h} style={ist} placeholder="15" /></div>
             <div><label style={lst}>Frecuencia (días)</label><input name="frecuencia_dias" type="number" value={form.frecuencia_dias} onChange={h} style={ist} placeholder="7" /></div>
           </div>
+          <div><label style={lst}>Fecha de inicio / primera aplicación</label>
+            <input name="fecha_inicio" type="date" value={form.fecha_inicio || ''} onChange={h} style={ist} />
+          </div>
         </MiniModal>
       )}
 
@@ -1011,6 +1045,7 @@ function FitosanitarioTab({ dark, campanaId, etapaFilter, etapasValidas, campana
           <IR dark={dark} label="Objetivo"       value={viewItem.objetivo_nombre} />
           <IR dark={dark} label="Plaga"          value={viewItem.plaga_nombre} />
           <IR dark={dark} label="Condición"      value={viewItem.condicion_nombre} />
+          <IR dark={dark} label="Fecha inicio"    value={viewItem.fecha_inicio} />
           <IR dark={dark} label="Frecuencia"     value={viewItem.frecuencia_dias ? `c/ ${viewItem.frecuencia_dias} días` : null} />
           <IR dark={dark} label="Seg. cosecha"   value={viewItem.dias_antes_cosecha ? `${viewItem.dias_antes_cosecha} días` : null} color={dark ? '#fbbf24' : '#d97706'} />
           {viewItem.estado === 'aplicado' && <>

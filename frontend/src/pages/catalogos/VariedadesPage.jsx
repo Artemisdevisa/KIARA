@@ -121,7 +121,7 @@ function PlantillaModal({ dark, variedad, onClose }) {
   const [allPlagas, setAllPlagas]     = useState([])
   const [allFertilizantes, setAllFert]= useState([])
   const [tab, setTab]                 = useState('productos')
-  const [formP, setFormP]             = useState({ producto: '', objetivo: '', plaga: '', dosis: '', unidad: '', dias_antes_cosecha: '', frecuencia_dias: '', condicion: '', etapa: '', fase: 'ambos' })
+  const [formP, setFormP]             = useState({ producto: '', objetivo: '', plaga: '', dosis: '', unidad: '', dias_antes_cosecha: '', frecuencia_dias: '', semana_relativa: '', condicion: '', etapa: '', fase: 'ambos' })
   const [formL, setFormL]             = useState({ tipo_labor: '', cantidad: '1', semana_relativa: '', etapa: '', fase: 'ambos', notas: '' })
   const [formR, setFormR]             = useState({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', etapa: '', semana_relativa: '', fase: 'ambos' })
   const [showFormP, setShowFormP]     = useState(false)
@@ -162,10 +162,11 @@ function PlantillaModal({ dark, variedad, onClose }) {
         unidad:             formP.unidad    || null,
         dias_antes_cosecha: formP.dias_antes_cosecha || null,
         frecuencia_dias:    formP.frecuencia_dias    || null,
+        semana_relativa:    formP.semana_relativa    || null,
         condicion:          formP.condicion || null,
         etapa:              formP.etapa     || '',
       })
-      setFormP({ producto: '', objetivo: '', plaga: '', dosis: '', unidad: '', dias_antes_cosecha: '', frecuencia_dias: '', condicion: '', etapa: '' })
+      setFormP({ producto: '', objetivo: '', plaga: '', dosis: '', unidad: '', dias_antes_cosecha: '', frecuencia_dias: '', semana_relativa: '', condicion: '', etapa: '' })
       setShowFormP(false); fetchAll(); toast.success('Producto agregado a la plantilla.')
     } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
   }
@@ -269,7 +270,7 @@ function PlantillaModal({ dark, variedad, onClose }) {
                         <div>
                           <p className="text-sm font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.90)' : '#111827' }}>{p.producto_nombre}</p>
                           <p className="text-xs mt-0.5" style={{ color: dark ? 'rgba(255,255,255,0.45)' : '#6b7280' }}>
-                            {p.dosis ? `${p.dosis} ${p.unidad_codigo || ''}` : 'Sin dosis'}{p.objetivo_nombre ? ` · ${p.objetivo_nombre}` : ''}{p.plaga_nombre ? ` → ${p.plaga_nombre}` : ''}{p.condicion_nombre ? ` · ${p.condicion_nombre}` : ''}{p.dias_antes_cosecha ? ` · ${p.dias_antes_cosecha}d antes cosecha` : ''}
+                            {p.dosis ? `${p.dosis} ${p.unidad_codigo || ''}` : 'Sin dosis'}{p.objetivo_nombre ? ` · ${p.objetivo_nombre}` : ''}{p.plaga_nombre ? ` → ${p.plaga_nombre}` : ''}{p.condicion_nombre ? ` · ${p.condicion_nombre}` : ''}{p.frecuencia_dias ? ` · c/${p.frecuencia_dias}d` : ''}{p.semana_relativa != null ? ` · semana ${p.semana_relativa}` : ''}{p.dias_antes_cosecha ? ` · ${p.dias_antes_cosecha}d antes cosecha` : ''}
                           </p>
                         </div>
                         <button onClick={() => delP(p.id)} className="p-1.5 rounded-lg shrink-0" style={{ color: dark ? '#f87171' : '#dc2626' }}
@@ -316,10 +317,14 @@ function PlantillaModal({ dark, variedad, onClose }) {
                           style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }} />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <div><label style={lst}>Frecuencia (días)</label>
                         <input type="number" value={formP.frecuencia_dias} onChange={e => setFormP(f => ({ ...f, frecuencia_dias: e.target.value }))}
                           style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }} />
+                      </div>
+                      <div><label style={lst}>Semana del ciclo</label>
+                        <input type="number" value={formP.semana_relativa} onChange={e => setFormP(f => ({ ...f, semana_relativa: e.target.value }))}
+                          style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }} placeholder="1, 2, 3…" />
                       </div>
                       <div><label style={lst}>Condición</label>
                         <SearchSelect dark={dark} options={condOpts} value={formP.condicion} onChange={v => setFormP(f => ({ ...f, condicion: v }))} placeholder="Buscar condición..." />

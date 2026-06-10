@@ -354,10 +354,11 @@ class PlantillaProducto(models.Model):
     frecuencia_dias    = models.IntegerField(null=True, blank=True)
     condicion          = models.ForeignKey(Condicion, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     etapa              = models.CharField(max_length=15, choices=ETAPA_CHOICES, blank=True, default='')
+    semana_relativa    = models.IntegerField(null=True, blank=True, verbose_name='Semana del ciclo')
     fase               = models.CharField(max_length=20, choices=FASE_CICLO, default='ambos', verbose_name='Aplica en')
 
     class Meta:
-        ordering = ['etapa', 'producto__nombre']
+        ordering = ['etapa', 'semana_relativa', 'producto__nombre']
 
 
 class PlantillaLabor(models.Model):
