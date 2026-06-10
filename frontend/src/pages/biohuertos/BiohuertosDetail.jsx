@@ -217,7 +217,7 @@ export default function BiohuertosDetail() {
                     <Sprout size={14} style={{ color: dark ? '#4ade80' : '#16a34a' }} />
                     <div>
                       <p className="text-sm font-bold" style={{ color: d.text }}>
-                        {c.variedad_nombre || c.variedad?.nombre || '—'}
+                        {c.variedad_str || c.variedad_nombre || '—'}
                       </p>
                       <p className="text-[10px] font-mono" style={{ color: d.muted }}>{c.codigo}</p>
                     </div>
