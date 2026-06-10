@@ -16,9 +16,9 @@ class DashboardView(APIView):
         en_7_dias = hoy + timedelta(days=7)
 
         from apps.cultivos.models import Cultivo
-        from apps.campanas.models import Campana, CampanaAlerta
+        from apps.campanas.models import Campana, CampanaAlerta, PracticaSostenible as PracticaCampana
         from apps.cosechas.models import Cosecha
-        from apps.trazabilidad.models import PracticaSostenible, Costo
+        from apps.trazabilidad.models import Costo
         from apps.biohuertos.models import Biohuerto
 
         biohuertos = Biohuerto.objects.filter(productor=user, activo=True)
@@ -55,8 +55,8 @@ class DashboardView(APIView):
             fecha__gte=inicio_mes
         ).aggregate(total=Sum('monto'))['total'] or 0
 
-        practicas_mes = PracticaSostenible.objects.filter(
-            cultivo__biohuerto__in=biohuertos,
+        practicas_mes = PracticaCampana.objects.filter(
+            campana__biohuerto__in=biohuertos,
             fecha__gte=inicio_mes
         ).count()
 
@@ -69,12 +69,13 @@ class DashboardView(APIView):
 
         # Detalle prácticas del mes
         practicas_detalle = list(
-            PracticaSostenible.objects.filter(
-                cultivo__biohuerto__in=biohuertos, fecha__gte=inicio_mes
-            ).select_related('cultivo').values('fecha', 'tipo', 'cultivo__nombre')
+            PracticaCampana.objects.filter(
+                campana__biohuerto__in=biohuertos, fecha__gte=inicio_mes
+            ).select_related('campana__variedad').values('fecha', 'tipo', 'campana__variedad__nombre')
         )
         for p in practicas_detalle:
             p['fecha'] = str(p['fecha'])
+            p['cultivo__nombre'] = p.pop('campana__variedad__nombre') or ''
 
         # Costos por concepto del mes
         from django.db.models import Sum as DSum
