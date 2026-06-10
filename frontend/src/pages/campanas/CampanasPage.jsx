@@ -24,19 +24,29 @@ const ESTADO_COLOR = {
 const EMPTY_FORM = {
   biohuerto: '', variedad: '', anio: new Date().getFullYear(), fecha_inicio: '',
   fecha_fin: '', area: '', unidad_area: 'm²', estado: 'planificada',
+  numero_ciclo: 1, campana_anterior: '',
   objetivo_cosecha: '', unidad_cosecha: 'kg', precio_venta_estimado: '', notas: '',
 }
 
 function CampanaModal({ dark, onClose, onSaved, editItem }) {
-  const [form, setForm]         = useState(editItem ? { ...editItem, variedad: editItem.variedad?.id ?? editItem.variedad } : EMPTY_FORM)
+  const [form, setForm]         = useState(editItem ? { ...editItem, variedad: editItem.variedad?.id ?? editItem.variedad, campana_anterior: editItem.campana_anterior ?? '' } : EMPTY_FORM)
   const [loading, setLoading]   = useState(false)
   const [biohuertos, setBio]    = useState([])
   const [variedades, setVar]    = useState([])
+  const [prevCampanas, setPrev] = useState([])
 
   useEffect(() => {
     api.get('/biohuertos/').then(r => setBio(r.data)).catch(() => {})
     api.get('/campanas/variedades/').then(r => setVar(r.data)).catch(() => {})
+    api.get('/campanas/').then(r => setPrev(r.data)).catch(() => {})
   }, [])
+
+  const selectedVar = variedades.find(v => String(v.id) === String(form.variedad))
+  const isPerenne   = selectedVar?.tipo_ciclo === 'perenne'
+  const prevOptions = prevCampanas.filter(c =>
+    String(c.variedad) === String(form.variedad) &&
+    (!editItem || c.id !== editItem.id)
+  )
 
   const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
@@ -48,6 +58,8 @@ function CampanaModal({ dark, onClose, onSaved, editItem }) {
         fecha_fin: form.fecha_fin || null,
         objetivo_cosecha: form.objetivo_cosecha || null,
         precio_venta_estimado: form.precio_venta_estimado || null,
+        campana_anterior: form.campana_anterior || null,
+        numero_ciclo: Number(form.numero_ciclo) || 1,
       }
       if (editItem) { await api.patch(`/campanas/${editItem.id}/`, payload); toast.success('Campaña actualizada.') }
       else { await api.post('/campanas/', payload); toast.success('Campaña registrada.') }
@@ -82,9 +94,32 @@ function CampanaModal({ dark, onClose, onSaved, editItem }) {
             <div><label style={lst}>Variedad *</label>
               <select name="variedad" value={form.variedad} onChange={h} style={ist} required>
                 <option value="">Selecciona variedad</option>
-                {variedades.map(v => <option key={v.id} value={v.id}>{v.cultivo} — {v.nombre}{v.subtipo ? ` (${v.subtipo})` : ''}</option>)}
+                {variedades.map(v => <option key={v.id} value={v.id}>{v.cultivo} — {v.nombre}{v.subtipo ? ` (${v.subtipo})` : ''}{v.tipo_ciclo === 'perenne' ? ' 🌿' : ''}</option>)}
               </select>
             </div>
+            {isPerenne && (
+              <div className="rounded-xl p-3 space-y-3" style={{ backgroundColor: dark ? 'rgba(52,211,153,0.07)' : '#f0fdf4', border: `1px solid ${dark ? 'rgba(52,211,153,0.20)' : '#bbf7d0'}` }}>
+                <p className="text-[11px] font-black uppercase tracking-wider" style={{ color: dark ? '#34d399' : '#065f46' }}>
+                  Planta perenne — ciclo productivo
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label style={lst}>Número de ciclo</label>
+                    <input name="numero_ciclo" type="number" min="1" value={form.numero_ciclo} onChange={h} style={ist} />
+                    <p className="text-[11px] mt-1" style={{ color: dark ? 'rgba(255,255,255,0.35)' : '#9ca3af' }}>
+                      {Number(form.numero_ciclo) === 1 ? 'Ciclo 1 = Establecimiento (planta nueva)' : `Ciclo ${form.numero_ciclo} = Producción (planta establecida)`}
+                    </p>
+                  </div>
+                  <div>
+                    <label style={lst}>Campaña anterior</label>
+                    <select name="campana_anterior" value={form.campana_anterior} onChange={h} style={ist}>
+                      <option value="">— Ninguna —</option>
+                      {prevOptions.map(c => <option key={c.id} value={c.id}>{c.codigo} ({c.anio})</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-3">
               <div><label style={lst}>Año *</label><input name="anio" type="number" value={form.anio} onChange={h} style={ist} required /></div>
               <div><label style={lst}>Inicio *</label><input name="fecha_inicio" type="date" value={form.fecha_inicio} onChange={h} style={ist} required /></div>
@@ -266,11 +301,26 @@ export default function CampanasPage() {
                       </td>
                       <td className="px-5 py-3.5">
                         <p className="font-semibold leading-tight" style={{ color: dark ? D.text : '#111827' }}>{c.variedad_str}</p>
-                        {c.labores_pendientes > 0 && (
-                          <p className="text-xs font-bold mt-0.5" style={{ color: dark ? '#fbbf24' : '#d97706' }}>
-                            {c.labores_pendientes} pendiente{c.labores_pendientes > 1 ? 's' : ''}
-                          </p>
-                        )}
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          {c.variedad_tipo_ciclo === 'perenne' && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                              style={{
+                                backgroundColor: c.fase_ciclo === 'establecimiento'
+                                  ? dark ? 'rgba(251,191,36,0.15)' : '#fef9c3'
+                                  : dark ? 'rgba(52,211,153,0.15)' : '#d1fae5',
+                                color: c.fase_ciclo === 'establecimiento'
+                                  ? dark ? '#fbbf24' : '#b45309'
+                                  : dark ? '#34d399' : '#065f46',
+                              }}>
+                              {c.fase_ciclo === 'establecimiento' ? `Est. C${c.numero_ciclo}` : `Prod. C${c.numero_ciclo}`}
+                            </span>
+                          )}
+                          {c.labores_pendientes > 0 && (
+                            <span className="text-[10px] font-bold" style={{ color: dark ? '#fbbf24' : '#d97706' }}>
+                              {c.labores_pendientes} pendiente{c.labores_pendientes > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-3.5 text-xs" style={{ color: dark ? D.sub : '#6b7280' }}>
                         <div className="flex items-center gap-1.5"><Leaf size={11} /> {c.biohuerto_nombre}</div>

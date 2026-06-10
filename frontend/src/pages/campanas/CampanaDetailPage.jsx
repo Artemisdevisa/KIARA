@@ -30,8 +30,10 @@ const ETAPAS = [
   { key: 'cosecha',     label: 'Cosecha',     dc: '#fb923c', lc: '#ea580c', dbg: 'rgba(251,146,60,0.15)', lbg: '#fff7ed' },
 ]
 const ETAPAS_POR_CICLO = {
-  anual:   ['preparacion', 'germinacion', 'crecimiento', 'floracion', 'cosecha'],
-  perenne: ['preparacion', 'establecido', 'poda', 'brotacion', 'floracion', 'cosecha'],
+  anual:           ['preparacion', 'germinacion', 'crecimiento', 'floracion', 'cosecha'],
+  perenne:         ['preparacion', 'establecido', 'poda', 'brotacion', 'floracion', 'cosecha'],
+  establecimiento: ['preparacion', 'germinacion', 'crecimiento', 'establecido', 'cosecha'],
+  produccion:      ['poda', 'brotacion', 'floracion', 'cosecha'],
 }
 const etapasPorCiclo = tipoCiclo =>
   ETAPAS.filter(e => (ETAPAS_POR_CICLO[tipoCiclo] ?? ETAPAS.map(x => x.key)).includes(e.key))
@@ -2133,7 +2135,11 @@ export default function CampanaDetailPage() {
         ])
       }
       await api.patch(`/campanas/${id}/`, { tipo_ciclo: ciclo })
-      setCampana(c => ({ ...c, tipo_ciclo: ciclo, tipo_ciclo_efectivo: ciclo || c.variedad_tipo_ciclo }))
+      setCampana(c => {
+        const tc = ciclo || c.variedad_tipo_ciclo
+        const fase = tc === 'perenne' ? (c.numero_ciclo === 1 ? 'establecimiento' : 'produccion') : 'anual'
+        return { ...c, tipo_ciclo: ciclo, tipo_ciclo_efectivo: tc, fase_ciclo: fase }
+      })
       setEtapaFilter('')
       setCicloConfirm(null)
       toast.success(ciclo ? `Ciclo cambiado a ${ciclo}` : 'Ciclo heredado de la variedad')
@@ -2175,7 +2181,7 @@ export default function CampanaDetailPage() {
   )
   if (!campana) return null
 
-  const etapasValidas = etapasPorCiclo(campana.tipo_ciclo_efectivo)
+  const etapasValidas = etapasPorCiclo(campana.fase_ciclo || campana.tipo_ciclo_efectivo)
   const ec = dark ? ESTADO_COLOR[campana.estado]?.dark : ESTADO_COLOR[campana.estado]?.light
   const cardStyle = { backgroundColor: dark ? D.cardBg : '#fff', border: `1.5px solid ${dark ? D.cardBorder : '#e5e7eb'}`, borderRadius: '16px' }
   const handleTabChange = key => {
@@ -2201,6 +2207,23 @@ export default function CampanaDetailPage() {
               style={{ backgroundColor: ec?.bg, color: ec?.c }}>
               {campana.estado_display}
             </span>
+            {campana.variedad_tipo_ciclo === 'perenne' && (() => {
+              const fase = campana.fase_ciclo
+              const isEst = fase === 'establecimiento'
+              return (
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: isEst
+                      ? dark ? 'rgba(251,191,36,0.15)' : '#fef9c3'
+                      : dark ? 'rgba(52,211,153,0.15)' : '#d1fae5',
+                    color: isEst
+                      ? dark ? '#fbbf24' : '#b45309'
+                      : dark ? '#34d399' : '#065f46',
+                  }}>
+                  {isEst ? `Establecimiento · Ciclo ${campana.numero_ciclo}` : `Producción · Ciclo ${campana.numero_ciclo}`}
+                </span>
+              )
+            })()}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {campana.estado === 'planificada' && (

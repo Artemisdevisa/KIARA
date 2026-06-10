@@ -222,17 +222,19 @@ class CampanaAlertaSerializer(serializers.ModelSerializer):
 
 
 class CampanaSerializer(serializers.ModelSerializer):
-    variedad_str        = serializers.CharField(source='variedad.__str__', read_only=True)
-    variedad_tipo_ciclo = serializers.CharField(source='variedad.tipo_ciclo', read_only=True)
-    variedad_dias_ciclo = serializers.IntegerField(source='variedad.dias_ciclo', read_only=True, allow_null=True)
-    tipo_ciclo_efectivo = serializers.SerializerMethodField()
-    biohuerto_nombre    = serializers.CharField(source='biohuerto.nombre', read_only=True)
-    estado_display      = serializers.CharField(source='get_estado_display', read_only=True)
-    labores_count       = serializers.SerializerMethodField()
-    labores_pendientes  = serializers.SerializerMethodField()
-    fito_pendientes     = serializers.SerializerMethodField()
-    riego_pendientes    = serializers.SerializerMethodField()
-    lista_para_cosechar = serializers.SerializerMethodField()
+    variedad_str         = serializers.CharField(source='variedad.__str__', read_only=True)
+    variedad_tipo_ciclo  = serializers.CharField(source='variedad.tipo_ciclo', read_only=True)
+    variedad_dias_ciclo  = serializers.IntegerField(source='variedad.dias_ciclo', read_only=True, allow_null=True)
+    tipo_ciclo_efectivo  = serializers.SerializerMethodField()
+    fase_ciclo           = serializers.SerializerMethodField()
+    campana_anterior_str = serializers.CharField(source='campana_anterior.__str__', read_only=True, allow_null=True)
+    biohuerto_nombre     = serializers.CharField(source='biohuerto.nombre', read_only=True)
+    estado_display       = serializers.CharField(source='get_estado_display', read_only=True)
+    labores_count        = serializers.SerializerMethodField()
+    labores_pendientes   = serializers.SerializerMethodField()
+    fito_pendientes      = serializers.SerializerMethodField()
+    riego_pendientes     = serializers.SerializerMethodField()
+    lista_para_cosechar  = serializers.SerializerMethodField()
 
     class Meta:
         model  = Campana
@@ -241,6 +243,12 @@ class CampanaSerializer(serializers.ModelSerializer):
 
     def get_tipo_ciclo_efectivo(self, obj):
         return obj.tipo_ciclo or obj.variedad.tipo_ciclo
+
+    def get_fase_ciclo(self, obj):
+        tc = obj.tipo_ciclo or obj.variedad.tipo_ciclo
+        if tc == 'perenne':
+            return 'establecimiento' if obj.numero_ciclo == 1 else 'produccion'
+        return 'anual'
 
     def get_labores_count(self, obj):
         return obj.labores.count()

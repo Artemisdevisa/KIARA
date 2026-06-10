@@ -121,9 +121,9 @@ function PlantillaModal({ dark, variedad, onClose }) {
   const [allPlagas, setAllPlagas]     = useState([])
   const [allFertilizantes, setAllFert]= useState([])
   const [tab, setTab]                 = useState('productos')
-  const [formP, setFormP]             = useState({ producto: '', objetivo: '', plaga: '', dosis: '', unidad: '', dias_antes_cosecha: '', frecuencia_dias: '', condicion: '', etapa: '' })
-  const [formL, setFormL]             = useState({ tipo_labor: '', cantidad: '1', semana_relativa: '', etapa: '', notas: '' })
-  const [formR, setFormR]             = useState({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', etapa: '', semana_relativa: '' })
+  const [formP, setFormP]             = useState({ producto: '', objetivo: '', plaga: '', dosis: '', unidad: '', dias_antes_cosecha: '', frecuencia_dias: '', condicion: '', etapa: '', fase: 'ambos' })
+  const [formL, setFormL]             = useState({ tipo_labor: '', cantidad: '1', semana_relativa: '', etapa: '', fase: 'ambos', notas: '' })
+  const [formR, setFormR]             = useState({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', etapa: '', semana_relativa: '', fase: 'ambos' })
   const [showFormP, setShowFormP]     = useState(false)
   const [showFormL, setShowFormL]     = useState(false)
   const [showFormR, setShowFormR]     = useState(false)
@@ -178,7 +178,7 @@ function PlantillaModal({ dark, variedad, onClose }) {
         semana_relativa: formL.semana_relativa || null,
         etapa: formL.etapa || '',
       })
-      setFormL({ tipo_labor: '', cantidad: '1', semana_relativa: '', etapa: '', notas: '' })
+      setFormL({ tipo_labor: '', cantidad: '1', semana_relativa: '', etapa: '', fase: 'ambos', notas: '' })
       setShowFormL(false); fetchAll(); toast.success('Labor agregada a la plantilla.')
     } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
   }
@@ -197,7 +197,7 @@ function PlantillaModal({ dark, variedad, onClose }) {
         etapa:              formR.etapa              || '',
         semana_relativa:    formR.semana_relativa    || null,
       })
-      setFormR({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', etapa: '', semana_relativa: '' })
+      setFormR({ nombre: '', metodo: 'goteo', litros_por_m2: '', frecuencia_dias: '', duracion_minutos: '', fertilizante: '', dosis_fertilizante: '', etapa: '', semana_relativa: '', fase: 'ambos' })
       setShowFormR(false); fetchAll(); toast.success('Riego agregado a la plantilla.')
     } catch { toast.error('Error al guardar.') } finally { setLoading(false) }
   }
@@ -395,6 +395,16 @@ function PlantillaModal({ dark, variedad, onClose }) {
                           style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }} placeholder="1, 2, 3…" />
                       </div>
                     </div>
+                    {variedad.tipo_ciclo === 'perenne' && (
+                      <div><label style={lst}>Aplica en</label>
+                        <select value={formL.fase} onChange={e => setFormL(f => ({ ...f, fase: e.target.value }))}
+                          style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }}>
+                          <option value="ambos">Ambos ciclos</option>
+                          <option value="establecimiento">Solo establecimiento (ciclo 1)</option>
+                          <option value="produccion">Solo producción (ciclo 2+)</option>
+                        </select>
+                      </div>
+                    )}
                     <div><label style={lst}>Notas</label>
                       <input value={formL.notas} onChange={e => setFormL(f => ({ ...f, notas: e.target.value }))}
                         style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f9fafb', border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`, color: dark ? 'rgba(255,255,255,0.90)' : '#111827', width: '100%', borderRadius: '10px', padding: '8px 12px', fontSize: '14px', outline: 'none' }} />

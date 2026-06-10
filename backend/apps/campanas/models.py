@@ -11,6 +11,12 @@ ETAPA_CHOICES = [
     ('cosecha',     'Cosecha'),
 ]
 
+FASE_CICLO = [
+    ('ambos',           'Ambos ciclos'),
+    ('establecimiento', 'Solo establecimiento (ciclo 1)'),
+    ('produccion',      'Solo producción (ciclo 2+)'),
+]
+
 
 class Variedad(models.Model):
     CICLO = [('anual', 'Anual'), ('perenne', 'Perenne')]
@@ -185,6 +191,8 @@ class Campana(models.Model):
     unidad_area           = models.CharField(max_length=10, default='m²')
     estado                = models.CharField(max_length=15, choices=ESTADO, default='planificada')
     tipo_ciclo            = models.CharField(max_length=10, choices=CICLO, blank=True, default='', verbose_name='Tipo de ciclo')
+    numero_ciclo          = models.IntegerField(default=1, verbose_name='Número de ciclo')
+    campana_anterior      = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='campanas_siguientes', verbose_name='Campaña anterior')
     objetivo_cosecha      = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     unidad_cosecha        = models.CharField(max_length=50, blank=True)
     precio_venta_estimado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -344,6 +352,7 @@ class PlantillaProducto(models.Model):
     frecuencia_dias    = models.IntegerField(null=True, blank=True)
     condicion          = models.ForeignKey(Condicion, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     etapa              = models.CharField(max_length=15, choices=ETAPA_CHOICES, blank=True, default='')
+    fase               = models.CharField(max_length=20, choices=FASE_CICLO, default='ambos', verbose_name='Aplica en')
 
     class Meta:
         ordering = ['etapa', 'producto__nombre']
@@ -355,6 +364,7 @@ class PlantillaLabor(models.Model):
     cantidad        = models.DecimalField(max_digits=10, decimal_places=2, default=1)
     semana_relativa = models.IntegerField(null=True, blank=True, verbose_name='Semana del ciclo')
     etapa           = models.CharField(max_length=15, choices=ETAPA_CHOICES, blank=True, default='')
+    fase            = models.CharField(max_length=20, choices=FASE_CICLO, default='ambos', verbose_name='Aplica en')
     notas           = models.CharField(max_length=200, blank=True)
 
     class Meta:
@@ -378,6 +388,7 @@ class PlantillaRiego(models.Model):
     dosis_fertilizante = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     etapa              = models.CharField(max_length=15, choices=ETAPA_CHOICES, blank=True, default='')
     semana_relativa    = models.IntegerField(null=True, blank=True, verbose_name='Semana del ciclo')
+    fase               = models.CharField(max_length=20, choices=FASE_CICLO, default='ambos', verbose_name='Aplica en')
 
     class Meta:
         ordering     = ['etapa', 'semana_relativa', 'nombre']
