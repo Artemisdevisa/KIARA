@@ -104,7 +104,7 @@ export default function Login() {
 
         {/* Logo */}
         <div className="relative z-10 flex items-center" style={{ gap: '-4px' }}>
-          <img src="/sinfondo.png" alt="Kiara logo" style={{ height: 64, width: 'auto', objectFit: 'contain' }} />
+          <img src="/sinfondo.png" alt="Kiara logo" style={{ height: 100, width: 'auto', objectFit: 'contain' }} />
           <span className="font-black tracking-[0.12em] text-2xl text-white" style={{ marginLeft: '-12px' }}>KIARA</span>
         </div>
 
@@ -147,7 +147,7 @@ export default function Login() {
 
         {/* Logo móvil */}
         <div className="lg:hidden flex items-center mb-10">
-          <img src="/sinfondo.png" alt="Kiara logo" style={{ height: 56, width: 'auto', objectFit: 'contain' }} />
+          <img src="/sinfondo.png" alt="Kiara logo" style={{ height: 80, width: 'auto', objectFit: 'contain' }} />
           <span className="font-black tracking-[0.10em] text-xl" style={{ marginLeft: '-12px', background: 'linear-gradient(135deg,#1B4332,#2D6A4F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             KIARA
           </span>
