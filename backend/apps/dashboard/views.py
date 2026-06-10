@@ -16,7 +16,7 @@ class DashboardView(APIView):
         en_7_dias = hoy + timedelta(days=7)
 
         from apps.cultivos.models import Cultivo
-        from apps.alertas.models import Alerta
+        from apps.campanas.models import Campana, CampanaAlerta
         from apps.cosechas.models import Cosecha
         from apps.trazabilidad.models import PracticaSostenible, Costo
         from apps.biohuertos.models import Biohuerto
@@ -26,14 +26,20 @@ class DashboardView(APIView):
             biohuerto__in=biohuertos, estado='activo'
         ).count()
 
-        proximas_cosechas = Cultivo.objects.filter(
-            biohuerto__in=biohuertos,
-            estado='activo',
-            fecha_estimada_cosecha__range=[hoy, en_7_dias]
-        ).values('id', 'nombre', 'fecha_estimada_cosecha', 'biohuerto__nombre')
+        proximas_cosechas = list(
+            Campana.objects.filter(
+                biohuerto__in=biohuertos,
+                estado__in=['activa', 'planificada'],
+                fecha_fin__range=[hoy, en_7_dias]
+            ).values('codigo', 'variedad__nombre', 'fecha_fin', 'biohuerto__nombre')
+        )
+        for c in proximas_cosechas:
+            c['nombre']                  = c.pop('variedad__nombre') or ''
+            c['fecha_estimada_cosecha']  = str(c.pop('fecha_fin'))
+            c['biohuerto__nombre']       = c.get('biohuerto__nombre', '')
 
-        alertas_pendientes = Alerta.objects.filter(
-            cultivo__biohuerto__in=biohuertos,
+        alertas_pendientes = CampanaAlerta.objects.filter(
+            campana__biohuerto__in=biohuertos,
             completada=False
         ).count()
 

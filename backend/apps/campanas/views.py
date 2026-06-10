@@ -426,7 +426,7 @@ class GenerarAlertasView(APIView):
             dias = (campana.fecha_fin - today).days
             prioridad = 'alta' if dias <= 7 else ('media' if dias <= 21 else 'baja')
             CampanaAlerta.objects.create(
-                campana=campana, tipo='cosecha',
+                campana=campana, tipo='cosecha', origen='sistema',
                 titulo='Cosecha programada',
                 descripcion=f'La campaña finaliza el {campana.fecha_fin.strftime("%d/%m/%Y")}. Preparar herramientas y empaques.',
                 fecha_programada=campana.fecha_fin,
@@ -437,7 +437,7 @@ class GenerarAlertasView(APIView):
             # Rotación de cultivos si la campaña termina dentro de ±30 días
             if -30 <= dias <= 30:
                 CampanaAlerta.objects.create(
-                    campana=campana, tipo='rotacion',
+                    campana=campana, tipo='rotacion', origen='sistema',
                     titulo='Planificar rotación de cultivos',
                     descripcion='La campaña finaliza pronto. Considerar rotación con leguminosas o raíces para recuperar el suelo.',
                     fecha_programada=campana.fecha_fin + datetime.timedelta(days=7),
@@ -450,7 +450,7 @@ class GenerarAlertasView(APIView):
             if campana.fecha_fin:
                 fecha_limite = campana.fecha_fin - datetime.timedelta(days=item.dias_antes_cosecha)
                 CampanaAlerta.objects.create(
-                    campana=campana, tipo='seguridad',
+                    campana=campana, tipo='seguridad', origen='sistema',
                     titulo=f'Límite de aplicación: {item.producto.nombre}',
                     descripcion=f'Intervalo de seguridad de {item.dias_antes_cosecha} días antes de cosecha. '
                                 f'No aplicar después del {fecha_limite.strftime("%d/%m/%Y")}.',
@@ -466,7 +466,7 @@ class GenerarAlertasView(APIView):
                 base += datetime.timedelta(days=plan.frecuencia_dias)
             fert_txt = f' con {plan.fertilizante.nombre}' if plan.fertilizante else ''
             CampanaAlerta.objects.create(
-                campana=campana, tipo='riego',
+                campana=campana, tipo='riego', origen='sistema',
                 titulo=f'Riego: {plan.nombre}',
                 descripcion=f'Método {plan.get_metodo_display()}{fert_txt}. '
                             f'{plan.litros_por_m2} L/m². Frecuencia: cada {plan.frecuencia_dias} días.',
@@ -483,7 +483,7 @@ class GenerarAlertasView(APIView):
             objetivo_txt = item.objetivo.nombre if item.objetivo else ''
             tipo = 'fertilizacion' if 'fertili' in objetivo_txt.lower() or 'biol' in item.producto.nombre.lower() else 'control'
             CampanaAlerta.objects.create(
-                campana=campana, tipo=tipo,
+                campana=campana, tipo=tipo, origen='sistema',
                 titulo=f'Aplicación: {item.producto.nombre}',
                 descripcion=f'Etapa: {item.get_etapa_display()}. Aplicar cada {item.frecuencia_dias} días.',
                 fecha_programada=base,
@@ -494,7 +494,7 @@ class GenerarAlertasView(APIView):
         # 5. Labores programadas próximas (hasta 5)
         for labor in campana.labores.filter(estado='programada', fecha_programada__gte=today).order_by('fecha_programada')[:5]:
             CampanaAlerta.objects.create(
-                campana=campana, tipo='labor',
+                campana=campana, tipo='labor', origen='sistema',
                 titulo=f'Labor: {labor.tipo_labor.nombre}',
                 descripcion=f'Etapa: {labor.etapa or "sin etapa"}. {labor.descripcion or ""}',
                 fecha_programada=labor.fecha_programada,
@@ -508,3 +508,35 @@ class GenerarAlertasView(APIView):
             'tipos': list(set(nuevas)),
             'alertas': CampanaAlertaSerializer(alertas, many=True).data,
         })
+
+
+class MisAlertasView(generics.ListAPIView):
+    """Todas las CampanaAlertas del usuario a través de sus campañas."""
+    serializer_class   = CampanaAlertaSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = CampanaAlerta.objects.filter(
+            campana__biohuerto__productor=self.request.user
+        ).select_related('campana', 'campana__variedad', 'campana__biohuerto')
+        completada = self.request.query_params.get('completada')
+        origen     = self.request.query_params.get('origen')
+        if completada is not None:
+            qs = qs.filter(completada=completada.lower() == 'true')
+        if origen:
+            qs = qs.filter(origen=origen)
+        return qs
+
+
+class CampanaAlertaCompletarView(APIView):
+    """Marca una CampanaAlerta como completada."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        alerta = get_object_or_404(
+            CampanaAlerta, pk=pk,
+            campana__biohuerto__productor=request.user
+        )
+        alerta.completada = True
+        alerta.save()
+        return Response(CampanaAlertaSerializer(alerta).data)

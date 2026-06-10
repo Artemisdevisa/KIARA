@@ -206,12 +206,16 @@ class PlantillaRiegoSerializer(serializers.ModelSerializer):
 class CampanaAlertaSerializer(serializers.ModelSerializer):
     tipo_display      = serializers.CharField(source='get_tipo_display', read_only=True)
     prioridad_display = serializers.CharField(source='get_prioridad_display', read_only=True)
+    origen_display    = serializers.CharField(source='get_origen_display', read_only=True)
     dias_restantes    = serializers.SerializerMethodField()
+    campana_codigo    = serializers.CharField(source='campana.codigo', read_only=True)
+    variedad_str      = serializers.CharField(source='campana.variedad.__str__', read_only=True)
+    biohuerto_nombre  = serializers.CharField(source='campana.biohuerto.nombre', read_only=True)
 
     class Meta:
         model  = CampanaAlerta
         fields = '__all__'
-        read_only_fields = ['campana', 'created_at']
+        read_only_fields = ['campana', 'created_at', 'origen']
 
     def get_dias_restantes(self, obj):
         return (obj.fecha_programada - datetime.date.today()).days

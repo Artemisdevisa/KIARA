@@ -415,6 +415,11 @@ class CampanaAlerta(models.Model):
         ('media', 'Media'),
         ('baja',  'Baja'),
     ]
+    ORIGEN = [
+        ('manual',    'Manual'),
+        ('monitoreo', 'Monitoreo'),
+        ('sistema',   'Sistema'),
+    ]
     campana          = models.ForeignKey(Campana, on_delete=models.CASCADE, related_name='alertas')
     tipo             = models.CharField(max_length=20, choices=TIPO)
     titulo           = models.CharField(max_length=200)
@@ -422,6 +427,7 @@ class CampanaAlerta(models.Model):
     fecha_programada = models.DateField()
     prioridad        = models.CharField(max_length=5, choices=PRIORIDAD, default='media')
     completada       = models.BooleanField(default=False)
+    origen           = models.CharField(max_length=15, choices=ORIGEN, default='manual', verbose_name='Origen')
     created_at       = models.DateTimeField(auto_now_add=True)
 
     class Meta:

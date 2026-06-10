@@ -63,6 +63,7 @@ def _generar_alertas(biohuerto, temperatura, humedad):
                 descripcion=m['descripcion'],
                 fecha_programada=hoy,
                 prioridad=m['prioridad'],
+                origen='monitoreo',
             )
             alertas_creadas.append({
                 'campana_codigo': campana.codigo,

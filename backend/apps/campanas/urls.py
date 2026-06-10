@@ -19,6 +19,7 @@ from .views import (
     PlantillaLaborListCreate, PlantillaLaborDetail,
     PlantillaRiegoListCreate, PlantillaRiegoDetail,
     CampanaAlertaListCreate, CampanaAlertaDetail, GenerarAlertasView,
+    MisAlertasView, CampanaAlertaCompletarView,
 )
 
 urlpatterns = [
@@ -82,4 +83,8 @@ urlpatterns = [
     path('<int:campana_pk>/alertas/',          CampanaAlertaListCreate.as_view()),
     path('alertas/<int:pk>/',                  CampanaAlertaDetail.as_view()),
     path('<int:campana_pk>/alertas/generar/',   GenerarAlertasView.as_view()),
+
+    # Global: todas mis alertas
+    path('mis-alertas/',                        MisAlertasView.as_view()),
+    path('alertas/<int:pk>/completar/',          CampanaAlertaCompletarView.as_view()),
 ]
