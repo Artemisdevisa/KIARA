@@ -1192,17 +1192,26 @@ function RiegoTab({ dark, campanaId, campana }) {
 ══════════════════════════════════════════════════════ */
 function PresupuestoTab({ dark, campanaId, campana }) {
   const [items, setItems]           = useState([])
+  const [laboresPlan, setLaboresPlan] = useState(0)
   const [laboresEj, setLaboresEj]   = useState(0)
+  const [laboresCount, setLaboresCount] = useState(0)
+  const [fitoPlan, setFitoPlan]     = useState(0)
   const [fitoEj, setFitoEj]         = useState(0)
+  const [fitoCount, setFitoCount]   = useState(0)
+  const [riegoPlan, setRiegoPlan]   = useState(0)
   const [riegoEj, setRiegoEj]       = useState(0)
+  const [riegoCount, setRiegoCount] = useState(0)
   const [modal, setModal]           = useState(null)
   const [delConfirm, setDelConfirm] = useState(null)
   const [form, setForm]             = useState({ categoria: 'insumo', descripcion: '', cantidad: '', unidad: '', precio_unitario: '', monto_ejecutado: '0' })
   const [porM2, setPorM2]           = useState('')
   const [loading, setLoading]       = useState(false)
-  const CATS = [['insumo','Insumo'],['agua','Agua'],['mano_obra','Mano de obra'],['otro','Otro']]
+  // Solo categorías para el formulario (agua y mano de obra tienen módulo propio)
+  const CATS_FORM = [['insumo','Semillas / Insumos'],['otro','Otro']]
+  // Para display de registros existentes (compatibilidad hacia atrás)
+  const CATS_ALL = [['insumo','Insumo'],['agua','Agua'],['mano_obra','Mano de obra'],['otro','Otro']]
 
-  const fetch = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     const [r, l, f, pr] = await Promise.all([
       api.get(`/campanas/${campanaId}/presupuesto/`),
       api.get(`/campanas/${campanaId}/labores/`),
@@ -1210,27 +1219,39 @@ function PresupuestoTab({ dark, campanaId, campana }) {
       api.get(`/campanas/${campanaId}/plan-riego/`),
     ])
     setItems(r.data)
-    const totalLaboresEj = l.data
-      .filter(lb => lb.estado === 'ejecutada')
-      .reduce((s, lb) => s + (lb.costo_ejecutado || 0), 0)
-    setLaboresEj(totalLaboresEj)
     const area = parseFloat(campana?.area || 0)
-    const totalFitoEj = f.data
-      .filter(it => it.estado === 'aplicado')
-      .reduce((s, it) => {
-        const costo = parseFloat(it.dosis || 0) * area * parseFloat(it.producto_precio || 0) * fitoCostFactor(it.unidad_codigo)
-        return s + costo
-      }, 0)
-    setFitoEj(totalFitoEj)
-    const totalRiegoEj = pr.data.filter(pl => pl.completado).reduce((s, pl) => {
+
+    // Labores
+    const laboresActivas = l.data.filter(lb => lb.estado !== 'cancelada')
+    const laboresEjec    = l.data.filter(lb => lb.estado === 'ejecutada')
+    setLaboresCount(laboresActivas.length)
+    setLaboresPlan(laboresActivas.reduce((s, lb) => s + (lb.costo_programado || 0), 0))
+    setLaboresEj(laboresEjec.reduce((s, lb) => s + (lb.costo_ejecutado || 0), 0))
+
+    // Fitosanitario
+    const fitoActivos  = f.data.filter(it => it.activo)
+    const fitoAplicado = f.data.filter(it => it.estado === 'aplicado')
+    const calcFito = list => list.reduce((s, it) => {
+      return s + parseFloat(it.dosis || 0) * area * parseFloat(it.producto_precio || 0) * fitoCostFactor(it.unidad_codigo)
+    }, 0)
+    setFitoCount(fitoActivos.length)
+    setFitoPlan(calcFito(fitoActivos))
+    setFitoEj(calcFito(fitoAplicado))
+
+    // Riego
+    const riegoActivos   = pr.data.filter(pl => pl.activo)
+    const riegoCompletos = pr.data.filter(pl => pl.completado)
+    const calcRiego = list => list.reduce((s, pl) => {
       const fertCost = (pl.fertilizante_precio && pl.dosis_fertilizante && pl.litros_por_m2)
         ? parseFloat(pl.dosis_fertilizante) * parseFloat(pl.litros_por_m2) * area * parseFloat(pl.fertilizante_precio) / 1000
         : 0
       return s + fertCost + parseFloat(pl.costo_agua_total || 0)
     }, 0)
-    setRiegoEj(totalRiegoEj)
+    setRiegoCount(riegoActivos.length)
+    setRiegoPlan(calcRiego(riegoActivos))
+    setRiegoEj(calcRiego(riegoCompletos))
   }, [campanaId, campana?.area])
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { fetchData() }, [fetchData])
 
   const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
@@ -1239,7 +1260,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
     try {
       if (modal === 'edit') { await api.patch(`/campanas/presupuesto/${form.id}/`, form); toast.success('Actualizado.') }
       else { await api.post(`/campanas/${campanaId}/presupuesto/`, form); toast.success('Ítem agregado.') }
-      setModal(null); fetch()
+      setModal(null); fetchData()
     } catch (err) {
       console.error('Presupuesto save error:', err?.response?.data ?? err)
       const detail = err?.response?.data
@@ -1251,11 +1272,12 @@ function PresupuestoTab({ dark, campanaId, campana }) {
       }
     } finally { setLoading(false) }
   }
-  const del = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/presupuesto/${id}/`); fetch() }, msg: '¿Eliminar este ítem del presupuesto?' })
+  const del = (id) => setDelConfirm({ fn: async () => { await api.delete(`/campanas/presupuesto/${id}/`); fetchData() }, msg: '¿Eliminar este ítem del presupuesto?' })
 
-  const total_pres   = items.reduce((s, i) => s + i.monto_presupuestado, 0)
-  const total_ej_man = items.reduce((s, i) => s + parseFloat(i.monto_ejecutado || 0), 0)
-  const total_ej     = total_ej_man + laboresEj + fitoEj + riegoEj
+  const total_pres_man = items.reduce((s, i) => s + i.monto_presupuestado, 0)
+  const total_pres     = total_pres_man + laboresPlan + fitoPlan + riegoPlan
+  const total_ej_man   = items.reduce((s, i) => s + parseFloat(i.monto_ejecutado || 0), 0)
+  const total_ej       = total_ej_man + laboresEj + fitoEj + riegoEj
   const varianza     = total_pres - total_ej
   const ingreso_est = campana?.objetivo_cosecha && campana?.precio_venta_estimado
     ? parseFloat(campana.objetivo_cosecha) * parseFloat(campana.precio_venta_estimado) : null
@@ -1268,7 +1290,11 @@ function PresupuestoTab({ dark, campanaId, campana }) {
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Presupuestado', value: fmt(total_pres), color: dark ? '#60a5fa' : '#2563eb' },
+          { label: 'Presupuestado', value: fmt(total_pres),
+            sub: (laboresPlan > 0 || fitoPlan > 0 || riegoPlan > 0)
+              ? [laboresPlan > 0 && `${fmt(laboresPlan)} labores`, fitoPlan > 0 && `${fmt(fitoPlan)} fitosanit.`, riegoPlan > 0 && `${fmt(riegoPlan)} riego`].filter(Boolean).join(' + ')
+              : null,
+            color: dark ? '#60a5fa' : '#2563eb' },
           { label: 'Ejecutado', value: fmt(total_ej),
             sub: (laboresEj > 0 || fitoEj > 0 || riegoEj > 0)
               ? [laboresEj > 0 && `${fmt(laboresEj)} labores`, fitoEj > 0 && `${fmt(fitoEj)} fitosanit.`, riegoEj > 0 && `${fmt(riegoEj)} riego`].filter(Boolean).join(' + ')
@@ -1314,11 +1340,60 @@ function PresupuestoTab({ dark, campanaId, campana }) {
             </tr>
           </thead>
           <tbody>
-            {items.length === 0 ? (
+            {/* Filas automáticas de módulos */}
+            {(laboresCount > 0 || fitoCount > 0 || riegoCount > 0) && (
+              <>
+                <tr><td colSpan={8} className="px-5 pt-3 pb-1">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: dark ? 'rgba(255,255,255,0.22)' : '#d1d5db' }}>Calculado desde módulos</p>
+                </td></tr>
+                {laboresCount > 0 && (() => { const v = laboresPlan - laboresEj; return (
+                  <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}>
+                    <td className="px-5 py-3"><span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>Mano de obra</span></td>
+                    <td className="px-5 py-3 text-xs font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.35)' : '#9ca3af' }}>{laboresCount} labor{laboresCount !== 1 ? 'es' : ''} programada{laboresCount !== 1 ? 's' : ''}</td>
+                    <td className="px-5 py-3" style={{ color: dark ? 'rgba(255,255,255,0.2)' : '#d1d5db' }}>—</td>
+                    <td className="px-5 py-3" style={{ color: dark ? 'rgba(255,255,255,0.2)' : '#d1d5db' }}>—</td>
+                    <td className="px-5 py-3 font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{fmt(laboresPlan)}</td>
+                    <td className="px-5 py-3 font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{fmt(laboresEj)}</td>
+                    <td className="px-5 py-3"><span className="flex items-center gap-1 text-xs font-bold" style={{ color: v >= 0 ? (dark ? '#4ade80' : '#15803d') : (dark ? '#f87171' : '#dc2626') }}>{v > 0 ? <TrendingDown size={11}/> : v < 0 ? <TrendingUp size={11}/> : <Minus size={11}/>}{fmt(Math.abs(v))}</span></td>
+                    <td className="px-5 py-3"/>
+                  </tr>
+                )})()}
+                {fitoCount > 0 && (() => { const v = fitoPlan - fitoEj; return (
+                  <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}>
+                    <td className="px-5 py-3"><span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>Fitosanitario</span></td>
+                    <td className="px-5 py-3 text-xs font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.35)' : '#9ca3af' }}>{fitoCount} producto{fitoCount !== 1 ? 's' : ''} activo{fitoCount !== 1 ? 's' : ''}</td>
+                    <td className="px-5 py-3" style={{ color: dark ? 'rgba(255,255,255,0.2)' : '#d1d5db' }}>—</td>
+                    <td className="px-5 py-3" style={{ color: dark ? 'rgba(255,255,255,0.2)' : '#d1d5db' }}>—</td>
+                    <td className="px-5 py-3 font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{fmt(fitoPlan)}</td>
+                    <td className="px-5 py-3 font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{fmt(fitoEj)}</td>
+                    <td className="px-5 py-3"><span className="flex items-center gap-1 text-xs font-bold" style={{ color: v >= 0 ? (dark ? '#4ade80' : '#15803d') : (dark ? '#f87171' : '#dc2626') }}>{v > 0 ? <TrendingDown size={11}/> : v < 0 ? <TrendingUp size={11}/> : <Minus size={11}/>}{fmt(Math.abs(v))}</span></td>
+                    <td className="px-5 py-3"/>
+                  </tr>
+                )})()}
+                {riegoCount > 0 && (() => { const v = riegoPlan - riegoEj; return (
+                  <tr style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}>
+                    <td className="px-5 py-3"><span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.07)' : '#f3f4f6', color: dark ? D.sub : '#6b7280' }}>Agua / Riego</span></td>
+                    <td className="px-5 py-3 text-xs font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.35)' : '#9ca3af' }}>{riegoCount} plan{riegoCount !== 1 ? 'es' : ''} de riego</td>
+                    <td className="px-5 py-3" style={{ color: dark ? 'rgba(255,255,255,0.2)' : '#d1d5db' }}>—</td>
+                    <td className="px-5 py-3" style={{ color: dark ? 'rgba(255,255,255,0.2)' : '#d1d5db' }}>—</td>
+                    <td className="px-5 py-3 font-semibold" style={{ color: dark ? '#60a5fa' : '#2563eb' }}>{fmt(riegoPlan)}</td>
+                    <td className="px-5 py-3 font-semibold" style={{ color: dark ? '#4ade80' : '#15803d' }}>{fmt(riegoEj)}</td>
+                    <td className="px-5 py-3"><span className="flex items-center gap-1 text-xs font-bold" style={{ color: v >= 0 ? (dark ? '#4ade80' : '#15803d') : (dark ? '#f87171' : '#dc2626') }}>{v > 0 ? <TrendingDown size={11}/> : v < 0 ? <TrendingUp size={11}/> : <Minus size={11}/>}{fmt(Math.abs(v))}</span></td>
+                    <td className="px-5 py-3"/>
+                  </tr>
+                )})()}
+                {items.length > 0 && (
+                  <tr><td colSpan={8} className="px-5 pt-3 pb-1">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: dark ? 'rgba(255,255,255,0.22)' : '#d1d5db' }}>Otros costos</p>
+                  </td></tr>
+                )}
+              </>
+            )}
+            {items.length === 0 && laboresCount === 0 && fitoCount === 0 && riegoCount === 0 ? (
               <tr><td colSpan={8} className="px-5 py-10 text-center text-sm" style={{ color: dark ? D.sub : '#9ca3af' }}>Sin ítems presupuestados</td></tr>
             ) : items.map(item => {
               const v = item.varianza
-              const catLabel = CATS.find(([k]) => k === item.categoria)?.[1] || item.categoria
+              const catLabel = CATS_ALL.find(([k]) => k === item.categoria)?.[1] || item.categoria
               return (
                 <tr key={item.id} style={{ borderBottom: `1px solid ${dark ? D.divider : '#f9fafb'}` }}
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = dark ? D.hoverRow : '#f9fafb'}
@@ -1366,7 +1441,7 @@ function PresupuestoTab({ dark, campanaId, campana }) {
         <MiniModal dark={dark} title={modal === 'edit' ? 'Editar ítem' : 'Nuevo ítem'} onClose={() => setModal(null)} onSubmit={submit} loading={loading}>
           <div><label style={lst}>Categoría</label>
             <select name="categoria" value={form.categoria} onChange={h} style={ist}>
-              {CATS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              {CATS_FORM.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </div>
           <div><label style={lst}>Descripción *</label><input name="descripcion" value={form.descripcion} onChange={h} style={ist} required /></div>

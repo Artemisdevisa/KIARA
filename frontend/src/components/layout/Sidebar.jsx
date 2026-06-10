@@ -72,12 +72,7 @@ export default function Sidebar() {
       <div className="px-5 py-5" style={{ borderBottom: `1px solid ${p.border}` }}>
         <Link to="/" className="flex items-center gap-3 group">
           <div className="transition-transform duration-300 group-hover:rotate-6 shrink-0">
-            <svg width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="18" cy="18" r="18" fill="rgba(255,255,255,0.13)"/>
-              <path d="M18 28 C18 28 8 22 9 14 C12 12 16 15 18 28Z" fill="white" opacity="0.85"/>
-              <path d="M18 24 C18 24 28 18 27 10 C24 8 20 11 18 24Z" fill="white"/>
-              <path d="M18 28 L18 30" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
-            </svg>
+            <img src="/sinfondo.png" alt="Kiara logo" width="38" height="38" style={{ objectFit: 'contain' }} />
           </div>
           <span
             className="font-black tracking-[0.12em] text-[1.35rem] leading-none"
