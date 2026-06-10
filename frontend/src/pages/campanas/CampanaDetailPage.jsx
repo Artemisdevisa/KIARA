@@ -1202,7 +1202,7 @@ function RiegoTab({ dark, campanaId, campana, onRefreshCampana }) {
       const nuevoCont = (riegoModal.registros_count || 0) + 1
       if (nuevoCont >= riegoModal.numero_riegos) toast.success(`Riego ${nuevoCont}/${riegoModal.numero_riegos} registrado. ¡Plan completado!`)
       else toast.success(`Riego ${nuevoCont}/${riegoModal.numero_riegos} registrado.`)
-      setRiegoModal(null); fetch()
+      setRiegoModal(null); refresh()
     } catch { toast.error('Error al registrar.') } finally { setLoading(false) }
   }
   const ist = ist_(dark); const lst = lst_(dark)
