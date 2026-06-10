@@ -183,7 +183,7 @@ export default function Dashboard() {
     table(['Indicador','Valor'], ind, C.teal, { columnStyles: { 1: { halign: 'center', fontStyle: 'bold' } } })
 
     /* 2 — Próximas cosechas */
-    sectionHdr(2, 'Próximas cosechas — próximos 7 días', C.green)
+    sectionHdr(2, 'Próximas cosechas — campañas activas y planificadas', C.green)
     if (data.proximas_cosechas?.length)
       table(['Cultivo','Biohuerto','Fecha estimada'],
         data.proximas_cosechas.map(c => [c.nombre, c['biohuerto__nombre'], c.fecha_estimada_cosecha]),
@@ -218,6 +218,28 @@ export default function Dashboard() {
         ]),
         C.rose, { columnStyles: { 3: { halign: 'center' } } })
     else emptyMsg('Sin diagnósticos recientes.')
+
+    /* 6 — Campañas activas */
+    sectionHdr(6, 'Campañas activas', C.teal)
+    if (data.campanas_detalle?.length)
+      table(['Código','Variedad','Biohuerto','Inicio','Fin','Área (m²)'],
+        data.campanas_detalle.map(c => [
+          c.codigo ?? '—', c.variedad ?? '—', c.biohuerto ?? '—',
+          c.fecha_inicio ?? '—', c.fecha_fin ?? '—', c.area ?? '—',
+        ]),
+        C.teal, { columnStyles: { 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' } } })
+    else emptyMsg('Sin campañas activas en este momento.')
+
+    /* 7 — Alertas pendientes */
+    sectionHdr(7, 'Alertas pendientes (próximas 10)', [146,64,14])
+    if (data.alertas_detalle?.length)
+      table(['Título','Tipo','Prioridad','Fecha prog.','Cultivo'],
+        data.alertas_detalle.map(a => [
+          a.titulo ?? '—', a.tipo ?? '—', (a.prioridad ?? '—').toUpperCase(),
+          a.fecha_programada ?? '—', a.cultivo ?? '—',
+        ]),
+        [146,64,14], { columnStyles: { 2: { halign: 'center' }, 3: { halign: 'center' } } })
+    else emptyMsg('Sin alertas pendientes.')
 
     /* Footer */
     const pages = doc.getNumberOfPages()
@@ -312,7 +334,7 @@ export default function Dashboard() {
                 <Wheat size={15} className="text-emerald-600 dark:text-emerald-400" />
                 <div>
                   <h2 className="text-sm font-bold text-gray-800 dark:text-gray-100">Próximas cosechas</h2>
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500">Próximos 7 días</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500">Campañas activas y planificadas</p>
                 </div>
               </div>
               <Link to="/cultivos" className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1">
@@ -347,9 +369,6 @@ export default function Dashboard() {
                 <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
                   <Wheat size={32} className="text-gray-200 dark:text-gray-700" />
                   <p className="text-sm text-gray-400 dark:text-gray-500">Sin cosechas esta semana</p>
-                  <Link to="/cultivos/nuevo" className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline">
-                    <Plus size={11} /> Registrar cultivo
-                  </Link>
                 </div>
               )}
             </div>

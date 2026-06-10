@@ -31,8 +31,7 @@ class DashboardView(APIView):
             Campana.objects.filter(
                 biohuerto__in=biohuertos,
                 estado__in=['activa', 'planificada'],
-                fecha_fin__range=[hoy, en_7_dias]
-            ).values('codigo', 'variedad__nombre', 'fecha_fin', 'biohuerto__nombre')
+            ).order_by('fecha_fin').values('codigo', 'variedad__nombre', 'fecha_fin', 'biohuerto__nombre')
         )
         for c in proximas_cosechas:
             c['nombre']                  = c.pop('variedad__nombre') or ''
@@ -103,6 +102,31 @@ class DashboardView(APIView):
             d['cultivo__nombre'] = d.pop('variedad__nombre') or ''
             d['campana_codigo']  = d.pop('campana__codigo') or ''
 
+        # Campañas activas con detalle
+        campanas_detalle = list(
+            Campana.objects.filter(
+                biohuerto__in=biohuertos, estado='activa'
+            ).values('codigo', 'variedad__nombre', 'biohuerto__nombre', 'fecha_inicio', 'fecha_fin', 'area')
+        )
+        for c in campanas_detalle:
+            c['variedad']  = c.pop('variedad__nombre') or ''
+            c['biohuerto'] = c.pop('biohuerto__nombre') or ''
+            c['fecha_inicio'] = str(c['fecha_inicio']) if c['fecha_inicio'] else ''
+            c['fecha_fin']    = str(c['fecha_fin'])    if c['fecha_fin']    else ''
+            c['area']         = str(c['area'])         if c['area']         else ''
+
+        # Alertas pendientes con detalle (máx 10)
+        alertas_detalle = list(
+            CampanaAlerta.objects.filter(
+                campana__biohuerto__in=biohuertos, completada=False
+            ).select_related('campana__variedad')
+            .order_by('fecha_programada')[:10]
+            .values('titulo', 'tipo', 'prioridad', 'fecha_programada', 'campana__variedad__nombre')
+        )
+        for a in alertas_detalle:
+            a['fecha_programada'] = str(a['fecha_programada'])
+            a['cultivo'] = a.pop('campana__variedad__nombre') or ''
+
         return Response({
             'cultivos_activos': cultivos_activos,
             'campanas_activas': campanas_activas,
@@ -116,4 +140,6 @@ class DashboardView(APIView):
             'practicas_detalle': practicas_detalle,
             'costos_por_concepto': costos_por_concepto,
             'ultimos_diagnosticos': ultimos_diagnosticos,
+            'campanas_detalle': campanas_detalle,
+            'alertas_detalle': alertas_detalle,
         })
