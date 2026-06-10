@@ -13,16 +13,20 @@ const D = {
 }
 
 const TIPO_OPTS = [
-  { value: 'fitosanitario',  label: 'Fitosanitario'  },
-  { value: 'fertilizante',   label: 'Fertilizante'   },
-  { value: 'bioestimulante', label: 'Bioestimulante' },
-  { value: 'otro',           label: 'Otro'           },
+  { value: 'enmienda',       label: 'Enmienda orgánica'  },
+  { value: 'biologico',      label: 'Control biológico'  },
+  { value: 'bioestimulante', label: 'Bioestimulante'     },
+  { value: 'fertilizante',   label: 'Fertilizante'       },
+  { value: 'fitosanitario',  label: 'Fitosanitario'      },
+  { value: 'otro',           label: 'Otro'               },
 ]
 
 const TIPO_COLOR = {
+  enmienda:       { dark: { bg: 'rgba(74,222,128,0.15)',  c: '#4ade80' }, light: { bg: '#dcfce7', c: '#15803d' } },
+  biologico:      { dark: { bg: 'rgba(52,211,153,0.15)',  c: '#34d399' }, light: { bg: '#d1fae5', c: '#059669' } },
+  bioestimulante: { dark: { bg: 'rgba(96,165,250,0.15)',  c: '#60a5fa' }, light: { bg: '#dbeafe', c: '#2563eb' } },
+  fertilizante:   { dark: { bg: 'rgba(251,191,36,0.15)',  c: '#fbbf24' }, light: { bg: '#fef9c3', c: '#d97706' } },
   fitosanitario:  { dark: { bg: 'rgba(239,68,68,0.15)',   c: '#f87171' }, light: { bg: '#fee2e2', c: '#dc2626' } },
-  fertilizante:   { dark: { bg: 'rgba(34,197,94,0.15)',   c: '#4ade80' }, light: { bg: '#dcfce7', c: '#15803d' } },
-  bioestimulante: { dark: { bg: 'rgba(168,85,247,0.15)',  c: '#c084fc' }, light: { bg: '#f3e8ff', c: '#7e22ce' } },
   otro:           { dark: { bg: 'rgba(255,255,255,0.08)', c: '#94a3b8' }, light: { bg: '#f3f4f6', c: '#6b7280' } },
 }
 
@@ -54,13 +58,13 @@ export default function ProductosPage() {
   const [search, setSearch]   = useState('')
   const [filtro, setFiltro]   = useState('')
   const [modal, setModal]     = useState(null)
-  const [form, setForm]       = useState({ nombre: '', tipo: 'fitosanitario', unidad: 'L', precio_unitario: '', descripcion: '', activo: true })
+  const [form, setForm]       = useState({ nombre: '', tipo: 'enmienda', unidad: 'L', precio_unitario: '', descripcion: '', activo: true })
   const [loading, setLoading] = useState(false)
 
   const fetch = useCallback(async () => { const r = await api.get('/campanas/productos/'); setData(r.data) }, [])
   useEffect(() => { fetch() }, [fetch])
 
-  const openNew  = () => { setForm({ nombre: '', tipo: 'fitosanitario', unidad: 'L', precio_unitario: '', descripcion: '', activo: true }); setModal('new') }
+  const openNew  = () => { setForm({ nombre: '', tipo: 'enmienda', unidad: 'L', precio_unitario: '', descripcion: '', activo: true }); setModal('new') }
   const openEdit = item => { setForm({ ...item }); setModal('edit') }
   const h = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
