@@ -1,3 +1,4 @@
+from decimal import Decimal, InvalidOperation
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -116,6 +117,40 @@ class CosechaAgotarView(APIView):
             return Response({'detail': 'Cosecha no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
         cosecha.estado = 'agotado'
         cosecha.save()
+        return Response(CosechaSerializer(cosecha, context={'request': request}).data)
+
+
+class CosechaVenderView(APIView):
+    """Registra una venta y descuenta del stock disponible."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            cosecha = Cosecha.objects.get(pk=pk, biohuerto__productor=request.user)
+        except Cosecha.DoesNotExist:
+            return Response({'detail': 'Cosecha no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if cosecha.estado == 'agotado':
+            return Response({'detail': 'Esta cosecha ya está agotada.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            cantidad = Decimal(str(request.data.get('cantidad', '')))
+            if cantidad <= 0:
+                raise ValueError()
+        except (InvalidOperation, ValueError):
+            return Response({'detail': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        disponible = cosecha.cantidad - cosecha.cantidad_vendida
+        if cantidad > disponible:
+            return Response(
+                {'detail': f'Solo quedan {disponible} {cosecha.get_unidad_display()} disponibles.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cosecha.cantidad_vendida += cantidad
+        if cosecha.cantidad_vendida >= cosecha.cantidad:
+            cosecha.estado = 'agotado'
+        cosecha.save(update_fields=['cantidad_vendida', 'estado'])
         return Response(CosechaSerializer(cosecha, context={'request': request}).data)
 
 

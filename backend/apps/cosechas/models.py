@@ -76,6 +76,7 @@ class Cosecha(models.Model):
     nombre_producto = models.CharField(max_length=200, verbose_name='Nombre del producto')
     foto = models.ImageField(upload_to='cosechas/', null=True, blank=True, verbose_name='Foto')
     cantidad = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Cantidad disponible')
+    cantidad_vendida = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='Cantidad vendida')
     unidad = models.CharField(max_length=20, choices=UNIDAD_CHOICES, default='kg', verbose_name='Unidad')
     precio = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Precio referencial (S/)')
     fecha_cosecha = models.DateField(verbose_name='Fecha de cosecha')
